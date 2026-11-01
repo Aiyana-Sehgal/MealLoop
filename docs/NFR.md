@@ -1144,7 +1144,7 @@ Also undecided, and recorded here so the C4 and ADR work addresses them:
 - A hosting-cost ceiling (see NFR-SCL-004).
 - The choice of guardian-video storage.
 
-The existing Spring Boot/PostgreSQL modular-monolith proposal may be evaluated against these NFRs, but is not automatically approved merely because it already exists in the repository.
+**Update (1 November 2026).** The owner has approved Spring Boot (Java) as a modular monolith, PostgreSQL, private object storage, no premature microservices, Kafka, Kubernetes or Redis dependency, and Spring Security with RS256 JWT access tokens, rotating opaque refresh tokens and RBAC plus resource and scope authorization ([ADR-003](adr/ADR-003-approved-platform-backend-security.md)). The module boundaries, hosting, providers and the other items in [ADR-004](adr/ADR-004-authentication-session-and-delivery-options.md) are not approved. The existing backend proposal and OpenAPI file are unreviewed drafts and are not approved merely because they exist in the repository. The statements above that these choices are not approved by this NFR remain true: this document approves none of them.
 
 ## 12. NFR acceptance evidence
 

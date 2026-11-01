@@ -2,6 +2,8 @@
 
 SwiftUI app, minimum iOS 17, one app target (`MealLoop`) and one unit-test target (`MealLoopTests`), shared scheme `MealLoop`. Structure and rules: [`docs/REPOSITORY_STRUCTURE.md`](../docs/REPOSITORY_STRUCTURE.md).
 
+> **Review status (1 November 2026).** The owner treats this foundation (structure, view models, repositories, models, design system and its OpenAPI counterpart) as an **unreviewed draft**. The frontend architecture is PENDING REVIEW ([`docs/architecture/FRONTEND_READINESS.md`](../docs/architecture/FRONTEND_READINESS.md)). The Debug "Demo data" badge, the simulated-moment menu and the simulated shared role password described below are developer tools, not the reviewer-facing interface.
+
 > **Build status (owner-reported).** The project was written in an environment without macOS or Xcode. The owner reports that it was built and launched on their Mac. The unit-test result is not yet recorded, and no build log is stored in this repository. Record the real `xcodebuild` and test output in `docs/FOUNDATION_REPORT.md`.
 
 ## Requirements

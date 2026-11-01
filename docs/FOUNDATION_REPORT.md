@@ -2,6 +2,8 @@
 
 Branch `feature/swiftui-foundation`, created from `claude/mealloop-ios-design-e9n1n5` at `85cedc4`. Written on 2026-10-23.
 
+> **Review status (1 November 2026).** The owner treats the generated foundation as an unreviewed draft. See [`architecture/FRONTEND_READINESS.md`](architecture/FRONTEND_READINESS.md) for what is and is not verified.
+
 ## The most important limitation
 
 **Update (owner-reported):** the owner reports that the foundation was built and launched on their Mac. The unit-test result is not yet recorded, and no build log is stored in this repository, so nothing beyond build and launch is claimed.

@@ -273,7 +273,7 @@ MealLoop uses the C4 model to document system context, deployment/container boun
 | C4 Level | Status |
 |---|---|
 | C1 — System Context | Owner approved — 24 October 2026 |
-| C2 — Container | Draft, not reviewed |
+| C2 — Container | Platform, backend and security choices owner approved ([ADR-003](docs/adr/ADR-003-approved-platform-backend-security.md)); container diagram is an unreviewed draft |
 | C3 — Component | Not started |
 | C4 — Code | Selective, deferred |
 

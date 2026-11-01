@@ -3113,7 +3113,7 @@ These are targets, not commitments.
 | April 2027 | Pilot validation and institutional demonstration |
 | 16 April 2027 | App Fair |
 
-**Platform direction (PROPOSED inputs for the ADR task, not approved designs):** native iOS (SwiftUI) first; Android (Kotlin, Jetpack Compose) later; a shared Spring Boot and PostgreSQL backend. See [`docs/adr/`](adr/ADR-001-ios-architecture.md) and [`docs/backend/`](backend/BACKEND_PROPOSAL.md).
+**Platform direction (owner approved, 1 November 2026; see [ADR-003](adr/ADR-003-approved-platform-backend-security.md)):** one native iOS application (SwiftUI) with role-aware navigation for all 11 roles, including Guardian; an Android client later (Kotlin, Jetpack Compose) that shares the backend API contracts but not UI code; a Spring Boot (Java) modular monolith with PostgreSQL and private object storage; Spring Security with RS256 JWT access tokens and rotating opaque refresh tokens. The frontend architecture, API contracts, hosting and storage providers are **not** approved ([`FRONTEND_READINESS.md`](architecture/FRONTEND_READINESS.md), [ADR-004](adr/ADR-004-authentication-session-and-delivery-options.md)). The earlier ADR-001, ADR-002 and the files under [`docs/backend/`](backend/BACKEND_PROPOSAL.md) remain unreviewed drafts.
 
 ## 14. Open decisions
 

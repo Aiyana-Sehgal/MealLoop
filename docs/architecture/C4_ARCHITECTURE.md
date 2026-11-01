@@ -8,7 +8,7 @@
 | Document control | Status |
 |---|---|
 | **C1 — System Context** | **OWNER APPROVED — 24 October 2026** (see [C1 owner approval](#c1-owner-approval)) |
-| **C2 — Container** | UNREVIEWED DRAFT |
+| **C2 — Container** | PARTLY DECIDED: the client platform, backend and security choices are owner approved ([ADR-003](../adr/ADR-003-approved-platform-backend-security.md)); the container diagram and responsibilities are an UNREVIEWED DRAFT |
 | **C3 — Component** | NOT STARTED |
 | **C4 — Code** | SELECTIVE / DEFERRED |
 | **Overall architecture** | STILL UNDER REVIEW |
@@ -20,7 +20,7 @@
 | Level | Question answered | Status in this draft |
 |---|---|---|
 | **C1 — System Context** | Who uses MealLoop, and what systems does it interact with? | **Owner approved — 24 October 2026** ([record](#c1-owner-approval)) |
-| **C2 — Container** | Which independently deployable applications and data stores form MealLoop? | **UNREVIEWED DRAFT below; not approved, not reviewed and not expanded in this revision** |
+| **C2 — Container** | Which independently deployable applications and data stores form MealLoop? | **Platform, backend and security choices approved (ADR-003); the container diagram below is an UNREVIEWED DRAFT** |
 | **C3 — Component** | Which components/modules inside the backend own each business operation and boundary? | **Not started** |
 | **C4 — Code** | How do classes, interfaces and code collaborate inside a selected component? | **Selective and deferred; optional for complex components** |
 
@@ -57,7 +57,7 @@ Approved C1 decisions:
 - **Supervisor:** starts and closes the meal for the mess, resolves shortages and handles SOS incidents, within their assigned mess.
 - **Kitchen Staff, Door Scanner Staff, Pass Desk Staff:** mess operations, within their assigned mess.
 - **Vendor (restricted account):** signs in to its own restricted MealLoop account, views the approved headcount for its assigned mess and any authorized update, and acknowledges receipt. The vendor is **not** an external system and there is **no direct vendor API**. The vendor receives an approved headcount only.
-- **Guardian:** reviews and accepts or rejects an outing request via mobile web; acceptance starts the separately handled verification evidence. Guardian authentication is an unresolved design problem.
+- **Guardian:** reviews and accepts or rejects an outing request via mobile web; acceptance starts the separately handled verification evidence. Guardian authentication is an unresolved design problem. *Note (1 November 2026): the owner's later client-platform decision puts the Guardian inside the one native iOS application (ADR-003, A1); the mobile-web wording in this approved C1 text is under review (C-34, P78).*
 - **Warden and Gate Security:** scoped to their authorized hostel or block and outgoing pass events.
 
 **External systems and institutional authorities.**
@@ -146,9 +146,19 @@ flowchart LR
 
 ## C2 — Container view
 
-> **UNREVIEWED DRAFT.** This preliminary container proposal has not been reviewed or approved by the owner, and it is not expanded in this revision. The Spring Boot and PostgreSQL choices are proposals only, not accepted decisions. C1 is now owner approved; C2 still awaits owner review.
+> **UNREVIEWED DRAFT (diagram and responsibilities).** The container diagram and the responsibility table below have not been reviewed or approved by the owner and are not expanded in this revision. C1 is owner approved. The platform, backend and security **choices** listed next were approved by the owner and are recorded in [ADR-003](../adr/ADR-003-approved-platform-backend-security.md); approving them does not approve this diagram.
 
-**Proposed shape:** one Spring Boot backend deployable with clear internal modules and one PostgreSQL database. This fits the four-person team and one-mess pilot better than mandatory microservices. The architecture remains a proposal until evaluated in ADRs.
+### Owner-approved C2 choices (ADR-003)
+
+| Area | Approved |
+|---|---|
+| Client | One native SwiftUI iOS application with role-aware navigation for all 11 roles, including Guardian. A future Android client in Kotlin with Jetpack Compose. Android and iOS share backend API contracts, not UI code |
+| Backend | Spring Boot (Java) modular monolith; PostgreSQL for structured persistent data; private object storage for guardian videos and sensitive attachments; no premature microservices, Kafka, Kubernetes or Redis dependency |
+| Security | Spring Security; signed JWT access tokens with RS256 and a 15-minute lifetime; rotating opaque refresh tokens; RBAC plus resource and scope authorization |
+
+**Still open (not approved):** refresh-session storage, lifetimes and device policy; immediate revocation; password hashing configuration; multi-factor authentication; password recovery; login rate limiting; iOS Keychain strategy; FCM or APNs; outbox details; polling or server-sent events; hosting; storage provider, region, retention and backup policy; SRM SSO protocol and availability ([ADR-004](../adr/ADR-004-authentication-session-and-delivery-options.md), [`OPEN_DECISIONS.md`](../OPEN_DECISIONS.md)). Module boundaries inside the monolith, including who owns the meal lifecycle (T20), are not decided.
+
+**Shape:** one Spring Boot backend deployable with clear internal modules and one PostgreSQL database (approved, ADR-003). This fits the four-person team and one-mess pilot better than mandatory microservices. The internal modules, hosting and providers remain proposals until reviewed.
 
 ### Container diagram
 
@@ -176,6 +186,8 @@ flowchart TB
   worker -->|"Delivery attempts"| push
   api -. "Nonblocking advisory input/output only" .-> ai
 ```
+
+**Superseded element (1 November 2026).** The diagram above shows Guardian as a separate mobile-web client. The owner has since approved one native iOS application for all 11 roles, including Guardian (ADR-003, A1). The diagram is not redrawn here because C2 is under review; the conflict is recorded as C-34 and the guardian channel question as P78.
 
 ### Container responsibilities and boundaries
 
@@ -272,7 +284,7 @@ Required decisions **before freezing** architecture/data schema/API contracts:
 
 | Gate | Needed outcome | Source |
 |---|---|---|
-| Backend deployment shape and module boundaries | Evaluate proposed Spring Boot modular monolith; explicitly allocate meal lifecycle ownership | [ADR-002 proposed](../adr/ADR-002-backend-shape.md) |
+| Backend deployment shape and module boundaries | A Spring Boot modular monolith with PostgreSQL is approved ([ADR-003](../adr/ADR-003-approved-platform-backend-security.md)). Still to review: the module boundaries and an explicit owner for the meal lifecycle (T20) | [ADR-002 proposed](../adr/ADR-002-backend-shape.md) |
 | Transaction integrity and event delivery | Database uniqueness, idempotency-key semantics, outbox, audit, state transitions | NFR-REL-001/002/003/009 |
 | Production identity and guardian security | Real staff identity, delegated scopes, verified guardian contact, evidence access and data governance | NFR-SEC-001/002/003; PRD FR-ATT-015, FR-OUT-022 |
 | Cross-device updates | Evaluate polling vs streaming against the 5-second provisional refresh target | NFR-REL-004 |

@@ -1,6 +1,6 @@
 # Backend proposal
 
-**Status: proposal only.** No backend code exists. The first-slice contract is in [`openapi.yaml`](openapi.yaml) (12 operations, validated with `openapi-spec-validator`). The decision record is [ADR-002](../adr/ADR-002-backend-shape.md).
+**Status: proposal only (an unreviewed draft).** *Update (1 November 2026): the owner approved parts of this direction in [ADR-003](../adr/ADR-003-approved-platform-backend-security.md): a Spring Boot (Java) modular monolith, PostgreSQL, private object storage, no premature microservices, Kafka, Kubernetes or Redis dependency, and a different authentication design (RS256 JWT access tokens, rotating opaque refresh tokens, RBAC plus resource and scope authorization). Reliability principle 7 below (a bearer token carrying role and mess) and the `mess-ops` "staff role passwords and device lockouts" are superseded by ADR-003 and by the individual-account decision (OPEN_DECISIONS R22, R29). The module list, the meal-lifecycle ownership split between `dining-core` and `mess-ops` (T20), the outbox and the OpenAPI file stay unreviewed.* No backend code exists. The first-slice contract is in [`openapi.yaml`](openapi.yaml) (12 operations, validated with `openapi-spec-validator`). The decision record is [ADR-002](../adr/ADR-002-backend-shape.md).
 
 ## Shape: a modular monolith
 
