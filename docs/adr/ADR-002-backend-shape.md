@@ -1,6 +1,7 @@
 # ADR-002: Backend shape
 
 - Status: Proposed (2026-10-23). Documentation only; no backend code exists.
+- **Update (1 November 2026):** the owner has since approved parts of this direction: Spring Boot (Java) as a modular monolith, PostgreSQL, private object storage, no premature microservices, Kafka, Kubernetes or Redis dependency, and a different authentication design (Spring Security, RS256 JWT access tokens of 15 minutes, rotating opaque refresh tokens, RBAC plus resource and scope authorization). Those choices are recorded in [ADR-003](ADR-003-approved-platform-backend-security.md). **The sentence below that says authentication uses "role-based bearer tokens carrying role and mess" is superseded by ADR-003.** The module list, the outbox, Docker Compose, the Python `intelligence` service and the `/v1` REST details stay Proposed and unreviewed.
 
 ## Context
 

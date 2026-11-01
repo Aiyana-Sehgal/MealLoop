@@ -1,6 +1,7 @@
 # ADR-001: iOS architecture
 
 - Status: Proposed (2026-10-23)
+- **Update (1 November 2026):** the owner treats the generated iOS foundation (this ADR's structure, the view models, repositories, models and design system) as an unreviewed draft. The frontend architecture is **PENDING REVIEW** and is tracked in [`FRONTEND_READINESS.md`](../architecture/FRONTEND_READINESS.md). The platform choice itself (one native SwiftUI iOS app for all 11 roles) is accepted in [ADR-003](ADR-003-approved-platform-backend-security.md); the decisions in this ADR are not.
 - Branch: `feature/swiftui-foundation`
 
 ## Context
