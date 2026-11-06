@@ -181,13 +181,10 @@ No test covers acknowledging an unpublished headcount through the provider, beca
 
 The automated walk-through covered the sign-in and landing path. Please confirm these by hand on the `MealLoop Review` scheme, using `docs/PRESENTER_ACCOUNTS.md`:
 
-- [ ] Delete the app, run Review, and confirm Welcome shows no recent accounts.
 - [ ] Sign in as each of the 11 roles and confirm the landing matches the table above.
 - [ ] Sign out from each role and confirm Welcome returns.
-- [ ] Confirm Continue as opens the right role, and that the list scrolls past three accounts.
 - [ ] Confirm the keyboard does not cover Sign in on the smallest supported iPhone.
 - [ ] Try VoiceOver on Welcome and Staff sign in.
-- [ ] Try the largest Dynamic Type size on Welcome. Recent accounts and both buttons must stay reachable.
 - [ ] Decide whether "Not implemented" is acceptable on any screen a reviewer will see.
 - [ ] Watch for an iOS "save password" prompt after signing in on a physical device.
 
@@ -208,4 +205,62 @@ The automated walk-through covered the sign-in and landing path. Please confirm 
 ### Stale documents left unchanged
 
 `docs/adr/ADR-001-ios-architecture.md` item 5 still says `AppEnvironment` picks demo or api, with no mention of Review. ADRs were out of scope for this work.
+
+## Entry fix: Welcome and tab bar (2026-11-06)
+
+Owner review of the first entry build, on `fix/ios-entry-and-tabbar`. **This section replaces what Phases B and C say about recent accounts**, which were removed.
+
+| Check | Result |
+|---|---|
+| Debug, `MealLoop` | 86 passed, 0 failed, 0 skipped (`.xcresult`) |
+| Review, `MealLoop Review` | 85 passed, 0 failed, 0 skipped (`.xcresult`) |
+| Release | `** BUILD SUCCEEDED **` |
+| Binary scan | Review has no `DemoDataBadge` and no "Simulated moment". Release has neither, and no seed |
+
+Xcode 27.2. Simulators: iPhone 18 Pro and iPhone 18 Pro Max on iOS 27.2 (440 x 956 pt), and a temporary iPhone SE (3rd generation) on iOS 27.2 (375 x 667 pt).
+
+### What the references show
+
+| Role | Reference | Pattern |
+|---|---|---|
+| Student | `03_home`, `05_meals_lunch`, `09_community_list`, `19_you`, `export_redesign/03_home@2x` | Glass pill: Home, Meals, Community, You. Separate 62 pt round Search, 8 pt gap |
+| Food Head / Admin | `A01_today` | Same pattern: Today, Students, Results, More, plus Search |
+| Mess staff | `D05`, `S02`, `K01` | One wide capsule: Home, Alerts, Me. No Search |
+| Warden | `W01_warden_decide_approved` | One wide capsule of words, no icons: Queue, Out now, Escalated, History. No Search |
+| Gate | `V5_gate_scan` | No tab bar on this screen |
+| Guardian | Mobile web flow | No tab bar |
+| Vendor, Super Admin | None | No design |
+
+Sizes from `prototype_contract.md` (TabBar, TabSearchButton) and the export: 62 pt tall, 16 pt side margin, selected highlight 54 pt tall. A selected tab has a filled icon, a bold label and the highlight. Selected Search has the highlight and a heavier glyph.
+
+The contract calls these Liquid Glass, but no document gives the recipe's numbers. The fill was sampled from the export (about `#FBFBFA` over the canvas).
+
+### Checks
+
+UI driven by the same temporary XCUITest approach, in scratch copies:
+
+- **Regression:** on the small and large phones, all 11 roles signed in and out. Search exists only for Student and Admin. "Continue as" never appears, including after a relaunch.
+- **Selection:** Search reports selected when chosen, and the previous tab stops being selected.
+- **Over light and dark content:** a scratch-only black and white block was placed under the bar. Inactive labels measured 5.79:1 on native glass and at least 5.38:1 on the fallback, above the 4.5:1 needed for small text.
+- **iOS 17 fallback:** no iOS 17 runtime is installed, so the fallback was forced on in a scratch copy and run on iOS 27.2. It has not run on a real iOS 17 system.
+- **System Dark Mode:** the bar stays light with readable labels. The app's tokens are light only.
+- **Largest text (Accessibility XXXL) on the small phone:** nothing clips. The wordmark shrinks to one line, the screen scrolls, and the footnote is fully visible after scrolling. Button labels do not grow, because `MLType` tokens are fixed sizes.
+- **Debug badge:** now at the top centre, clear of Back, the avatar, buttons and the tab bar.
+
+Screenshots are in [`docs/verification/entry-fix/`](verification/entry-fix/).
+
+### Differences left
+
+| Area | Reference | App |
+|---|---|---|
+| Welcome wordmark | Bold, about 36 pt in the export; regular in the pack sketch | Regular 48 pt, kept larger to fill space |
+| Welcome buttons | 60 pt in the export | 56 pt |
+| Tab icons | Drawn set | SF Symbols, a known stand-in. `fork.knife` has no filled form, so Meals relies on the bold label and highlight |
+| Staff capsule | 66 pt tall in the export | 62 pt, shared with the other roles |
+| Selected highlight | `tab-selected` token, value undocumented | Ink at 8% |
+| Search screens | S1 to S5 and AD-8c show recent searches and results | Title, inactive field and "Search is not built yet." No repository provides the data |
+| Student Search field text | No image exists | "Search" |
+| Bottom edge | `ScrollEdgeFade` above the bar | Not built, so scrolled content meets the glass directly |
+
+Simulators that ran the earlier build keep an unused `recentAccounts.v1` value holding seeded `.example` details. The app no longer reads it, and deleting the app clears it.
 
