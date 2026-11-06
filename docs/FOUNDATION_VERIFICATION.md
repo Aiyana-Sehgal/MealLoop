@@ -264,3 +264,56 @@ Screenshots are in [`docs/verification/entry-fix/`](verification/entry-fix/).
 
 Simulators that ran the earlier build keep an unused `recentAccounts.v1` value holding seeded `.example` details. The app no longer reads it, and deleting the app clears it.
 
+
+## Shared components (2026-11-06)
+
+**Scope:** the components that more than one role needs, a Debug-only gallery, and their tests. Branch `feat/ios-shared-components`. Each component is listed in [`COMPONENT_CATALOG.md`](COMPONENT_CATALOG.md).
+
+### Results
+
+Xcode 27.2, iPhone 17e simulator, iOS 27.2. Counts come from each `.xcresult`.
+
+| Run | Exit | Executed | Passed | Failed |
+|---|---|---|---|---|
+| Debug tests | 0 | 100 | 100 | 0 |
+| Review tests | 0 | 99 | 99 | 0 |
+| Release build | 0 | n/a | n/a | n/a |
+
+The 15 new tests are in `SharedComponentsTests.swift`. The earlier 85 Debug and 84 Review tests still pass. The new code has no compiler warnings.
+
+**Gallery absent from Review and Release:** all of it is inside `#if DEBUG`, and `testGalleryIsCompiledOnlyInDebug` checks this per configuration. A scan of each built binary agrees:
+
+| Configuration | Gallery symbols | Gallery strings |
+|---|---|---|
+| Debug | 1632 | 15 |
+| Review | 0 | 0 |
+| Release | 0 | 0 |
+
+### Visual and accessibility checks
+
+The app has no route to the gallery, because `App/` was out of scope. It ran in the simulator from a scratch copy with a temporary launch hook, on the iPhone 17e (390 pt, iOS 27.2) and iPhone 18 Pro Max (440 pt, iOS 27.0). The hook is not in the repository.
+
+- **Screenshots:** 28 gallery pages on each phone, in [`verification/shared-components/`](verification/shared-components/). `compare/` has 14 side-by-side sheets, with the reference on the left.
+- **Defects found this way and fixed:** locked answers were greyed and hard to read; the "no data" progress bars were nearly invisible; the SOS tab had an outline on its screen edge; the "+1" chip sat too low; the auto-return bar's track was too light.
+- **Dialog scrim:** renders `#959592` on the canvas, the same as the S14 export.
+- **Accessibility tree:** read in a scratch test with accessibility automation on, for 12 components. Chips and rows with no action have no button trait; locked and selected are stated in words; Entry QR stays enabled while answers are locked; Retry is its own element; a missing value reads "Not available".
+- **Not checked:** VoiceOver by hand, largest Dynamic Type, Reduce Motion, a real iOS 17 system, a real device. No role screen uses the new components yet, so they have not run in a real flow.
+
+### Differences left
+
+| Area | Reference | App |
+|---|---|---|
+| Sheet shape | Edge to edge | Floats with a small inset, the system style on iOS 26 and later |
+| Sheet scrim | Ink at 40% | About 20%, the system scrim |
+| Sheet surface | Glass in the export, cream in the pack | White `MLColor.surface` |
+| Toast tick | Green `#13775F`, not a token | Ink |
+| Toast height | 50 pt | 44 pt |
+| SOS tab icon | Filled in the pack, outlined in the export | Filled, then outlined once claimed, so the state is not colour alone |
+| Alert titles | Semibold on every row in D17 | Regular when read, semibold when unread, as the Kitchen spec says |
+| Alert circle | 36 pt in the spec, about 44 pt drawn | 40 pt (`MLSize.iconSquare`) |
+| Small pills on A01 | About 34 pt tall | 44 pt, the minimum target |
+| Hero chip text | About 13 pt on 04 | 15 pt |
+| Digit weight | Regular | Bold (`MLType.title2`) |
+| Icons | Drawn set | SF Symbols, the stand-ins in decision T7 |
+| Fonts | Inter and JetBrains Mono | SF Pro and SF Mono, as `MLType` states |
+| Answer selected, saving and locked | No image; the locked state is only in prompt stage P5 | Built from the prompt and the design rules; needs an owner look |
