@@ -16,9 +16,12 @@ protocol MealStateRepository: Sendable {
     func closeMeal(_ meal: MealID, by role: Role) async throws -> MealStatus
 }
 
-/// Forecast, headcount sent to the vendor, and the vendor reply.
+/// The six headcount quantities of a meal and the vendor's acknowledgment.
 protocol HeadcountRepository: Sendable {
     func headcount(for meal: MealID) async throws -> Headcount
+    /// Records receipt by the vendor account. Throws `notAllowed` for any other account or before publication.
+    /// A repeat returns the first acknowledgment unchanged.
+    func acknowledgeHeadcount(for meal: MealID, by account: AccountID) async throws -> Headcount
 }
 
 /// Verified entry at the door. Scans are idempotent and a student is never counted twice for one meal.

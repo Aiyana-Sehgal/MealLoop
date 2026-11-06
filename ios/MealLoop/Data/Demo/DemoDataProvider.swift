@@ -77,6 +77,8 @@ struct DemoState: Sendable {
     var sosCases: [SOSCase] = []
     var wrongPasswordCount: [Role: Int] = [:]
     var recordedSummaryOnly = false
+    /// Stays nil until the vendor account acts. The sample state is "Not acknowledged".
+    var headcountAcknowledgment: VendorAcknowledgment?
 
     init(scenario: DemoScenario) {
         let meal = DemoSeed.lunch
@@ -197,10 +199,31 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
         try requireKnownMeal(meal)
         return Headcount(
             mealID: meal,
-            forecast: .ready(diners: DemoSeed.forecastDiners, setAt: DemoSeed.forecastSetAt),
-            sent: nil,
-            vendorReply: .notSent
+            liveForecast: .ready(diners: DemoSeed.forecastDiners, setAt: DemoSeed.forecastSetAt),
+            cutoffForecast: .notReady,
+            approved: .approved(ApprovedHeadcount(count: DemoSeed.approvedHeadcount, approvedBy: .admin,
+                                                  approvedAt: DemoSeed.headcountPublishedAt, adjustments: [])),
+            sentToVendor: .sent(SentHeadcount(count: DemoSeed.sentHeadcount, sentBy: .admin,
+                                              sentAt: DemoSeed.headcountPublishedAt)),
+            actualEntries: try await liveCount(for: meal),
+            finalEntries: try await finalCount(for: meal),
+            acknowledgment: state.headcountAcknowledgment
         )
+    }
+
+    func acknowledgeHeadcount(for meal: MealID, by account: AccountID) async throws -> Headcount {
+        try failIfOffline()
+        guard DemoSeed.accounts.first(where: { $0.id == account })?.role == .vendor else {
+            throw RepositoryError.notAllowed(reason: "Only the vendor account can acknowledge a headcount.")
+        }
+        let current = try await headcount(for: meal)
+        guard case .sent = current.sentToVendor else {
+            throw RepositoryError.notAllowed(reason: "This headcount has not been sent to the vendor.")
+        }
+        if state.headcountAcknowledgment == nil {
+            state.headcountAcknowledgment = VendorAcknowledgment(acknowledgedBy: account, acknowledgedAt: clock.now())
+        }
+        return try await headcount(for: meal)
     }
 
     // MARK: EntryRepository

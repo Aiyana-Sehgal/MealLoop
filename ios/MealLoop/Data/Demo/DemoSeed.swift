@@ -33,6 +33,12 @@ enum DemoSeed {
     static let forecastDiners = 860
     // kitchen_spec.md stale state: "Updated 8:50 AM, may be out of date".
     static let forecastSetAt = time(8, 50)
+    // admin_sample_data.md: "Main Lunch 860, Not acknowledged (state sample)". The approved and sent numbers are
+    // separate values that happen to match in the sample. No document gives a cutoff forecast, so none is seeded.
+    static let approvedHeadcount = 860
+    static let sentHeadcount = 860
+    // admin_sample_data.md gives no Main sent time; this is the sample board's only one ("No reply since 10:15").
+    static let headcountPublishedAt = time(10, 15)
     static let liveEntries = 714
     static let liveEntriesAt = time(13, 40)
     // kitchen_spec.md stale state: "Updated 1:12 PM · reconnecting".

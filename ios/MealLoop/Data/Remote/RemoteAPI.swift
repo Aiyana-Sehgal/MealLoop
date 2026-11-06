@@ -18,6 +18,9 @@ struct RemoteAPI: MealRepository, MealStateRepository, HeadcountRepository, Entr
     func closeMeal(_ meal: MealID, by role: Role) async throws -> MealStatus { throw notImplemented("close meal") }
 
     func headcount(for meal: MealID) async throws -> Headcount { throw notImplemented("headcount") }
+    func acknowledgeHeadcount(for meal: MealID, by account: AccountID) async throws -> Headcount {
+        throw notImplemented("acknowledge headcount")
+    }
 
     func recordEntry(_ request: EntryRequest) async throws -> EntryResult { throw notImplemented("record entry") }
     func liveCount(for meal: MealID) async throws -> CountReading { throw notImplemented("live entries") }
