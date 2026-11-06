@@ -2,11 +2,12 @@
 
 SwiftUI app, minimum iOS 17, one app target (`MealLoop`) and one unit-test target (`MealLoopTests`), shared scheme `MealLoop`. Structure and rules: [`docs/REPOSITORY_STRUCTURE.md`](../docs/REPOSITORY_STRUCTURE.md).
 
-> **Verified on 2026-11-06:** Debug and Release build, and all 40 unit tests pass (Xcode 27.2, iPhone 18 Pro simulator, iOS 27.2). Kitchen Home runs in the simulator; its content matches the reference, its visual match is partial. Evidence: [`docs/FOUNDATION_VERIFICATION.md`](../docs/FOUNDATION_VERIFICATION.md).
+> **Verified on 2026-11-06:** Debug, Review and Release build. 85 unit tests pass in Debug and 84 in Review (Xcode 27.2, iPhone 18 Pro simulator, iOS 27.2). All 11 roles sign in and land in their own area. Only Kitchen Home is a built role screen; its visual match is partial. Evidence: [`docs/FOUNDATION_VERIFICATION.md`](../docs/FOUNDATION_VERIFICATION.md).
 
 ## Start here
 
-- **Project and scheme:** `ios/MealLoop.xcodeproj`, scheme `MealLoop`.
+- **Project and schemes:** `ios/MealLoop.xcodeproj`. Scheme `MealLoop` for development, `MealLoop Review` for the reviewer build.
+- **Who builds what:** [`docs/PARTS_AND_OWNERSHIP.md`](../docs/PARTS_AND_OWNERSHIP.md).
 - **Run:** open the project in Xcode, pick an iPhone simulator, press ⌘R.
 - **Test:** ⌘U, or the command under [Command line](#command-line).
 - **Where code belongs:**
@@ -15,8 +16,8 @@ SwiftUI app, minimum iOS 17, one app target (`MealLoop`) and one unit-test targe
   - Models go in `MealLoop/Domain/`, and only there.
   - Repository protocols go in `MealLoop/Data/Repositories/`.
   - Sample data goes in `MealLoop/Data/Demo/`, never in a View.
-- **Branches and PRs:** one purpose per branch, named `<type>/<scope>-<short-description>`. Open one PR per branch. Never push to the default branch, force-push or merge your own work without review.
-- **Shared files:** one person at a time edits `Domain/**`, `Data/Repositories/Repositories.swift`, `Core/Navigation/**`, `DesignSystem/Tokens/**`, `App/AppEnvironment.swift` and the demo seed and provider. Agree it with the owner before changing them. `Features/<Role>/` folders and new component files are safe to work on in parallel.
+- **Branches and PRs:** one purpose per branch, named `<type>/<scope>-<short-description>`, each in its own `git worktree`. Open one PR per branch. Never push to the default branch, force-push or merge your own work without review.
+- **Shared files:** one person at a time edits `Domain/**`, `Data/Repositories/Repositories.swift`, `Core/Navigation/**`, `DesignSystem/Tokens/**`, `App/AppEnvironment.swift` and the demo seed and provider. Ask the shared-file owner for changes to them. `Features/<Role>/` folders and new component files are safe to work on in parallel.
 
 ## Requirements
 
