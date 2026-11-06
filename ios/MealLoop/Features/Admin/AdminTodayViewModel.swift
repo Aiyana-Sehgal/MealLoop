@@ -100,7 +100,7 @@ final class AdminTodayViewModel {
     /// Approves a different count. The backend refuses it without a reason, so that rule lives in one place.
     @discardableResult
     func adjust(to count: Int, reason: String?) async -> Bool {
-        guard let meal = state.value?.meal else { return false }
+        guard let meal = state.value?.meal, !meal.isClosed else { return false }
         return await write(.approve) { [headcount, context] in
             try await headcount.approveHeadcount(count, reason: reason, for: meal.meal.id, by: context.account.role)
         }
@@ -109,7 +109,7 @@ final class AdminTodayViewModel {
     /// Publishes the approved headcount. The vendor's acknowledgment stays Pending until the vendor acts.
     @discardableResult
     func send() async -> Bool {
-        guard let meal = state.value?.meal else { return false }
+        guard let meal = state.value?.meal, !meal.isClosed else { return false }
         return await write(.send) { [headcount, context] in
             try await headcount.publishHeadcount(for: meal.meal.id, by: context.account.role)
         }

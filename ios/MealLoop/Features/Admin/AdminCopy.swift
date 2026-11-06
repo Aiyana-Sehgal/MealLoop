@@ -28,7 +28,7 @@ enum AdminCopy {
     static let waitingForApproval = "Waiting for your approval"
     static let approvedNotSent = "Approved · not sent yet"
     static let servingNotFinal = "Serving · not the final count"
-    static func closedAt(_ time: String) -> String { "Closed \(time)" }
+    static func closedWithStatus(_ time: String, status: String) -> String { "Closed \(time) · \(status)" }
     static func sentPending(_ time: String) -> String { "Sent \(time) · Pending" }
     static func acknowledgedAt(_ time: String) -> String { "Acknowledged \(time)" }
 
