@@ -252,8 +252,10 @@ struct GuardianLayout<Content: View, Footer: View>: View {
                 VStack(spacing: MLSpacing.s12) { footer }
                     .frame(maxWidth: .infinity)
                     .padding(.horizontal, MLSpacing.margin)
-                    .padding(.top, MLSpacing.s8)
+                    .padding(.top, MLSpacing.s12)
                     .padding(.bottom, MLSpacing.s8)
+                    // On a small phone the content scrolls under the footer; the canvas keeps the two apart.
+                    .background(MLColor.canvas.opacity(0.96).ignoresSafeArea(edges: .bottom))
             }
         }
     }

@@ -47,7 +47,7 @@ struct GuardianRecordScreen: View {
                 Text(helper).font(MLType.body).foregroundStyle(MLColor.onHeroSecondary)
                     .multilineTextAlignment(.center)
                 recordButton
-                Spacer(minLength: 0)
+                    .padding(.bottom, MLSpacing.s8)
             }
             .padding(.horizontal, MLSpacing.margin)
             .padding(.top, MLSpacing.s8)
@@ -109,7 +109,9 @@ struct GuardianRecordScreen: View {
                     .background(Capsule().fill(MLColor.surface))
             }
         }
-        .frame(height: 300)
+        // Shrinks on a small phone so the record button stays on screen.
+        .frame(minHeight: 150, maxHeight: 300)
+        .layoutPriority(-1)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(GuardianCopy.staticPreview)
     }

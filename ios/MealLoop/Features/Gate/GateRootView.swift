@@ -325,6 +325,7 @@ struct GatePassCodeScreen: View {
                 .accessibilityLabel("Pass code")
                 .accessibilityValue(code.isEmpty ? "Empty" : code.map(String.init).joined(separator: " "))
             Text(GateCopy.codeHelp).font(MLType.secondary).foregroundStyle(MLColor.inkSecondary)
+                .fixedSize(horizontal: false, vertical: true)
             keys
             TextLinkButton(title: GateCopy.findBySRM, action: onFind)
             Spacer(minLength: 0)
@@ -358,7 +359,7 @@ struct GatePassCodeScreen: View {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 20, weight: .medium))
                         .foregroundStyle(MLColor.ink)
-                        .frame(maxWidth: .infinity, minHeight: showsLetters ? 48 : 64)
+                        .frame(maxWidth: .infinity, minHeight: showsLetters ? 48 : 56)
                         .background(RoundedRectangle(cornerRadius: MLRadius.compact, style: .continuous).fill(MLColor.surface))
                 }
                 .buttonStyle(.plain)
@@ -372,7 +373,7 @@ struct GatePassCodeScreen: View {
             Text(title)
                 .font(mono ? .system(size: 26, weight: .semibold, design: .monospaced) : MLType.staffPrimary)
                 .foregroundStyle(MLColor.ink)
-                .frame(maxWidth: .infinity, minHeight: showsLetters ? 48 : 64)
+                .frame(maxWidth: .infinity, minHeight: showsLetters ? 48 : 56)
                 .background(RoundedRectangle(cornerRadius: MLRadius.compact, style: .continuous).fill(MLColor.surface))
         }
         .buttonStyle(.plain)
