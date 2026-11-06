@@ -55,11 +55,11 @@ Exports are in `design/audit/export_admin_redesign/` and `export_fix2/`. Tabs co
 | A11 announce | Write, confirm | `A11_more_announce_write`, `_confirm_sheet` | More | `ChoiceChip`, `mlSheet` | Yes | A11_announce, _announce_confirm, _announced |
 | A11 restyled, A14 | Passes, votes, rewards, spare food, history, outings | `A11_more_restyled_*`, `A14_outings_admin` | More | `HeroCard`, `StatusText` | Yes, read only | A11_passes and the others, A14_outings |
 | A12, F05 published | Published, uploading, reading, check day | `A12_weekly_menu`, `_check_thu_15`, `F05_menu_weekly_menu_published` | More | `HeroCard`, `SegmentedProgress`, `CompactPillButton` | Yes, simulated flow | A12_* |
-| F04 ×19 | One screen: meals, star, veg, drag, swipe delete, undo, copy, word sheet, add dish, tell students, saved | the `F04_menu_edit_day*` rows | More | `SegmentedChoice`, `mlSheet`, `ChoiceChip` | Yes | F04_* |
+| F04 ×18 | One screen: meals, star, veg, drag, swipe delete, undo, copy, word sheet, add dish, tell students, saved | the `F04_menu_edit_day*` rows | More | `SegmentedChoice`, `mlSheet`, `ChoiceChip` | Yes | F04_* |
 | F05 ×8 | Sheet, swap, special, remove, preview, sent | the `F05_menu_quick_change*` rows | More | `IconCardRow`, `mlSheet` | Yes | F05_* |
 | A13 | Roles, role page, invite, vendor | `A13_people_access` | More | `QuietRow`, `mlSheet` | Yes | A13_* |
 
-Drag reorder and swipe to delete were tested in the view model, not captured. Not in this part: A01 and A02 (Today) and A03 Live meal, which only Today opens.
+Eight F04 interaction rows have no frame of their own: veg changed, reordering, reordered, swipe to delete, deleted, dish added, word checked and tell students off. They are tested in the view model, and the gesture itself was not driven. Not in this part: A01 and A02 (Today) and A03 Live meal, which only Today opens.
 
 ## Backend additions (additive)
 
@@ -115,7 +115,7 @@ A real device, VoiceOver by hand, largest Dynamic Type, Reduce Motion, an iOS 17
 |---|---|---|
 | P-ADMIN-7 | Wed lunch final entries: 786 (Admin pack) or 774 (Kitchen spec, seed)? | 774, from the live repositories |
 | P-ADMIN-8 | Tue dinner, Main: the Admin pack has 640 → 691 with rice out; the Supervisor seed has 598 and no shortage. Which is right? | Each role keeps its own sample, so they disagree |
-| P-ADMIN-9 | The pack gives three rice stories for its 2 ran-out meals (Wed 1:34 PM Main, Tue 8:34 PM Main, Mon 8:40 PM South, and Tue 1:50 PM North) and four reasons at 1 meal each. Which meals are meant? | Pages as drawn |
+| P-ADMIN-9 | The pack gives four rice stories for its 2 ran-out meals (Wed 1:34 PM Main, Tue 8:34 PM Main, Mon 8:40 PM South, and Tue 1:50 PM North) and four reasons at 1 meal each. Which meals are meant? | Pages as drawn |
 | P-ADMIN-10 | Confirm the draft thresholds: 5%, 40%, 15 minutes | None is applied |
 | P-ADMIN-11 | How is "data complete" worked out? | The pack's value, and "—" with no waste record |
 | P-ADMIN-12 | Does a comparable meal that ran out stop "worked", or only flag it? | It stops it |
