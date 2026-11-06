@@ -43,6 +43,30 @@ final class RoleRoutingTests: XCTestCase {
         }
     }
 
+    func testStudentAndAdminTabsMatchTheirDesigns() {
+        XCTAssertEqual(RoleRoot.student.placeholderTabs, ["Home", "Meals", "Community", "You"])
+        XCTAssertEqual(RoleRoot.admin.placeholderTabs, ["Today", "Students", "Results", "More"])
+    }
+
+    func testOnlyStudentAndAdminHaveSearch() {
+        XCTAssertEqual(RoleRoot.allCases.filter(\.hasSearch), [.student, .admin])
+    }
+
+    func testTheWardenTabsAreWordsOnly() {
+        XCTAssertEqual(RoleRoot.warden.placeholderTabs, ["Queue", "Out now", "Escalated", "History"])
+        XCTAssertEqual(RoleRoot.allCases.filter { !$0.showsTabIcons }, [.warden])
+    }
+
+    func testGuardianHasNoTabs() {
+        XCTAssertTrue(RoleRoot.guardian.placeholderTabs.isEmpty)
+    }
+
+    func testTheSearchValueIsNeverATabTitle() {
+        for root in RoleRoot.allCases {
+            XCTAssertFalse(root.placeholderTabs.contains(RoleRoot.searchTab), "\(root)")
+        }
+    }
+
     func testRouterResetClearsPositionForTheNextAccount() {
         let router = AppRouter()
         router.entryPath = [.staffSignIn]
