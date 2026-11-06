@@ -26,18 +26,3 @@ struct Session: Sendable, Hashable {
     let account: Account
     let staff: StaffSession?
 }
-
-/// What the device remembers for "Continue as". It has no field for a password or token, by design.
-struct RecentAccount: Codable, Sendable, Hashable, Identifiable {
-    let id: AccountID
-    let displayName: String
-    let role: Role
-    let email: String
-
-    init(_ account: Account) {
-        id = account.id
-        displayName = account.displayName
-        role = account.role
-        email = account.email
-    }
-}

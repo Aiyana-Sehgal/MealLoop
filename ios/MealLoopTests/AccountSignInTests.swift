@@ -59,21 +59,6 @@ final class AccountSignInTests: XCTestCase {
         XCTAssertNil(session.staff)
     }
 
-    func testResumeTakesTheRoleFromTheDataSource() async throws {
-        let account = try XCTUnwrap(DemoSeed.accounts.first { $0.role == .gate })
-        let session = try await DemoDataProvider().resume(account.id)
-        XCTAssertEqual(session.account.role, .gate)
-    }
-
-    func testResumeOfAnUnknownAccountFails() async {
-        do {
-            _ = try await DemoDataProvider().resume(AccountID("gone"))
-            XCTFail("Expected notFound")
-        } catch {
-            XCTAssertEqual(error as? RepositoryError, .notFound)
-        }
-    }
-
     func testOfflineSignInFailsAndSignsNobodyIn() async throws {
         let demo = DemoDataProvider(scenario: .offline)
         let model = StaffSignInViewModel(auth: demo)

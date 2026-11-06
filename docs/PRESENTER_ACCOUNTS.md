@@ -22,8 +22,6 @@ The one prototype password is `DemoSeed.prototypePassword` in `ios/MealLoop/Data
 
 **Super Admin note:** Super Admin is meant to use SRM. The simulated SRM step has no real identity and always returns the student, so for the prototype this account also works on Staff sign in. See P-ENTRY-1 in `docs/OPEN_DECISIONS.md`.
 
-**Switching roles quickly:** after one sign-in, each account appears on Welcome as "Continue as <name>, <role>". Sign out returns to Welcome. The list holds only the name, role and email, and stays on the device until the app is deleted.
-
-**Clearing the list before a session:** delete the app from the simulator. Debug, Review and Release share one bundle identifier, so they share this list on the same simulator.
+**Switching roles:** sign out returns to Welcome, then sign in again. The app remembers nothing about an account, so every switch means typing the email and password.
 
 **Kitchen Home in Review** always opens at the "during the meal" moment. The moment menu exists only in Debug.

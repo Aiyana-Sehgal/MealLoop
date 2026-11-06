@@ -76,30 +76,3 @@ final class SRMSignInViewModel {
         }
     }
 }
-
-/// "Continue as" on Welcome.
-@MainActor
-@Observable
-final class WelcomeViewModel {
-    private(set) var resumingAccount: AccountID?
-    private(set) var errorMessage: String?
-    private let auth: any AuthRepository
-
-    init(auth: any AuthRepository) {
-        self.auth = auth
-    }
-
-    /// Signs the remembered account back in. A second tap during a request does nothing.
-    func resume(_ recent: RecentAccount) async -> Session? {
-        guard resumingAccount == nil else { return nil }
-        resumingAccount = recent.id
-        errorMessage = nil
-        defer { resumingAccount = nil }
-        do {
-            return try await auth.resume(recent.id)
-        } catch {
-            errorMessage = LoadFailure(error).message
-            return nil
-        }
-    }
-}

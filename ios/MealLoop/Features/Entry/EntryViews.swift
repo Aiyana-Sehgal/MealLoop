@@ -8,7 +8,7 @@ struct EntryFlowView: View {
     var body: some View {
         @Bindable var router = router
         NavigationStack(path: $router.entryPath) {
-            WelcomeView(model: WelcomeViewModel(auth: environment.repositories.auth))
+            WelcomeView()
                 .toolbar(.hidden, for: .navigationBar)
                 .navigationDestination(for: EntryRoute.self) { route in
                     Group {
@@ -26,42 +26,32 @@ struct EntryFlowView: View {
     }
 }
 
-/// 01_sign_in, plus the Staff sign in action and the recent accounts.
+/// 01_sign_in, plus the Staff sign in action. The brand sits at the optical centre of the space above the buttons,
+/// and the buttons and footnote stay together at the bottom. It scrolls only if larger text no longer fits.
 struct WelcomeView: View {
     @Environment(AppRouter.self) private var router
-    @Environment(SessionStore.self) private var sessionStore
-    @State private var model: WelcomeViewModel
-
-    init(model: WelcomeViewModel) {
-        _model = State(initialValue: model)
-    }
+    @ScaledMetric(relativeTo: .largeTitle) private var wordmarkSize: CGFloat = 48
+    @ScaledMetric(relativeTo: .body) private var taglineSize: CGFloat = 17
+    @ScaledMetric(relativeTo: .caption) private var termsSize: CGFloat = 12
 
     var body: some View {
         ZStack {
             OrbitBackground()
-            VStack(spacing: MLSpacing.s16) {
-                Spacer(minLength: MLSpacing.s32)
-                brand
-                Spacer(minLength: MLSpacing.s16)
-                if !sessionStore.recentAccounts.isEmpty {
-                    recentAccounts
+            GeometryReader { proxy in
+                ScrollView {
+                    VStack(spacing: 0) {
+                        Spacer(minLength: MLSpacing.s32)
+                        brand
+                            // Sits a little above true centre, where the eye reads it as centred.
+                            .padding(.bottom, MLSpacing.s32)
+                        Spacer(minLength: MLSpacing.s16)
+                        actions
+                    }
+                    .frame(minHeight: proxy.size.height)
+                    .padding(.horizontal, MLSpacing.margin)
                 }
-                if let message = model.errorMessage {
-                    InlineErrorText(message: message)
-                }
-                InkActionButton(title: EntryCopy.signInWithSRM) {
-                    router.entryPath.append(.srmSignIn)
-                }
-                OutlineActionButton(title: EntryCopy.staffSignIn) {
-                    router.entryPath.append(.staffSignIn)
-                }
-                Text(EntryCopy.terms)
-                    .font(MLType.meta)
-                    .foregroundStyle(MLColor.inkSecondary)
-                    .multilineTextAlignment(.center)
+                .scrollBounceBehavior(.basedOnSize)
             }
-            .padding(.horizontal, MLSpacing.margin)
-            .padding(.bottom, MLSpacing.s16)
         }
     }
 
@@ -69,33 +59,34 @@ struct WelcomeView: View {
         VStack(spacing: MLSpacing.s12) {
             OrbitMarkView(size: 54)
             Text(EntryCopy.wordmark)
-                .font(MLType.wordmark)
+                .font(.system(size: wordmarkSize, weight: .regular))
                 .foregroundStyle(MLColor.ink)
+                // A brand name never wraps; at the largest text sizes it shrinks to fit.
+                .lineLimit(1)
+                .minimumScaleFactor(0.4)
             Text(EntryCopy.tagline)
-                .font(MLType.body)
+                .font(.system(size: taglineSize))
                 .foregroundStyle(MLColor.inkSecondary)
+                .multilineTextAlignment(.center)
         }
         .accessibilityElement(children: .combine)
     }
 
-    private var recentAccounts: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                Rectangle().fill(MLColor.border).frame(height: 1)
-                ForEach(sessionStore.recentAccounts) { recent in
-                    QuietRow(title: EntryCopy.continueAs(name: recent.displayName, role: MLFormat.roleName(recent.role))) {
-                        Task {
-                            if let session = await model.resume(recent) {
-                                router.reset()
-                                sessionStore.signIn(session)
-                            }
-                        }
-                    }
-                }
+    private var actions: some View {
+        VStack(spacing: MLSpacing.s12) {
+            InkActionButton(title: EntryCopy.signInWithSRM) {
+                router.entryPath.append(.srmSignIn)
             }
+            OutlineActionButton(title: EntryCopy.staffSignIn) {
+                router.entryPath.append(.staffSignIn)
+            }
+            Text(EntryCopy.terms)
+                .font(.system(size: termsSize, weight: .medium))
+                .foregroundStyle(MLColor.inkSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.top, MLSpacing.s4)
         }
-        .frame(maxHeight: MLSize.staffButton * 3.5)
-        .scrollBounceBehavior(.basedOnSize)
+        .padding(.bottom, MLSpacing.s16)
     }
 }
 

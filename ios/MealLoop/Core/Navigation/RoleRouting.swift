@@ -39,6 +39,25 @@ enum RoleRoot: String, CaseIterable, Hashable, Sendable {
         }
     }
 
+    /// The value that selects Search in a tab bar. It is not a tab title, so it can never match one.
+    static let searchTab = "search"
+
+    /// Student and Admin have the round Search button (03_home, A01_today). Staff and Warden designs do not.
+    var hasSearch: Bool {
+        switch self {
+        case .student, .admin: return true
+        default: return false
+        }
+    }
+
+    /// The Warden tabs are words only (W01). Every other placeholder tab has an icon.
+    var showsTabIcons: Bool { self != .warden }
+
+    /// The Search field text. Admin's is from AD-8c; no image of the student field exists.
+    var searchPrompt: String {
+        self == .admin ? "Dishes, messes, people, cases" : "Search"
+    }
+
     /// Tab titles of the roots that are not built yet. Empty means the root has no tab bar.
     /// Student, Admin and Warden come from their packs. Gate, Vendor and Super Admin have no documented tabs,
     /// so they get the smallest chrome that can hold a Home and Sign out. Guardian is a single-page web flow.

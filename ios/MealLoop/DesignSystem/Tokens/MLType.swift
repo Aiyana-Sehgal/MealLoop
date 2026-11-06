@@ -4,8 +4,6 @@ import SwiftUI
 /// (design/README.md, "Known limits"), so the app uses the system fonts.
 /// Rules: text never below 12 pt; staff primary content 17 pt or more; mono only for numbers, times, units and IDs.
 enum MLType {
-    /// The wordmark on Welcome. Measured from design/reference/redesign_2026-10/images/01_sign_in.png.
-    static let wordmark = Font.system(size: 48, weight: .regular)
     /// Large title, 34 pt (titles across the staff and outing screens).
     static let largeTitle = Font.system(size: 34, weight: .bold)
     /// Hero title on a black card ("Lunch has ended").

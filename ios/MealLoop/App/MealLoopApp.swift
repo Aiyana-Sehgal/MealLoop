@@ -4,7 +4,7 @@ import SwiftUI
 struct MealLoopApp: App {
     @State private var environment = AppEnvironment.make()
     @State private var router = AppRouter()
-    @State private var sessionStore = SessionStore(recentStore: UserDefaultsRecentAccountsStore())
+    @State private var sessionStore = SessionStore()
 
     var body: some Scene {
         WindowGroup {
