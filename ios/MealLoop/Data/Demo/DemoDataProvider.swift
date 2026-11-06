@@ -242,7 +242,7 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
         guard mess == DemoSeed.mess.id else { return [] }
         var records: [MealRecord] = []
         if let lunch = try await storyMealRecord() { records.append(lunch) }
-        if let breakfast = breakfastRecord { records.append(breakfast) }
+        if let breakfast = try await breakfastRecord() { records.append(breakfast) }
         records += DemoSeed.pastMeals.map { past in
             MealRecord(mealID: past.id, messID: mess, slot: past.slot, day: past.day, closedAt: nil,
                        finalEntries: past.finalEntries.map { .available($0, asOf: past.day) } ?? .unavailable,
@@ -278,14 +278,17 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
     }
 
     /// Breakfast joins the history once its own times have passed (it is not run by the Supervisor in the story).
-    private var breakfastRecord: MealRecord? {
+    /// Its final entries come from `finalCount(for:)`, the same source every other screen reads, so the two always agree.
+    /// No spec document gives a breakfast count (only frames S18, S19d, K10 and K11 draw one), so it stays
+    /// unavailable, never zero (docs/OPEN_DECISIONS.md, P-STORY-8; supervisor_spec.md: "Unavailable" if missing).
+    private func breakfastRecord() async throws -> MealRecord? {
         let status = breakfastStatus
         guard status.state == .closed else { return nil }
         let now = clock.now()
         return MealRecord(
             mealID: status.meal.id, messID: status.meal.messID, slot: status.meal.slot,
             day: startOfDay(status.meal.startsAt), closedAt: status.closedAt,
-            finalEntries: .available(DemoSeed.breakfastFinalEntries, asOf: status.meal.endsAt),
+            finalEntries: try await finalCount(for: status.meal.id),
             shortages: [MealRecord.ShortageLine(dishName: nil, outcome: .resolved(at: nil))],
             waste: now >= DemoSeed.breakfastWasteRecordedAt ? .recorded(at: DemoSeed.breakfastWasteRecordedAt) : .notRecorded,
             wasteReport: nil

@@ -76,9 +76,9 @@ enum DemoSeed {
 
     // MARK: Meal history (supervisor S18, S19b to S19f, S10, S11)
 
-    // S19d: Wed 14 · Breakfast, final entries 402, "1 shortage · Resolved" (no item or time drawn),
-    // waste "Recorded · 10:05 AM".
-    static let breakfastFinalEntries = 402
+    // S19d: Wed 14 · Breakfast, "1 shortage · Resolved" (no item or time drawn), waste "Recorded · 10:05 AM".
+    // S18 and S19d also draw 402 final entries, but no spec document gives that number, so breakfast's final
+    // entries are not seeded: `finalCount(for:)` and the meal history both report them as unavailable.
     static let breakfastWasteRecordedAt = time(10, 5)
 
     /// A closed meal before the story day. Only what the pack draws is filled in.
