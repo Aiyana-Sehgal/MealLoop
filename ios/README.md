@@ -2,7 +2,21 @@
 
 SwiftUI app, minimum iOS 17, one app target (`MealLoop`) and one unit-test target (`MealLoopTests`), shared scheme `MealLoop`. Structure and rules: [`docs/REPOSITORY_STRUCTURE.md`](../docs/REPOSITORY_STRUCTURE.md).
 
-> **Not yet built.** This project was written in an environment without macOS or Xcode. No `xcodebuild` command below has been run yet, and no build or test result exists. The first person to build it should record the real output in `docs/FOUNDATION_REPORT.md` and fix any compile errors before starting feature work.
+> **Verified on 2026-11-06:** Debug and Release build, and all 40 unit tests pass (Xcode 27.2, iPhone 18 Pro simulator, iOS 27.2). Kitchen Home runs in the simulator; its content matches the reference, its visual match is partial. Evidence: [`docs/FOUNDATION_VERIFICATION.md`](../docs/FOUNDATION_VERIFICATION.md).
+
+## Start here
+
+- **Project and scheme:** `ios/MealLoop.xcodeproj`, scheme `MealLoop`.
+- **Run:** open the project in Xcode, pick an iPhone simulator, press ⌘R.
+- **Test:** ⌘U, or the command under [Command line](#command-line).
+- **Where code belongs:**
+  - Screens go in `MealLoop/Features/<Role>/`.
+  - Reusable UI goes in `MealLoop/DesignSystem/Components/`.
+  - Models go in `MealLoop/Domain/`, and only there.
+  - Repository protocols go in `MealLoop/Data/Repositories/`.
+  - Sample data goes in `MealLoop/Data/Demo/`, never in a View.
+- **Branches and PRs:** one purpose per branch, named `<type>/<scope>-<short-description>`. Open one PR per branch. Never push to the default branch, force-push or merge your own work without review.
+- **Shared files:** one person at a time edits `Domain/**`, `Data/Repositories/Repositories.swift`, `Core/Navigation/**`, `DesignSystem/Tokens/**`, `App/AppEnvironment.swift` and the demo seed and provider. Agree it with the owner before changing them. `Features/<Role>/` folders and new component files are safe to work on in parallel.
 
 ## Requirements
 
@@ -19,7 +33,7 @@ SwiftUI app, minimum iOS 17, one app target (`MealLoop`) and one unit-test targe
 5. Tap **Demo data** to switch the simulated moment: before the meal (K01), during (K02), shortage reported (K03), entries stale, after the meal (K05), waste recorded, offline.
 6. Run the tests with ⌘U.
 
-## Command line (not yet run; to be confirmed on a Mac)
+## Command line
 
 List the simulators installed on your Mac first and use one of their names:
 
@@ -27,12 +41,12 @@ List the simulators installed on your Mac first and use one of their names:
 xcrun simctl list devices available
 ```
 
-Then build and test (replace `<an installed iPhone>`, for example the name printed above):
+Then build and test (replace `<an installed iPhone>` with a name printed above). `CODE_SIGNING_ALLOWED=NO` is what the recorded run used:
 
 ```sh
 xcodebuild -project ios/MealLoop.xcodeproj -scheme MealLoop \
   -destination 'platform=iOS Simulator,name=<an installed iPhone>' \
-  build test
+  CODE_SIGNING_ALLOWED=NO build test
 ```
 
 ## Configurations
