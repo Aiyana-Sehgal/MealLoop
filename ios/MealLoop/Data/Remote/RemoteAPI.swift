@@ -46,6 +46,7 @@ struct RemoteAPI: MealRepository, MealStateRepository, HeadcountRepository, Entr
     func reportShortage(_ report: ShortageReport) async throws -> Shortage { throw notImplemented("report shortage") }
     func shortages(for meal: MealID) async throws -> [Shortage] { throw notImplemented("shortages") }
     func markResolved(_ shortage: ShortageID, by role: Role) async throws -> Shortage { throw notImplemented("resolve shortage") }
+    func markSeen(_ shortage: ShortageID, by role: Role) async throws -> Shortage { throw notImplemented("mark shortage seen") }
 
     func summary(for meal: MealID) async throws -> WasteReportSummary { throw notImplemented("waste report summary") }
     func report(for meal: MealID) async throws -> WasteReport { throw notImplemented("waste report") }

@@ -527,6 +527,16 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
         return state.shortages[index]
     }
 
+    func markSeen(_ shortage: ShortageID, by role: Role) async throws -> Shortage {
+        try failIfOffline()
+        guard role == .supervisor else { throw RepositoryError.notAllowed(reason: "Only the Supervisor sees a shortage report.") }
+        guard let index = state.shortages.firstIndex(where: { $0.id == shortage }) else { throw RepositoryError.notFound }
+        if case .sent = state.shortages[index].delivery {
+            state.shortages[index].delivery = .seen(at: clock.now(), by: DemoSeed.supervisorName)
+        }
+        return state.shortages[index]
+    }
+
     // MARK: WasteReportRepository
 
     func summary(for meal: MealID) async throws -> WasteReportSummary {
