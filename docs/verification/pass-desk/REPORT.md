@@ -22,6 +22,8 @@ The 4 skipped are the existing `SupervisorScreenshotTests`, which need an enviro
 
 `large/P12_food_short_sent_toast.png` caught the page mid-transition, so the toast is not in frame. The walk confirmed the toast text.
 
+**Timing of the screenshots:** `small/` is from the final code. `large/` was taken before the last change, the keypad height below 700 pt, which does not apply on that phone, and was not repeated. The test counts above are from the final code. The SE was captured more than once, and the scratch walks ran in Review while iterating, because the walk found bugs; the repository's Review tests and Release build ran once, at the end.
+
 **Checked by eye only:** the comparison with the references. **Not run:** a physical device, an iOS 17 runtime, VoiceOver by hand, largest Dynamic Type, Reduce Motion.
 
 ## Reference table
