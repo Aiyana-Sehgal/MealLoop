@@ -270,13 +270,15 @@ On `feat/ios-core-story-contracts`. Xcode 27.2, iPhone 18 Pro simulator, iOS 27.
 
 | Check | Result |
 |---|---|
-| Debug | 127 passed, 0 failed, 0 skipped |
-| Review | 126 passed, 0 failed, 0 skipped |
+| Debug | 128 passed, 0 failed, 0 skipped |
+| Review | 127 passed, 0 failed, 0 skipped |
 | Release | `** BUILD SUCCEEDED **` |
 | Review walk-through | Temporary XCUITest in a scratch copy, from a clean install: all 11 roles and every tab showed none of "not implemented", "demo", "simulated", "choose your role", "continue as" or "not built" |
 | Binary scan | Review and Release have no "Not implemented", badge, moment titles or role picker. Release has no seed. An older build that contains the text was used to prove the scan can find it |
 
 Reachable placeholders: 32 of 33 destinations. Only Kitchen Home is built. `PlaceholderMetricTests` prints the count per role.
 
-Not run: a physical device and an iOS 17 runtime. The full story was tested at repository level, not through screens, because the screens are later parts.
+`testTheWholeStoryRunsInOrderOnOneDataSource` runs every story step in order through the repositories, not through screens, because the screens are later parts.
+
+Not run: a physical device and an iOS 17 runtime.
 
