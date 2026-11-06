@@ -1,7 +1,7 @@
-#if DEMO_DATA
+#if DEMO_DATA || REVIEW_DATA
 import Foundation
 
-/// DEMO DATA. Seeded sample values for the Debug build only. Never pilot data and never measured results.
+/// DEMO DATA. Seeded sample values for the Debug and Review builds only. Never pilot data and never measured results.
 /// Every value below is copied from the design documentation; the source is named next to it.
 /// Sample names such as "Main Mess" are placeholders (the pilot is planned at Meenakshi Girls' Mess).
 enum DemoSeed {
@@ -71,9 +71,40 @@ enum DemoSeed {
     // STATE.md: "Aarav ••0238".
     static let sampleStudent = StudentRef(id: StudentID("demo-student-0238"), maskedID: "••0238")
 
+    #if DEMO_DATA
     /// NOT FROM THE DESIGN. The design documents no password value; this placeholder exists only so the
     /// simulated password page can be tried. Recorded in docs/OPEN_DECISIONS.md.
     static let simulatedRolePassword = "1234"
+    #endif
+
+    // MARK: - Accounts
+
+    /// The one prototype credential for every seeded account. Never shown in a View and never logged.
+    static let prototypePassword = "MealLoop-2026"
+
+    static let hostelID = HostelID("demo-main-hostel")
+
+    /// One account per role, listed for the presenter in docs/PRESENTER_ACCOUNTS.md.
+    /// Staff use the initials from the role specs and the design names no one else,
+    /// so the other names describe the post rather than invent a person. `.example` addresses are never real.
+    static let accounts: [Account] = [
+        account("student", "Aarav", .student, .hostel(hostelID)),
+        account("superadmin", "SRM admin", .superAdmin, .mess(mess.id)),
+        account("foodhead", "Mess food head", .admin, .mess(mess.id)),
+        account("supervisor", supervisorName, .supervisor, .mess(mess.id)),
+        account("kitchen", staffInitials(for: .kitchenStaff), .kitchenStaff, .mess(mess.id)),
+        account("door", staffInitials(for: .doorScanner), .doorScanner, .mess(mess.id)),
+        account("passdesk", staffInitials(for: .passDesk), .passDesk, .mess(mess.id)),
+        account("vendor", "Mess vendor", .vendor, .mess(mess.id)),
+        account("guardian", "Aarav's guardian", .guardian, .hostel(hostelID)),
+        account("warden", "Hostel warden", .warden, .hostel(hostelID)),
+        account("gate", "Main gate", .gate, .hostel(hostelID)),
+    ]
+
+    private static func account(_ handle: String, _ name: String, _ role: Role, _ scope: AccountScope) -> Account {
+        Account(id: AccountID("demo-account-\(handle)"), displayName: name, email: "\(handle)@mealloop.example",
+                role: role, scope: scope)
+    }
 
     // MARK: - Helpers
 

@@ -1,4 +1,4 @@
-#if DEMO_DATA
+#if DEMO_DATA || REVIEW_DATA
 import Foundation
 
 /// The moments the demo can show. Changing the scenario replaces all demo state (SIMULATED time skip,
@@ -14,6 +14,7 @@ enum DemoScenario: String, CaseIterable, Identifiable, Sendable {
 
     var id: String { rawValue }
 
+    #if DEMO_DATA
     var title: String {
         switch self {
         case .beforeMeal: return "Before the meal (K01)"
@@ -25,6 +26,7 @@ enum DemoScenario: String, CaseIterable, Identifiable, Sendable {
         case .offline: return "Offline (K02c)"
         }
     }
+    #endif
 }
 
 /// A clock the demo can move. Thread-safe so it can be read synchronously from any context.
@@ -118,9 +120,9 @@ struct DemoState: Sendable {
 }
 
 /// DEMO DATA provider. Implements every repository with seeded, clearly simulated data.
-/// Compiled only when the DEMO_DATA flag is set (Debug configuration); a Release build cannot contain it.
+/// Compiled only with DEMO_DATA (Debug) or REVIEW_DATA (Review); a Release build cannot contain it.
 actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository, EntryRepository, IntentionRepository,
-    ShortageRepository, WasteReportRepository, SOSRepository, AuthRepository, DemoControlling {
+    ShortageRepository, WasteReportRepository, SOSRepository, AuthRepository {
 
     nonisolated let clock: DemoClock
     private(set) var scenario: DemoScenario
@@ -137,17 +139,6 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
         self.scenario = scenario
         state = DemoState(scenario: scenario)
         clock.set(state.now)
-    }
-
-    // MARK: DemoControlling (Debug-only controls; SIMULATED time skip)
-
-    nonisolated var scenarioOptions: [DemoScenarioOption] {
-        DemoScenario.allCases.map { DemoScenarioOption(id: $0.rawValue, title: $0.title) }
-    }
-
-    func selectScenario(id: String) async {
-        guard let scenario = DemoScenario(rawValue: id) else { return }
-        setScenario(scenario)
     }
 
     nonisolated func makeRepositories() -> Repositories {
@@ -403,6 +394,45 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
 
     // MARK: AuthRepository (SIMULATED)
 
+    func signInStaff(email: String, password: String) async throws -> Session {
+        try failIfOffline()
+        let wanted = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard let account = DemoSeed.accounts.first(where: { $0.email.lowercased() == wanted }),
+              account.role != .student,
+              password == DemoSeed.prototypePassword else {
+            throw RepositoryError.invalidCredentials
+        }
+        return session(for: account)
+    }
+
+    /// UNVERIFIED AND SIMULATED: no SRM SSO exists and its feasibility is unconfirmed.
+    /// With no real identity to read, this always returns the seeded student. Super Admin is also meant to use
+    /// SRM, so until a real identity exists the prototype lets that account in through `signInStaff`.
+    func signInWithSRM() async throws -> Session {
+        try failIfOffline()
+        guard let account = DemoSeed.accounts.first(where: { $0.role == .student }) else {
+            throw RepositoryError.notFound
+        }
+        return session(for: account)
+    }
+
+    func resume(_ account: AccountID) async throws -> Session {
+        try failIfOffline()
+        guard let known = DemoSeed.accounts.first(where: { $0.id == account }) else {
+            throw RepositoryError.notFound
+        }
+        return session(for: known)
+    }
+
+    private func session(for account: Account) -> Session {
+        let staff = account.role.isMessStaff
+            ? StaffSession(role: account.role, mess: DemoSeed.mess, staffInitials: DemoSeed.staffInitials(for: account.role),
+                           supervisorName: DemoSeed.supervisorName)
+            : nil
+        return Session(account: account, staff: staff)
+    }
+
+    #if DEMO_DATA
     func verifyRolePassword(_ password: String, for role: Role) async throws -> RolePasswordResult {
         guard role.isMessStaff else { throw RepositoryError.notAllowed(reason: "Not a mess staff role.") }
         let wrongSoFar = state.wrongPasswordCount[role] ?? 0
@@ -422,5 +452,20 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
         }
         return .wrong(triesLeft: RolePasswordPolicy.maximumTries - wrong)
     }
+    #endif
 }
+
+#if DEMO_DATA
+// Debug-only controls (SIMULATED time skip). Not compiled into the Review build.
+extension DemoDataProvider: DemoControlling {
+    nonisolated var scenarioOptions: [DemoScenarioOption] {
+        DemoScenario.allCases.map { DemoScenarioOption(id: $0.rawValue, title: $0.title) }
+    }
+
+    func selectScenario(id: String) async {
+        guard let scenario = DemoScenario(rawValue: id) else { return }
+        setScenario(scenario)
+    }
+}
+#endif
 #endif

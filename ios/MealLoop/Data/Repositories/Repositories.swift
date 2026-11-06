@@ -1,7 +1,7 @@
 import Foundation
 
 // Repository protocols. Views and view models depend only on these; they never touch data directly.
-// Keep each protocol small and async. Implementations live in Data/Demo (seeded, Debug only) and Data/Remote (HTTP, not implemented yet).
+// Keep each protocol small and async. Implementations live in Data/Demo (seeded, Debug and Review only) and Data/Remote (HTTP, not implemented yet).
 
 /// Menus and meals. Used by Kitchen (Menu for Lunch), Student (Meals) and Admin (Weekly menu).
 protocol MealRepository: Sendable {
@@ -61,9 +61,18 @@ protocol SOSRepository: Sendable {
     func close(_ sos: SOSCaseID, by role: Role) async throws -> SOSCase
 }
 
-/// The shared role password on staff devices (one password per role, 4 digits, 3 tries).
+/// Sign-in. Every method returns the session the data source vouches for; the client never picks a role itself.
 protocol AuthRepository: Sendable {
+    /// Throws `invalidCredentials` for a wrong password or an unknown email, without saying which.
+    func signInStaff(email: String, password: String) async throws -> Session
+    /// SRM SSO feasibility is unverified. No real SRM integration exists anywhere in this app.
+    func signInWithSRM() async throws -> Session
+    /// "Continue as": signs a remembered account back in. The role comes from the data source, not from the device.
+    func resume(_ account: AccountID) async throws -> Session
+    #if DEMO_DATA
+    /// The shared role password (4 digits, 3 tries). A Debug-only prototype interaction, never production authentication.
     func verifyRolePassword(_ password: String, for role: Role) async throws -> RolePasswordResult
+    #endif
 }
 
 // MARK: - Documented stubs (no implementation and no caller yet)

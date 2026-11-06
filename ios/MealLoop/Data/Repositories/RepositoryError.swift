@@ -7,6 +7,8 @@ enum RepositoryError: Error, Equatable, Sendable {
     /// No connection or the data could not be verified. Nothing was recorded.
     case offline(lastSavedAt: Date?)
     case notFound
+    /// The email or password is wrong. Never says which, so an email cannot be probed.
+    case invalidCredentials
     /// The action is not allowed in the current state or for this role.
     case notAllowed(reason: String)
     case validationFailed([String])
