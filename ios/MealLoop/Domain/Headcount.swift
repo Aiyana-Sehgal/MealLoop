@@ -27,7 +27,7 @@ struct SentHeadcount: Codable, Sendable, Hashable {
     let adjustments: [HeadcountAdjustment]
 }
 
-/// The vendor's answer. The vendor has no MealLoop login; the channel is an open decision.
+/// The vendor's answer, given through a restricted MealLoop vendor account.
 enum VendorReply: Codable, Sendable, Hashable {
     case notSent
     case waiting
