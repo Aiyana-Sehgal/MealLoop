@@ -4,7 +4,10 @@ import Foundation
 /// Wording the pack does not draw follows docs/PRD (FR-HC, FR-VEN); REPORT.md lists it.
 enum AdminCopy {
     // Today
-    static func greeting(_ name: String) -> String { "Hey \(name)" }
+    /// "Devi Raman" gives "Hey Devi", as on A01. The full name stays on the account, for the initials.
+    static func greeting(_ name: String) -> String {
+        "Hey \(name.split(separator: " ").first.map(String.init) ?? name)"
+    }
     static let noMealTitle = "No meals today"
     static let noMealDetail = "Meals will show here when they are set."
     static let needsYou = "Needs you"

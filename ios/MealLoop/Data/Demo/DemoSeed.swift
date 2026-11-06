@@ -184,12 +184,13 @@ enum DemoSeed {
     static let hostelID = HostelID("demo-main-hostel")
 
     /// One account per role, listed for the presenter in docs/PRESENTER_ACCOUNTS.md.
-    /// Staff use the initials from the role specs and the design names no one else,
-    /// so the other names describe the post rather than invent a person. `.example` addresses are never real.
+    /// Staff use the initials from the role specs, and the food head is the design's sample person
+    /// (design_intent.md, "Devi Raman, Food head", initials DR). The design names no one else here, so the
+    /// other names describe the post rather than invent a person. `.example` addresses are never real.
     static let accounts: [Account] = [
         account("student", "Aarav", .student, .hostel(hostelID)),
         account("superadmin", "SRM admin", .superAdmin, .mess(mess.id)),
-        account("foodhead", "Mess food head", .admin, .mess(mess.id)),
+        account("foodhead", "Devi Raman", .admin, .mess(mess.id)),
         account("supervisor", supervisorName, .supervisor, .mess(mess.id)),
         account("kitchen", staffInitials(for: .kitchenStaff), .kitchenStaff, .mess(mess.id)),
         account("door", staffInitials(for: .doorScanner), .doorScanner, .mess(mess.id)),
