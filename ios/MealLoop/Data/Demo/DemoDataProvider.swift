@@ -488,9 +488,12 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
         return report
     }
 
-    func saveDraft(_ report: WasteReport) async throws -> WasteReport {
+    func saveDraft(_ report: WasteReport, by role: Role) async throws -> WasteReport {
         try failIfOffline()
         try requireKnownMeal(report.mealID)
+        guard role == .kitchenStaff else {
+            throw RepositoryError.notAllowed(reason: "Only Kitchen Staff record waste.")
+        }
         guard state.mealStatus.state == .closed else {
             throw RepositoryError.notAllowed(reason: "Waste is recorded only after the meal has ended.")
         }
@@ -500,9 +503,12 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
         return draft
     }
 
-    func save(_ report: WasteReport) async throws -> WasteReport {
+    func save(_ report: WasteReport, by role: Role) async throws -> WasteReport {
         try failIfOffline()
         try requireKnownMeal(report.mealID)
+        guard role == .kitchenStaff else {
+            throw RepositoryError.notAllowed(reason: "Only Kitchen Staff record waste.")
+        }
         guard state.mealStatus.state == .closed else {
             throw RepositoryError.notAllowed(reason: "Waste is recorded only after the meal has ended.")
         }

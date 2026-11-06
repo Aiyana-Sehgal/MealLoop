@@ -48,8 +48,8 @@ struct RemoteAPI: MealRepository, MealStateRepository, HeadcountRepository, Entr
 
     func summary(for meal: MealID) async throws -> WasteReportSummary { throw notImplemented("waste report summary") }
     func report(for meal: MealID) async throws -> WasteReport { throw notImplemented("waste report") }
-    func saveDraft(_ report: WasteReport) async throws -> WasteReport { throw notImplemented("save waste draft") }
-    func save(_ report: WasteReport) async throws -> WasteReport { throw notImplemented("save waste report") }
+    func saveDraft(_ report: WasteReport, by role: Role) async throws -> WasteReport { throw notImplemented("save waste draft") }
+    func save(_ report: WasteReport, by role: Role) async throws -> WasteReport { throw notImplemented("save waste report") }
 
     func activeCases(for mess: MessID) async throws -> [SOSCase] { throw notImplemented("SOS cases") }
     func claim(_ sos: SOSCaseID, by role: Role) async throws -> SOSCase { throw notImplemented("claim SOS") }

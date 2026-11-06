@@ -64,9 +64,10 @@ protocol ShortageRepository: Sendable {
 protocol WasteReportRepository: Sendable {
     func summary(for meal: MealID) async throws -> WasteReportSummary
     func report(for meal: MealID) async throws -> WasteReport
-    func saveDraft(_ report: WasteReport) async throws -> WasteReport
+    /// Kitchen Staff only; every other role reads the report. Throws `notAllowed` for any other role.
+    func saveDraft(_ report: WasteReport, by role: Role) async throws -> WasteReport
     /// Throws `validationFailed` while any field is missing or invalid.
-    func save(_ report: WasteReport) async throws -> WasteReport
+    func save(_ report: WasteReport, by role: Role) async throws -> WasteReport
 }
 
 /// SOS cases. Staff claim and check; only the Supervisor closes.
