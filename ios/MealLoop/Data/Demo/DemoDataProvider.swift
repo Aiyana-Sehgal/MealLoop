@@ -439,14 +439,6 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
         return session(for: account)
     }
 
-    func resume(_ account: AccountID) async throws -> Session {
-        try failIfOffline()
-        guard let known = DemoSeed.accounts.first(where: { $0.id == account }) else {
-            throw RepositoryError.notFound
-        }
-        return session(for: known)
-    }
-
     private func session(for account: Account) -> Session {
         let staff = account.role.isMessStaff
             ? StaffSession(role: account.role, mess: DemoSeed.mess, staffInitials: DemoSeed.staffInitials(for: account.role),

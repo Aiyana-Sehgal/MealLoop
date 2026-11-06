@@ -9,10 +9,6 @@ enum EntryCopy {
     static let staffSignIn = "Staff sign in"
     static let terms = "By continuing you agree to the Terms and Privacy Policy."
 
-    static func continueAs(name: String, role: String) -> String {
-        "Continue as \(name), \(role)"
-    }
-
     static let staffSubtitle = "Use your MealLoop account."
     static let emailLabel = "Email"
     static let passwordLabel = "Password"

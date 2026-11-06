@@ -70,8 +70,6 @@ protocol AuthRepository: Sendable {
     func signInStaff(email: String, password: String) async throws -> Session
     /// SRM SSO feasibility is unverified. No real SRM integration exists anywhere in this app.
     func signInWithSRM() async throws -> Session
-    /// "Continue as": signs a remembered account back in. The role comes from the data source, not from the device.
-    func resume(_ account: AccountID) async throws -> Session
     #if DEMO_DATA
     /// The shared role password (4 digits, 3 tries). A Debug-only prototype interaction, never production authentication.
     func verifyRolePassword(_ password: String, for role: Role) async throws -> RolePasswordResult
