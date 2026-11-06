@@ -1,3 +1,4 @@
+#if DEMO_DATA
 import Foundation
 
 /// Interface copy for the shared staff entry flow, transcribed from the Figma exports
@@ -90,3 +91,4 @@ enum StaffEntryCopy {
         return "3 wrong tries. This phone cannot try again until \(who) resets the shared \(MLFormat.roleName(role)) password."
     }
 }
+#endif
