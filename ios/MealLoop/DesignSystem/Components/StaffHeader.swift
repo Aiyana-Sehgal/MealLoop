@@ -1,18 +1,24 @@
 import SwiftUI
 
-/// The MealLoop mark. Approximation of the "Plate loop" mark until the final logo file exists (open decision).
+/// The MealLoop mark: an ink ring with a lime dot on its upper right, as in 01_sign_in.
+/// Drawn from the reference until the final logo file exists (open decision).
 struct OrbitMarkView: View {
+    /// The ring's outer diameter. The stroke and the dot scale with it.
+    var size: CGFloat = 24
+
     var body: some View {
-        ZStack(alignment: .leading) {
-            Capsule()
-                .fill(MLColor.ink)
-                .frame(width: 24, height: 16)
-            Circle()
-                .fill(MLColor.lime)
-                .frame(width: 10, height: 10)
-                .padding(.leading, 3)
-        }
-        .accessibilityHidden(true)
+        Circle()
+            .stroke(MLColor.ink, lineWidth: size * 0.15)
+            .frame(width: size * 0.85, height: size * 0.85)
+            .frame(width: size, height: size)
+            .overlay(alignment: .topTrailing) {
+                Circle()
+                    .fill(MLColor.lime)
+                    .overlay(Circle().stroke(MLColor.limeOutline, lineWidth: size * 0.05))
+                    .frame(width: size * 0.42, height: size * 0.42)
+                    .offset(x: size * 0.06, y: -size * 0.06)
+            }
+            .accessibilityHidden(true)
     }
 }
 
