@@ -17,7 +17,7 @@ SwiftUI app, minimum iOS 17, one app target (`MealLoop`) and one unit-test targe
   - Repository protocols go in `MealLoop/Data/Repositories/`.
   - Sample data goes in `MealLoop/Data/Demo/`, never in a View.
 - **Branches and PRs:** one purpose per branch, named `<type>/<scope>-<short-description>`, each in its own `git worktree`. Open one PR per branch. Never push to the default branch, force-push or merge your own work without review.
-- **Shared files:** one person at a time edits `Domain/**`, `Data/Repositories/Repositories.swift`, `Core/Navigation/**`, `DesignSystem/Tokens/**`, `App/AppEnvironment.swift` and the demo seed and provider. Ask the shared-file owner for changes to them. `Features/<Role>/` folders and new component files are safe to work on in parallel.
+- **Shared files:** one person at a time edits `Domain/**`, `Data/Repositories/Repositories.swift`, `Core/Navigation/**`, `Core/Session/**`, `Core/LoadState/**`, `DesignSystem/Tokens/**`, `DesignSystem/Components/**`, `DesignSystem/Gallery/**`, `App/AppEnvironment.swift`, `App/AppClock.swift`, `Features/Shell/RoleRootView.swift`, `Features/Staff/StaffShellViews.swift`, the demo seed and provider, and `docs/COMPONENT_CATALOG.md`. Ask the shared-file owner for changes to them, including new shared components. `Features/<Role>/` for your own role and new test files are safe to work on in parallel. The full rule is in [`PARTS_AND_OWNERSHIP.md`](../docs/PARTS_AND_OWNERSHIP.md).
 
 ## Requirements
 
