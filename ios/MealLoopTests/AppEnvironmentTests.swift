@@ -8,8 +8,12 @@ final class AppEnvironmentTests: XCTestCase {
         let environment = AppEnvironment.make()
         XCTAssertEqual(environment.kind, .demo)
         XCTAssertNotNil(environment.demoControls)
+        #elseif REVIEW_DATA
+        let environment = AppEnvironment.make()
+        XCTAssertEqual(environment.kind, .review)
+        XCTAssertNil(environment.demoControls, "The Review build has no simulated moment controls")
         #else
-        XCTFail("Unit tests are expected to run in the Debug configuration, where DEMO_DATA is set.")
+        XCTFail("Unit tests are expected to run in Debug or Review, where seeded data is compiled in.")
         #endif
     }
 
