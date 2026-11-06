@@ -37,10 +37,14 @@ struct StatusText: View {
     enum Dot {
         case filled
         case empty
+        /// Started but not finished (Draft on K16).
+        case dashed
     }
 
     let text: String
     var dot: Dot = .filled
+    /// Mono time after the text ("Recorded · 2:40 PM").
+    var time: String?
 
     var body: some View {
         HStack(spacing: MLSpacing.s8) {
@@ -50,12 +54,19 @@ struct StatusText: View {
                     Circle().fill(MLColor.lime).overlay(Circle().stroke(MLColor.limeOutline, lineWidth: 1))
                 case .empty:
                     Circle().stroke(MLColor.ink, lineWidth: 1.5)
+                case .dashed:
+                    Circle().stroke(MLColor.ink, style: StrokeStyle(lineWidth: 1.5, dash: [2.5, 2.5]))
                 }
             }
             .frame(width: 12, height: 12)
             Text(text)
                 .font(MLType.staffBody)
                 .foregroundStyle(MLColor.ink)
+            if let time {
+                Text("· \(time)")
+                    .font(MLType.monoBody)
+                    .foregroundStyle(MLColor.ink)
+            }
         }
         .accessibilityElement(children: .combine)
     }
@@ -88,10 +99,12 @@ struct ShortageRow: View {
     var detailTime: String?
     var retryTitle: String?
     var onRetry: (() -> Void)?
+    /// The pot by default; K03e swaps it for a warning when a report couldn't be sent.
+    var systemImage: String = "frying.pan"
 
     var body: some View {
         HStack(spacing: MLSpacing.s12) {
-            Image(systemName: "frying.pan")
+            Image(systemName: systemImage)
                 .font(.system(size: 17))
                 .foregroundStyle(MLColor.ink)
                 .frame(width: MLSize.iconSquare, height: MLSize.iconSquare)
@@ -112,14 +125,12 @@ struct ShortageRow: View {
             }
             Spacer(minLength: 0)
             if let retryTitle, let onRetry {
-                Button(retryTitle, action: onRetry)
-                    .font(MLType.staffPrimary)
-                    .foregroundStyle(MLColor.ink)
-                    .frame(minWidth: MLSize.hit, minHeight: MLSize.hit)
+                CompactPillButton(title: retryTitle, action: onRetry)
             }
         }
         .padding(MLSpacing.s16)
         .background(RoundedRectangle(cornerRadius: MLRadius.compact, style: .continuous).fill(MLColor.surface))
-        .accessibilityElement(children: .combine)
+        // Retry stays its own element, so a screen reader can reach it apart from the row.
+        .accessibilityElement(children: onRetry == nil ? .combine : .contain)
     }
 }
