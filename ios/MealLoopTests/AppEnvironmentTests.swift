@@ -59,6 +59,15 @@ final class AppEnvironmentTests: XCTestCase {
     func testNotImplementedFailureIsLabelledAsSuch() {
         let failure = LoadFailure(RepositoryError.notImplemented(feature: "Remote · live entries"))
         XCTAssertTrue(failure.isNotImplemented)
-        XCTAssertTrue(failure.message.hasPrefix("Not implemented"))
+        XCTAssertEqual(failure.message, "Remote · live entries isn't available yet")
+    }
+
+    func testRemoteSignInFailureSaysItIsNotAvailable() async {
+        do {
+            _ = try await RemoteAPI(baseURL: nil).signInStaff(email: "a", password: "b")
+            XCTFail("RemoteAPI must never show a sign-in as success")
+        } catch {
+            XCTAssertEqual(LoadFailure(error).message, "Remote sign in isn't available yet")
+        }
     }
 }

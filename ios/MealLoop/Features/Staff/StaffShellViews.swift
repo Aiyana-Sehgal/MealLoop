@@ -1,9 +1,10 @@
 import SwiftUI
 
-/// The shared staff pattern: Home, Alerts, Me. Each role supplies its own Home; Alerts and Me are not built yet.
-struct StaffTabsView: View {
+/// The shared staff pattern: Home, Alerts, Me. Each role's root supplies its own Home; Alerts and Me are placeholders.
+struct StaffTabsView<Home: View>: View {
     @Environment(AppRouter.self) private var router
     let session: StaffSession
+    @ViewBuilder let home: () -> Home
 
     var body: some View {
         @Bindable var router = router
@@ -12,7 +13,7 @@ struct StaffTabsView: View {
                 switch router.selectedStaffTab {
                 case .home:
                     NavigationStack(path: $router.staffHomePath) {
-                        StaffHomeSwitch(session: session)
+                        home()
                             .toolbar(.hidden, for: .navigationBar)
                             .navigationDestination(for: StaffRoute.self) { route in
                                 switch route {
@@ -22,8 +23,7 @@ struct StaffTabsView: View {
                             }
                     }
                 case .alerts:
-                    NotImplementedView(title: "Alerts",
-                                       detail: "Alerts for \(MLFormat.roleName(session.role)) are not built yet.")
+                    NotImplementedView(title: "Alerts")
                 case .me:
                     StaffMePlaceholderView(session: session)
                 }
@@ -35,22 +35,21 @@ struct StaffTabsView: View {
     }
 }
 
-/// Picks the Home of the signed-in role. Only Kitchen Staff has a Home so far.
-struct StaffHomeSwitch: View {
-    let session: StaffSession
+/// The root of a mess staff role: the shared tabs around that role's own Home.
+struct StaffRootView<Home: View>: View {
+    let session: Session
+    @ViewBuilder let home: (StaffSession) -> Home
 
     var body: some View {
-        switch session.role {
-        case .kitchenStaff:
-            KitchenHomeScreen(session: session)
-        default:
-            NotImplementedView(title: MLFormat.roleName(session.role),
-                               detail: "This role's Home is not built yet.")
+        if let staff = session.staff {
+            StaffTabsView(session: staff) { home(staff) }
+        } else {
+            NotImplementedView(title: MLFormat.roleName(session.account.role))
         }
     }
 }
 
-/// Not implemented: the Me page (K13, D18, S16). Only "Sign out" works so the flow can be left.
+/// Placeholder for the Me page (K13, D18, S16). Only "Sign out" works so the flow can be left.
 struct StaffMePlaceholderView: View {
     @Environment(AppRouter.self) private var router
     @Environment(SessionStore.self) private var sessionStore
@@ -58,7 +57,7 @@ struct StaffMePlaceholderView: View {
 
     var body: some View {
         NotImplementedView(title: "Me",
-                           detail: "\(session.staffInitials) · \(MLFormat.roleName(session.role)) · \(session.mess.name). The Me page is not built yet.",
+                           detail: "\(session.staffInitials) · \(MLFormat.roleName(session.role)) · \(session.mess.name)",
                            actionTitle: "Sign out") {
             router.reset()
             sessionStore.signOut()

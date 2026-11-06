@@ -4,6 +4,8 @@ import Foundation
 /// The moments the demo can show. Changing the scenario replaces all demo state (SIMULATED time skip,
 /// like the hidden time-skip hotspots in the Figma prototype).
 enum DemoScenario: String, CaseIterable, Identifiable, Sendable {
+    /// The start of the core story: 7:00 AM, nothing approved, lunch not started. Time then follows the story.
+    case storyStart
     case beforeMeal
     case duringMeal
     case duringMealShortageReported
@@ -17,6 +19,7 @@ enum DemoScenario: String, CaseIterable, Identifiable, Sendable {
     #if DEMO_DATA
     var title: String {
         switch self {
+        case .storyStart: return "Story start"
         case .beforeMeal: return "Before the meal (K01)"
         case .duringMeal: return "During the meal (K02)"
         case .duringMealShortageReported: return "Shortage reported (K03)"
@@ -30,7 +33,7 @@ enum DemoScenario: String, CaseIterable, Identifiable, Sendable {
 }
 
 /// A clock the demo can move. Thread-safe so it can be read synchronously from any context.
-final class DemoClock: AppClock, @unchecked Sendable {
+final class DemoClock: StoryClock, @unchecked Sendable {
     private let lock = NSLock()
     private var current: Date
 
@@ -77,12 +80,19 @@ struct DemoState: Sendable {
     var sosCases: [SOSCase] = []
     var wrongPasswordCount: [Role: Int] = [:]
     var recordedSummaryOnly = false
+    var headcountApproval: HeadcountApproval = .notApproved
+    var headcountPublication: VendorPublication = .notSent
     /// Stays nil until the vendor account acts. The sample state is "Not acknowledged".
     var headcountAcknowledgment: VendorAcknowledgment?
+    /// True in the story: counts come only from entries really recorded, never from the sample numbers.
+    var countsRecordedEntriesOnly = false
 
     init(scenario: DemoScenario) {
         let meal = DemoSeed.lunch
         switch scenario {
+        case .storyStart:
+            now = DemoSeed.storyStartNow
+            mealStatus = MealStatus(meal: meal, state: .notStarted, startedAt: nil, closedAt: nil)
         case .beforeMeal:
             now = DemoSeed.beforeMealNow
             mealStatus = MealStatus(meal: meal, state: .notStarted, startedAt: nil, closedAt: nil)
@@ -93,9 +103,16 @@ struct DemoState: Sendable {
             now = DemoSeed.afterMealNow
             mealStatus = MealStatus(meal: meal, state: .closed, startedAt: meal.startsAt, closedAt: DemoSeed.closedAt)
         }
-        liveBaseCount = DemoSeed.liveEntries
+        countsRecordedEntriesOnly = scenario == .storyStart
+        liveBaseCount = countsRecordedEntriesOnly ? 0 : DemoSeed.liveEntries
         liveAsOf = scenario == .duringMealEntriesStale ? DemoSeed.staleEntriesAt : DemoSeed.liveEntriesAt
         isOffline = scenario == .offline
+
+        intentions[IntentionKey(student: DemoSeed.sampleStudent.id, meal: DemoSeed.breakfast.id)] = DemoSeed.sampleBreakfastAnswer
+        for sample in DemoSeed.sampleStudents {
+            guard let answer = sample.lunchAnswer else { continue }
+            intentions[IntentionKey(student: sample.ref.id, meal: meal.id)] = .answered(answer, at: DemoSeed.sampleLunchAnswersAt)
+        }
 
         if scenario == .duringMealShortageReported {
             shortages = [Shortage(
@@ -126,15 +143,17 @@ struct DemoState: Sendable {
 actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository, EntryRepository, IntentionRepository,
     ShortageRepository, WasteReportRepository, SOSRepository, AuthRepository {
 
-    nonisolated let clock: DemoClock
+    nonisolated let clock: any StoryClock
     private(set) var scenario: DemoScenario
     private var state: DemoState
 
-    init(scenario: DemoScenario = .duringMeal) {
+    /// A new provider is a relaunch: in-memory state and the clock go back to the scenario's start.
+    init(scenario: DemoScenario = .duringMeal, clock: (any StoryClock)? = nil) {
         let initial = DemoState(scenario: scenario)
         self.scenario = scenario
         self.state = initial
-        self.clock = DemoClock(initial.now)
+        self.clock = clock ?? DemoClock(initial.now)
+        self.clock.set(initial.now)
     }
 
     func setScenario(_ scenario: DemoScenario) {
@@ -152,16 +171,34 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
         if state.isOffline { throw RepositoryError.offline(lastSavedAt: DemoSeed.offlineSavedAt) }
     }
 
+    /// The story meal. Everything that changes a meal or records against it runs on this one.
     private func requireKnownMeal(_ meal: MealID) throws {
         guard meal == state.mealStatus.meal.id else { throw RepositoryError.notFound }
     }
+
+    /// Any meal of the seeded day, for reads and answers.
+    private func requireDayMeal(_ meal: MealID) throws {
+        guard meal == state.mealStatus.meal.id || meal == DemoSeed.breakfast.id else { throw RepositoryError.notFound }
+    }
+
+    /// Breakfast is not run by the Supervisor in the story, so its state follows the clock and its own times.
+    private var breakfastStatus: MealStatus {
+        let meal = DemoSeed.breakfast
+        let now = clock.now()
+        if now < meal.startsAt { return MealStatus(meal: meal, state: .notStarted, startedAt: nil, closedAt: nil) }
+        if now < meal.endsAt { return MealStatus(meal: meal, state: .inService, startedAt: meal.startsAt, closedAt: nil) }
+        return MealStatus(meal: meal, state: .closed, startedAt: meal.startsAt, closedAt: meal.endsAt)
+    }
+
+    private var dayMeals: [MealStatus] { [breakfastStatus, state.mealStatus] }
 
     // MARK: MealRepository
 
     func menu(for meal: MealID) async throws -> [Dish] {
         try failIfOffline()
-        try requireKnownMeal(meal)
-        return DemoSeed.lunchMenu
+        try requireDayMeal(meal)
+        // Only the lunch menu is seeded so far. An empty list is the honest answer for breakfast.
+        return meal == state.mealStatus.meal.id ? DemoSeed.lunchMenu : []
     }
 
     // MARK: MealStateRepository
@@ -172,11 +209,18 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
         return state.mealStatus
     }
 
+    func meals(for mess: MessID) async throws -> [MealStatus] {
+        try failIfOffline()
+        guard mess == DemoSeed.mess.id else { return [] }
+        return dayMeals
+    }
+
     func startMeal(_ meal: MealID, by role: Role) async throws -> MealStatus {
         try failIfOffline()
         try requireKnownMeal(meal)
         guard role == .supervisor else { throw RepositoryError.notAllowed(reason: "Only the Supervisor starts a meal.") }
         guard state.mealStatus.state == .notStarted else { throw RepositoryError.notAllowed(reason: "The meal has already started.") }
+        clock.advance(to: state.mealStatus.meal.startsAt)
         state.mealStatus.state = .inService
         state.mealStatus.startedAt = clock.now()
         return state.mealStatus
@@ -187,6 +231,7 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
         try requireKnownMeal(meal)
         guard role == .supervisor else { throw RepositoryError.notAllowed(reason: "Only the Supervisor closes a meal.") }
         guard state.mealStatus.state == .inService else { throw RepositoryError.notAllowed(reason: "The meal is not in service.") }
+        clock.advance(to: state.mealStatus.meal.endsAt)
         state.mealStatus.state = .closed
         state.mealStatus.closedAt = clock.now()
         return state.mealStatus
@@ -196,19 +241,60 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
 
     func headcount(for meal: MealID) async throws -> Headcount {
         try failIfOffline()
-        try requireKnownMeal(meal)
+        try requireDayMeal(meal)
+        // Nothing but the story meal has seeded numbers, so breakfast's values stay missing rather than zero.
+        let isStoryMeal = meal == state.mealStatus.meal.id
         return Headcount(
             mealID: meal,
-            liveForecast: .ready(diners: DemoSeed.forecastDiners, setAt: DemoSeed.forecastSetAt),
+            liveForecast: isStoryMeal ? .ready(diners: DemoSeed.forecastDiners, setAt: DemoSeed.forecastSetAt) : .notReady,
+            // No document gives a cutoff forecast, so it stays missing (docs/OPEN_DECISIONS.md, P-STORY-3).
             cutoffForecast: .notReady,
-            approved: .approved(ApprovedHeadcount(count: DemoSeed.approvedHeadcount, approvedBy: .admin,
-                                                  approvedAt: DemoSeed.headcountPublishedAt, adjustments: [])),
-            sentToVendor: .sent(SentHeadcount(count: DemoSeed.sentHeadcount, sentBy: .admin,
-                                              sentAt: DemoSeed.headcountPublishedAt)),
+            approved: isStoryMeal ? state.headcountApproval : .notApproved,
+            sentToVendor: isStoryMeal ? state.headcountPublication : .notSent,
             actualEntries: try await liveCount(for: meal),
             finalEntries: try await finalCount(for: meal),
-            acknowledgment: state.headcountAcknowledgment
+            acknowledgment: isStoryMeal ? state.headcountAcknowledgment : nil
         )
+    }
+
+    func approveHeadcount(_ count: Int, reason: String?, for meal: MealID, by role: Role) async throws -> Headcount {
+        try failIfOffline()
+        try requireKnownMeal(meal)
+        guard role == .admin else { throw RepositoryError.notAllowed(reason: "Only the Food Head approves the headcount.") }
+        guard count > 0 else { throw RepositoryError.validationFailed(["Enter a headcount above zero."]) }
+        guard case .notSent = state.headcountPublication else {
+            throw RepositoryError.notAllowed(reason: "This headcount has already been sent to the vendor.")
+        }
+        if state.headcountApproval.count == count { return try await headcount(for: meal) }
+
+        let from = state.headcountApproval.count ?? DemoSeed.forecastDiners
+        let trimmedReason = reason?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if count != from && trimmedReason.isEmpty {
+            throw RepositoryError.validationFailed(["Give a reason for changing the headcount."])
+        }
+        // The story moves on here: the Food Head works after the answers have closed.
+        clock.advance(to: IntentionPolicy.cutoff(for: state.mealStatus.meal).addingTimeInterval(DemoSeed.approvalAfterCutoff))
+        var adjustments: [HeadcountAdjustment] = []
+        if case .approved(let earlier) = state.headcountApproval { adjustments = earlier.adjustments }
+        if count != from {
+            adjustments.append(HeadcountAdjustment(from: from, to: count, reason: trimmedReason, adjustedBy: role, adjustedAt: clock.now()))
+        }
+        state.headcountApproval = .approved(ApprovedHeadcount(count: count, approvedBy: role, approvedAt: clock.now(),
+                                                              adjustments: adjustments))
+        return try await headcount(for: meal)
+    }
+
+    func publishHeadcount(for meal: MealID, by role: Role) async throws -> Headcount {
+        try failIfOffline()
+        try requireKnownMeal(meal)
+        guard role == .admin else { throw RepositoryError.notAllowed(reason: "Only the Food Head sends the headcount.") }
+        guard let count = state.headcountApproval.count else {
+            throw RepositoryError.notAllowed(reason: "Approve the headcount before sending it.")
+        }
+        if case .notSent = state.headcountPublication {
+            state.headcountPublication = .sent(SentHeadcount(count: count, sentBy: role, sentAt: clock.now()))
+        }
+        return try await headcount(for: meal)
     }
 
     func acknowledgeHeadcount(for meal: MealID, by account: AccountID) async throws -> Headcount {
@@ -268,16 +354,43 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
 
     func liveCount(for meal: MealID) async throws -> CountReading {
         try failIfOffline()
-        try requireKnownMeal(meal)
-        guard state.mealStatus.state == .inService else { return .unavailable }
-        return .available(currentLiveCount, asOf: state.entries.isEmpty ? state.liveAsOf : clock.now())
+        try requireDayMeal(meal)
+        guard meal == state.mealStatus.meal.id, state.mealStatus.state == .inService else { return .unavailable }
+        let asOf = state.entries.isEmpty && !state.countsRecordedEntriesOnly ? state.liveAsOf : clock.now()
+        return .available(currentLiveCount, asOf: asOf)
     }
 
     func finalCount(for meal: MealID) async throws -> CountReading {
         try failIfOffline()
-        try requireKnownMeal(meal)
-        guard state.mealStatus.state == .closed, let closedAt = state.mealStatus.closedAt else { return .unavailable }
-        return .available(DemoSeed.finalEntries, asOf: closedAt)
+        try requireDayMeal(meal)
+        guard meal == state.mealStatus.meal.id, state.mealStatus.state == .closed,
+              let closedAt = state.mealStatus.closedAt else { return .unavailable }
+        return .available(state.countsRecordedEntriesOnly ? currentLiveCount : DemoSeed.finalEntries, asOf: closedAt)
+    }
+
+    func entryCode(for student: StudentID) async throws -> EntryCode {
+        // Deliberately no offline or cutoff check: the entry QR is never locked.
+        guard let sample = DemoSeed.sampleStudents.first(where: { $0.ref.id == student }) else {
+            throw RepositoryError.notFound
+        }
+        return sample.entryCode
+    }
+
+    func resolveEntry(_ credential: EntryCredential, for meal: MealID) async throws -> EntryCredentialResult {
+        // An offline scan cannot be verified, so it is an error and never a result.
+        try failIfOffline()
+        try requireDayMeal(meal)
+        let match = DemoSeed.sampleStudents.first { sample in
+            switch credential {
+            case .qrPayload(let payload): return sample.entryCode.payload == payload
+            case .lastFour(let digits): return sample.entryCode.lastFour == digits
+            }
+        }
+        guard let match else { return .notRecognised }
+        // One static code per student, so "wrong meal" here means this is not the meal being served.
+        let serving = dayMeals.first { $0.state == .inService }?.meal
+        guard serving?.id == meal else { return .wrongMeal(servingNow: serving?.slot) }
+        return .student(match.ref)
     }
 
     func enteredWithoutVoting(for meal: MealID) async throws -> [EnteredWithoutVoting] {
@@ -290,19 +403,36 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
 
     func response(of student: StudentID, for meal: MealID) async throws -> IntentionResponse {
         try failIfOffline()
-        try requireKnownMeal(meal)
+        try requireDayMeal(meal)
         return state.intentions[DemoState.IntentionKey(student: student, meal: meal)] ?? .noResponse
     }
 
     func setIntention(_ intention: MealIntention, of student: StudentID, for meal: MealID) async throws -> IntentionResponse {
         try failIfOffline()
-        try requireKnownMeal(meal)
-        guard IntentionPolicy.canAnswer(state.mealStatus.meal, at: clock.now()) else {
+        try requireDayMeal(meal)
+        guard let status = dayMeals.first(where: { $0.meal.id == meal }),
+              IntentionPolicy.canAnswer(status.meal, at: clock.now()) else {
             throw RepositoryError.notAllowed(reason: "The cutoff has passed.")
         }
+        let key = DemoState.IntentionKey(student: student, meal: meal)
+        if case .answered(intention, _)? = state.intentions[key], let existing = state.intentions[key] {
+            return existing
+        }
         let response = IntentionResponse.answered(intention, at: clock.now())
-        state.intentions[DemoState.IntentionKey(student: student, meal: meal)] = response
+        state.intentions[key] = response
         return response
+    }
+
+    /// Counted over the sample roster only, so these are small labelled numbers and not the forecast.
+    func answerCounts(for meal: MealID) async throws -> MealAnswerCounts {
+        try failIfOffline()
+        try requireDayMeal(meal)
+        let answers = DemoSeed.sampleStudents.map { state.intentions[DemoState.IntentionKey(student: $0.ref.id, meal: meal)] ?? .noResponse }
+        func count(_ intention: MealIntention) -> Int {
+            answers.filter { if case .answered(intention, _) = $0 { return true } else { return false } }.count
+        }
+        return MealAnswerCounts(attending: count(.attending), skipping: count(.skipping), notSure: count(.notSure),
+                                noResponse: answers.filter { $0 == .noResponse }.count)
     }
 
     // MARK: ShortageRepository
@@ -444,7 +574,8 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
             ? StaffSession(role: account.role, mess: DemoSeed.mess, staffInitials: DemoSeed.staffInitials(for: account.role),
                            supervisorName: DemoSeed.supervisorName)
             : nil
-        return Session(account: account, staff: staff)
+        let student = account.role == .student ? StudentContext(student: DemoSeed.sampleStudent, mess: DemoSeed.mess) : nil
+        return Session(account: account, staff: staff, student: student)
     }
 
     #if DEMO_DATA
@@ -474,7 +605,8 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
 // Debug-only controls (SIMULATED time skip). Not compiled into the Review build.
 extension DemoDataProvider: DemoControlling {
     nonisolated var scenarioOptions: [DemoScenarioOption] {
-        DemoScenario.allCases.map { DemoScenarioOption(id: $0.rawValue, title: $0.title) }
+        // The menu keeps its seven moments; the story start is the Review build's own.
+        DemoScenario.allCases.filter { $0 != .storyStart }.map { DemoScenarioOption(id: $0.rawValue, title: $0.title) }
     }
 
     func selectScenario(id: String) async {

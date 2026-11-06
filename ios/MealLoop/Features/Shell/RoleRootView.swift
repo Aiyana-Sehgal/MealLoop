@@ -1,15 +1,23 @@
 import SwiftUI
 
-/// Shows the signed-in account's root. `RoleRoot.destination(for:)` is the only thing that chooses it.
+/// Maps a role to its root and nothing else. Each root lives in its role's feature folder and is replaced there,
+/// so Parts 3 to 6 never edit this file. `RoleRoot.destination(for:)` is the only thing that chooses.
 struct RoleRootView: View {
     let session: Session
 
     var body: some View {
-        let root = RoleRoot.destination(for: session.account.role)
-        if root.usesStaffTabs, let staff = session.staff {
-            StaffTabsView(session: staff)
-        } else {
-            PlaceholderRootView(root: root, role: session.account.role)
+        switch RoleRoot.destination(for: session.account.role) {
+        case .student: StudentRootView(session: session)
+        case .superAdmin: SuperAdminRootView(session: session)
+        case .admin: AdminRootView(session: session)
+        case .supervisor: SupervisorRootView(session: session)
+        case .kitchen: KitchenRootView(session: session)
+        case .doorScanner: DoorScannerRootView(session: session)
+        case .passDesk: PassDeskRootView(session: session)
+        case .vendor: VendorRootView(session: session)
+        case .guardian: GuardianRootView(session: session)
+        case .warden: WardenRootView(session: session)
+        case .gate: GateRootView(session: session)
         }
     }
 }
@@ -35,7 +43,6 @@ struct PlaceholderRootView: View {
                 SearchPlaceholderView(prompt: root.searchPrompt)
             } else {
                 NotImplementedView(title: selectedTab.isEmpty ? MLFormat.roleName(role) : selectedTab,
-                                   detail: "\(MLFormat.roleName(role)) screens are not built yet.",
                                    actionTitle: "Sign out") {
                     router.reset()
                     sessionStore.signOut()
@@ -67,7 +74,7 @@ struct PlaceholderRootView: View {
 }
 
 /// Where Search lands. The designs (student S1 to S5, Admin AD-8c) need recent searches and results that no
-/// repository provides yet, so this shows the title and field and says search is not built.
+/// repository provides yet, so this shows the title and field and says it is coming.
 /// It never accepts a query it could not answer.
 struct SearchPlaceholderView: View {
     let prompt: String
@@ -91,7 +98,7 @@ struct SearchPlaceholderView: View {
                 .background(Capsule().fill(MLColor.track))
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Search field, not available yet")
-                Text("Search is not built yet.")
+                Text("Coming soon")
                     .font(MLType.body)
                     .foregroundStyle(MLColor.inkSecondary)
                 Spacer()

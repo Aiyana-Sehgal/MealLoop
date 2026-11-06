@@ -80,7 +80,7 @@ final class AppEnvironment {
     #endif
 
     #if REVIEW_DATA
-    static func makeReview(scenario: DemoScenario = .duringMeal) -> AppEnvironment {
+    static func makeReview(scenario: DemoScenario = .storyStart) -> AppEnvironment {
         let provider = DemoDataProvider(scenario: scenario)
         return AppEnvironment(kind: .review, repositories: provider.makeRepositories(), clock: provider.clock,
                               demoControls: nil)

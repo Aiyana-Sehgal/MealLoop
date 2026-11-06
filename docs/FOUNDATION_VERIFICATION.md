@@ -264,3 +264,21 @@ Screenshots are in [`docs/verification/entry-fix/`](verification/entry-fix/).
 
 Simulators that ran the earlier build keep an unused `recentAccounts.v1` value holding seeded `.example` details. The app no longer reads it, and deleting the app clears it.
 
+## Core-story contracts (2026-11-06)
+
+On `feat/ios-core-story-contracts`. Xcode 27.2, iPhone 18 Pro simulator, iOS 27.2. Test counts are from `.xcresult`.
+
+| Check | Result |
+|---|---|
+| Debug | 128 passed, 0 failed, 0 skipped |
+| Review | 127 passed, 0 failed, 0 skipped |
+| Release | `** BUILD SUCCEEDED **` |
+| Review walk-through | Temporary XCUITest in a scratch copy, from a clean install: all 11 roles and every tab showed none of "not implemented", "demo", "simulated", "choose your role", "continue as" or "not built" |
+| Binary scan | Review and Release have no "Not implemented", badge, moment titles or role picker. Release has no seed. An older build that contains the text was used to prove the scan can find it |
+
+Reachable placeholders: 32 of 33 destinations. Only Kitchen Home is built. `PlaceholderMetricTests` prints the count per role.
+
+`testTheWholeStoryRunsInOrderOnOneDataSource` runs every story step in order through the repositories, not through screens, because the screens are later parts.
+
+Not run: a physical device and an iOS 17 runtime.
+

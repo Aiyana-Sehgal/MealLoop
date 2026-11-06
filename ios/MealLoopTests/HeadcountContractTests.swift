@@ -79,15 +79,95 @@ final class SeededHeadcountTests: XCTestCase {
         XCTAssertEqual(headcount.cutoffForecast, .notReady)
     }
 
-    func testSeededHeadcountIsPublishedAndPending() async throws {
+    private func publishedProvider() async throws -> DemoDataProvider {
+        let demo = DemoDataProvider()
+        _ = try await demo.approveHeadcount(DemoSeed.forecastDiners, reason: nil, for: meal, by: .admin)
+        _ = try await demo.publishHeadcount(for: meal, by: .admin)
+        return demo
+    }
+
+    func testSeededHeadcountStartsNotApproved() async throws {
         let headcount = try await DemoDataProvider().headcount(for: meal)
-        XCTAssertEqual(headcount.approved.count, DemoSeed.approvedHeadcount)
-        XCTAssertEqual(headcount.sentToVendor.count, DemoSeed.sentHeadcount)
-        XCTAssertEqual(headcount.vendorAcknowledgmentStatus, .pending(publishedAt: DemoSeed.headcountPublishedAt))
+        XCTAssertEqual(headcount.approved, .notApproved)
+        XCTAssertEqual(headcount.sentToVendor, .notSent)
+        XCTAssertEqual(headcount.vendorAcknowledgmentStatus, .notPublished)
+    }
+
+    func testAPublishedHeadcountIsPendingUntilTheVendorActs() async throws {
+        let demo = try await publishedProvider()
+        let headcount = try await demo.headcount(for: meal)
+        XCTAssertEqual(headcount.approved.count, DemoSeed.forecastDiners)
+        XCTAssertEqual(headcount.sentToVendor.count, DemoSeed.forecastDiners)
+        guard case .pending = headcount.vendorAcknowledgmentStatus else {
+            return XCTFail("Expected pending, got \(headcount.vendorAcknowledgmentStatus)")
+        }
+    }
+
+    func testOnlyTheFoodHeadApprovesAndPublishes() async throws {
+        for role in Role.allCases where role != .admin {
+            let demo = DemoDataProvider()
+            do {
+                _ = try await demo.approveHeadcount(DemoSeed.forecastDiners, reason: nil, for: meal, by: role)
+                XCTFail("\(role) must not approve")
+            } catch {
+                guard case .notAllowed? = error as? RepositoryError else { return XCTFail("\(error)") }
+            }
+        }
+        let demo = DemoDataProvider()
+        _ = try await demo.approveHeadcount(DemoSeed.forecastDiners, reason: nil, for: meal, by: .admin)
+        do {
+            _ = try await demo.publishHeadcount(for: meal, by: .supervisor)
+            XCTFail("The Supervisor must not publish")
+        } catch {
+            guard case .notAllowed? = error as? RepositoryError else { return XCTFail("\(error)") }
+        }
+    }
+
+    func testPublishingNeedsAnApproval() async {
+        do {
+            _ = try await DemoDataProvider().publishHeadcount(for: meal, by: .admin)
+            XCTFail("Nothing is approved yet")
+        } catch {
+            guard case .notAllowed? = error as? RepositoryError else { return XCTFail("\(error)") }
+        }
+    }
+
+    func testChangingTheCountNeedsAReasonAndIsRecorded() async throws {
+        let demo = DemoDataProvider()
+        let changed = DemoSeed.forecastDiners + 10
+        do {
+            _ = try await demo.approveHeadcount(changed, reason: "  ", for: meal, by: .admin)
+            XCTFail("A change needs a reason")
+        } catch {
+            guard case .validationFailed? = error as? RepositoryError else { return XCTFail("\(error)") }
+        }
+        let headcount = try await demo.approveHeadcount(changed, reason: "Staff event", for: meal, by: .admin)
+        guard case .approved(let approved) = headcount.approved else { return XCTFail("Expected approved") }
+        XCTAssertEqual(approved.adjustments.map(\.from), [DemoSeed.forecastDiners])
+        XCTAssertEqual(approved.adjustments.map(\.to), [changed])
+    }
+
+    func testAHeadcountCannotChangeOnceSent() async throws {
+        let demo = try await publishedProvider()
+        do {
+            _ = try await demo.approveHeadcount(DemoSeed.forecastDiners + 1, reason: "Late", for: meal, by: .admin)
+            XCTFail("The sent headcount must not change here")
+        } catch {
+            guard case .notAllowed? = error as? RepositoryError else { return XCTFail("\(error)") }
+        }
+    }
+
+    func testAnUnpublishedHeadcountCannotBeAcknowledged() async throws {
+        do {
+            _ = try await DemoDataProvider().acknowledgeHeadcount(for: meal, by: try account(.vendor))
+            XCTFail("Nothing has been sent")
+        } catch {
+            guard case .notAllowed? = error as? RepositoryError else { return XCTFail("\(error)") }
+        }
     }
 
     func testTheVendorAcknowledgmentRecordsActorAndTime() async throws {
-        let demo = DemoDataProvider()
+        let demo = try await publishedProvider()
         let vendor = try account(.vendor)
         let headcount = try await demo.acknowledgeHeadcount(for: meal, by: vendor)
         XCTAssertEqual(headcount.vendorAcknowledgmentStatus,
@@ -95,7 +175,7 @@ final class SeededHeadcountTests: XCTestCase {
     }
 
     func testARepeatKeepsTheFirstAcknowledgment() async throws {
-        let demo = DemoDataProvider()
+        let demo = try await publishedProvider()
         let vendor = try account(.vendor)
         let first = try await demo.acknowledgeHeadcount(for: meal, by: vendor).acknowledgment
         demo.clock.set(demo.clock.now().addingTimeInterval(60))
@@ -105,7 +185,7 @@ final class SeededHeadcountTests: XCTestCase {
 
     func testNoOtherRoleCanAcknowledge() async throws {
         for role in Role.allCases where role != .vendor {
-            let demo = DemoDataProvider()
+            let demo = try await publishedProvider()
             do {
                 _ = try await demo.acknowledgeHeadcount(for: meal, by: try account(role))
                 XCTFail("\(role) must not acknowledge")

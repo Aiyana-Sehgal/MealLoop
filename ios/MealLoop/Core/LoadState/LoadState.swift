@@ -3,7 +3,7 @@ import Foundation
 /// Why a load failed, in words a screen can show.
 struct LoadFailure: Error, Equatable, Sendable {
     let message: String
-    /// True when the data source has no implementation yet (labelled "Not implemented", not "Error").
+    /// True when the data source has no implementation yet (labelled "Coming soon", not "Error").
     let isNotImplemented: Bool
 
     init(message: String, isNotImplemented: Bool = false) {
@@ -14,7 +14,7 @@ struct LoadFailure: Error, Equatable, Sendable {
     init(_ error: Error) {
         switch error {
         case RepositoryError.notImplemented(let feature):
-            self.init(message: "Not implemented: \(feature).", isNotImplemented: true)
+            self.init(message: "\(feature) isn't available yet", isNotImplemented: true)
         case RepositoryError.notAllowed(let reason):
             self.init(message: reason)
         case RepositoryError.notFound:
