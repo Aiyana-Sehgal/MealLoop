@@ -2,7 +2,7 @@
 
 SwiftUI app, minimum iOS 17, one app target (`MealLoop`) and one unit-test target (`MealLoopTests`), shared scheme `MealLoop`. Structure and rules: [`docs/REPOSITORY_STRUCTURE.md`](../docs/REPOSITORY_STRUCTURE.md).
 
-> **Verified on 2026-11-06:** Debug, Review and Release build. 85 unit tests pass in Debug and 84 in Review (Xcode 27.2, iPhone 18 Pro simulator, iOS 27.2). All 11 roles sign in and land in their own area. Only Kitchen Home is a built role screen; its visual match is partial. Evidence: [`docs/FOUNDATION_VERIFICATION.md`](../docs/FOUNDATION_VERIFICATION.md).
+> **Verified on 2026-11-06:** Debug, Review and Release build. 131 unit tests pass in Debug and 130 in Review (Xcode 27.2, iPhone 18 Pro simulator, iOS 27.2). All 11 roles sign in and land in their own area. Only Kitchen Home is a built role screen; its visual match is partial. Evidence: [`docs/FOUNDATION_VERIFICATION.md`](../docs/FOUNDATION_VERIFICATION.md).
 
 ## Start here
 
@@ -56,7 +56,7 @@ xcodebuild -project ios/MealLoop.xcodeproj -scheme MealLoop \
 |---|---|---|---|---|
 | Debug | `MealLoop` | Seeded provider, with the **Demo data** badge and moment menu | `DEBUG DEMO_DATA` | Development and unit tests |
 | Review | `MealLoop Review` | The same seeded provider, with no badge, no menu and no demo wording | `REVIEW_DATA REVIEW_CONFIGURATION` | The external review |
-| Release | `MealLoop` with `-configuration Release` | `RemoteAPI` (throws Not implemented until the backend exists), so nobody can sign in | none | Pilot and production builds |
+| Release | `MealLoop` with `-configuration Release` | `RemoteAPI` (every call fails until the backend exists, and sign-in shows "Remote sign in isn't available yet"), so nobody can sign in | none | Pilot and production builds |
 
 `App/AppEnvironment.swift` stops the build if `DEMO_DATA` appears without `DEBUG`, if `REVIEW_DATA` appears without `REVIEW_CONFIGURATION`, or if the two are combined. `BuildConfigurationTests` checks the flags in the project file, including that Release has none.
 

@@ -24,4 +24,6 @@ The one prototype password is `DemoSeed.prototypePassword` in `ios/MealLoop/Data
 
 **Switching roles:** sign out returns to Welcome, then sign in again. The app remembers nothing about an account, so every switch means typing the email and password.
 
-**Kitchen Home in Review** always opens at the "during the meal" moment. The moment menu exists only in Debug.
+**Kitchen Home in Review** opens before the meal at 7:00 AM, showing the forecast. It then follows the story: the Food Head's approval moves time past the cutoff, and the Supervisor's start and close move it to 12:00 and 2:00 PM. Relaunching resets it to 7:00 AM. The moment menu exists only in Debug.
+
+**Live count in Review** starts at 0 and counts only recorded entries. To raise it, type the last four digits of a sample student at the door: 0238, 0412, 0377 or 0190.
