@@ -15,6 +15,11 @@ struct AdminContext: Equatable, Sendable {
     }
 }
 
+extension Account {
+    /// "Devi Raman" gives "Devi", as the packs write the Food Head.
+    var firstName: String { displayName.split(separator: " ").first.map(String.init) ?? displayName }
+}
+
 /// TEMPORARY. `Session` gives an admin a `MessID` only, and no repository returns a `Mess`, so the name and the
 /// time zone have no other source. This is the one place that reads them, and it goes when the shared-file owner
 /// adds a source (docs/verification/admin-today/REPORT.md, "Shared changes needed"). A build without seeded data
