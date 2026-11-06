@@ -21,8 +21,21 @@ struct Account: Codable, Sendable, Hashable, Identifiable {
     let scope: AccountScope
 }
 
-/// The signed-in account. `staff` is set only for the four mess staff roles.
+/// Who a signed-in student is, and the mess they eat at.
+struct StudentContext: Sendable, Hashable {
+    let student: StudentRef
+    let mess: Mess
+}
+
+/// The signed-in account. `staff` is set only for the four mess staff roles, `student` only for students.
 struct Session: Sendable, Hashable {
     let account: Account
     let staff: StaffSession?
+    let student: StudentContext?
+
+    init(account: Account, staff: StaffSession?, student: StudentContext? = nil) {
+        self.account = account
+        self.staff = staff
+        self.student = student
+    }
 }
