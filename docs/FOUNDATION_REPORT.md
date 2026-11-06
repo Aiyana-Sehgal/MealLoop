@@ -2,15 +2,11 @@
 
 Branch `feature/swiftui-foundation`, created from `claude/mealloop-ios-design-e9n1n5` at `85cedc4`. Written on 2026-10-23.
 
-## The most important limitation
+## Current status
 
-**Nothing in `ios/` has been compiled, tested or run.** This work was done in a Linux container with no macOS, no Xcode and no simulator. The Swift toolchain download (`download.swift.org`) is blocked by the environment's network policy, and apt has no Swift package. No build is claimed anywhere.
+**The foundation was built, tested and run on a Mac on 2026-11-06.** Debug and Release build, and all 40 unit tests pass, with no code change needed. Commands, results, screenshots and the visual differences are in [`FOUNDATION_VERIFICATION.md`](FOUNDATION_VERIFICATION.md).
 
-Before anyone builds features on this foundation, someone with a Mac must:
-
-1. Run the build and tests (commands in `ios/README.md`).
-2. Fix any compile errors.
-3. Paste the real output into the section "Verification still to do" below.
+This report was written before that, in a Linux container with no macOS, no Xcode and no simulator. Sections below describe the work as it stood then, unless they say otherwise.
 
 ## What was found before writing
 
@@ -148,18 +144,20 @@ none
 - Every file in `Data/Demo/` starts with `#if DEMO_DATA`. The only other file that names the demo provider is `App/AppEnvironment.swift`, and only inside `#if DEMO_DATA`.
 - The tree-sitter grammar does not type-check. Wrong argument labels, missing members, actor-isolation errors or Swift 5 vs 6 differences would not be caught. I reviewed the code by hand for these, but that is not a build.
 
-## Verification still to do (on a Mac)
+## Verification on a Mac
 
-| Check | Command | Result |
-|---|---|---|
-| Build | `xcodebuild -project ios/MealLoop.xcodeproj -scheme MealLoop -destination 'platform=iOS Simulator,name=<an installed iPhone>' build` | **Not run** |
-| Unit tests | the same command with `test` | **Not run** |
-| Simulator run and visual check against `K01`, `K02`, `K03`, `K05` | Xcode ⌘R, then switch moments with the Demo data badge | **Not run** |
-| Release build has no demo code | `xcodebuild … -configuration Release build`, then check that `DemoDataProvider` is absent | **Not run** |
+| Check | Result (2026-11-06) |
+|---|---|
+| Build | Succeeded |
+| Unit tests | 40 passed, 0 failed |
+| Simulator run and visual check against `K01`, `K02`, `K03`, `K05` | Run. Content matches; the visual match is partial |
+| Release build has no demo code | Succeeded; `DEMO_DATA` is not set in Release |
+
+Details: [`FOUNDATION_VERIFICATION.md`](FOUNDATION_VERIFICATION.md).
 
 ## Representative screen: Kitchen Home compared with the reference
 
-I compared the code with `design/reference/kitchen_2026-10/images/K01–K05` and the exports `design/audit/export_kitchen/K01, K02, K03, K05@2x.png`. **No render of the SwiftUI screen exists yet**, so this list is from reading the code against the images, not a pixel comparison.
+I compared the code with `design/reference/kitchen_2026-10/images/K01–K05` and the exports `design/audit/export_kitchen/K01, K02, K03, K05@2x.png`. This list was made by reading the code against the images, before any render existed. The comparison of the running app is in [`FOUNDATION_VERIFICATION.md`](FOUNDATION_VERIFICATION.md) and takes priority.
 
 | Area | Reference | Implementation | Difference |
 |---|---|---|---|
@@ -188,16 +186,14 @@ I compared the code with `design/reference/kitchen_2026-10/images/K01–K05` and
 
 ## Known limitations
 
-- Unbuilt, untested and unrendered: see the top of this report.
 - The intermediate commits on this branch are not meant to build on their own; only the branch tip is the intended state.
 - Staff entry screens are a navigation scaffold: their wording matches the exports, but their layout was not compared.
 - Alerts, Me, SOS, the shortage sheet, Record waste, Menu, Past meals, and every other role's screens are **Not implemented**.
-- The project file was hand-written. A pbxproj parser loads it, but Xcode has not opened it. If Xcode rejects it, create a new iOS App project with the same names in Xcode 16 and drag the folders in; the code does not depend on the project file.
+- The project file was hand-written. Xcode 27.2 builds it as committed.
 - The root `README.md` still says the repository holds no app code. This branch adds iOS code, so its status table will need an update; a separate task owns that file, and it was not edited here.
 
 ## What remains
 
-1. Verify the build and tests on a Mac and fix compile errors (first).
-2. Owner decisions in `docs/OPEN_DECISIONS.md`, especially T1 (minimum iOS), P5 (offline policy) and the scope for 10 November.
-3. Build the P0 slice from the inventory, then P1.
-4. Start the backend skeleton from `docs/backend/`.
+1. Owner decisions in `docs/OPEN_DECISIONS.md`, especially T1 (minimum iOS), P5 (offline policy) and the scope for 10 November.
+2. Build the P0 slice from the inventory, then P1.
+3. Start the backend skeleton from `docs/backend/`.
