@@ -32,3 +32,12 @@ struct SOSCase: Codable, Sendable, Hashable, Identifiable {
 
     static let closingRole: Role = .supervisor
 }
+
+/// A new SOS from the person who saw the problem. Raising it opens a case for every staff role of the mess.
+struct SOSReport: Codable, Sendable, Hashable {
+    let messID: MessID
+    let title: String
+    let place: String
+    /// The same key again returns the case already opened, so a retry never opens a second case.
+    let idempotencyKey: IdempotencyKey
+}

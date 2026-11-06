@@ -16,6 +16,8 @@ protocol MealStateRepository: Sendable {
     func meals(for mess: MessID) async throws -> [MealStatus]
     func startMeal(_ meal: MealID, by role: Role) async throws -> MealStatus
     func closeMeal(_ meal: MealID, by role: Role) async throws -> MealStatus
+    /// Closed meals of one mess, newest first, with their final entries, shortages and waste status. Read only.
+    func mealHistory(for mess: MessID) async throws -> [MealRecord]
 }
 
 /// The six headcount quantities of a meal and the vendor's acknowledgment.
@@ -72,6 +74,8 @@ protocol WasteReportRepository: Sendable {
 
 /// SOS cases. Staff claim and check; only the Supervisor closes.
 protocol SOSRepository: Sendable {
+    /// Opens a case for the mess. A repeat with the same idempotency key returns the case already opened.
+    func raise(_ report: SOSReport) async throws -> SOSCase
     func activeCases(for mess: MessID) async throws -> [SOSCase]
     func claim(_ sos: SOSCaseID, by role: Role) async throws -> SOSCase
     func markChecked(_ sos: SOSCaseID, by role: Role) async throws -> SOSCase
