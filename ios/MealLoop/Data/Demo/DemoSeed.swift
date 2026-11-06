@@ -29,16 +29,24 @@ enum DemoSeed {
         Dish(id: DishID("garlic-rasam"), name: "Garlic Rasam", isHighlight: false, diet: .veg, wasteUnit: .litres),
     ]
 
+    // 03_home: "Serving 7:30–9:30 AM".
+    static let breakfast = Meal(
+        id: MealID("demo-2024-08-14-breakfast"),
+        messID: mess.id,
+        slot: .breakfast,
+        startsAt: time(7, 30),
+        endsAt: time(9, 30)
+    )
+
+    // 03_home is drawn at 7:00 AM. The Review build starts here, with the lunch answer window open.
+    static let storyStartNow = time(7, 0)
+    // Owner decision: approving the headcount moves the story to just after the lunch cutoff.
+    static let approvalAfterCutoff: TimeInterval = 5 * 60
+
     // kitchen_spec.md: "Forecasted attendance 860. Entries 714 at 1:40 PM; final 774."
     static let forecastDiners = 860
     // kitchen_spec.md stale state: "Updated 8:50 AM, may be out of date".
     static let forecastSetAt = time(8, 50)
-    // admin_sample_data.md: "Main Lunch 860, Not acknowledged (state sample)". The approved and sent numbers are
-    // separate values that happen to match in the sample. No document gives a cutoff forecast, so none is seeded.
-    static let approvedHeadcount = 860
-    static let sentHeadcount = 860
-    // admin_sample_data.md gives no Main sent time; this is the sample board's only one ("No reply since 10:15").
-    static let headcountPublishedAt = time(10, 15)
     static let liveEntries = 714
     static let liveEntriesAt = time(13, 40)
     // kitchen_spec.md stale state: "Updated 1:12 PM · reconnecting".
@@ -76,6 +84,32 @@ enum DemoSeed {
 
     // STATE.md: "Aarav ••0238".
     static let sampleStudent = StudentRef(id: StudentID("demo-student-0238"), maskedID: "••0238")
+
+    /// SAMPLE, NOT MEASURED. A small labelled roster so the answer counts and the door have someone to work with.
+    /// Names and IDs come from the design documents; the answers are made up (docs/OPEN_DECISIONS.md, P-STORY-2).
+    /// The student account starts with no lunch answer.
+    struct SampleStudent: Sendable {
+        let name: String
+        let ref: StudentRef
+        let lunchAnswer: MealIntention?
+        /// A placeholder code: opaque, static and valid only in this prototype.
+        var entryCode: EntryCode {
+            let lastFour = String(ref.maskedID.suffix(4))
+            return EntryCode(payload: "demo-entry-\(lastFour)", lastFour: lastFour)
+        }
+    }
+
+    static let sampleStudents: [SampleStudent] = [
+        SampleStudent(name: "Aarav", ref: sampleStudent, lunchAnswer: nil),
+        SampleStudent(name: "Meera", ref: StudentRef(id: StudentID("demo-student-0412"), maskedID: "••0412"), lunchAnswer: .attending),
+        SampleStudent(name: "Kiran", ref: StudentRef(id: StudentID("demo-student-0377"), maskedID: "••0377"), lunchAnswer: .skipping),
+        SampleStudent(name: "Dev", ref: StudentRef(id: StudentID("demo-student-0190"), maskedID: "••0190"), lunchAnswer: .notSure),
+    ]
+
+    // Before the breakfast cutoff (5:30 AM), so 03_home's "You're in for breakfast" is true. Owner decision.
+    static let sampleBreakfastAnswer = IntentionResponse.answered(.attending, at: time(5, 0))
+    // Before the story starts, so the sample answers already exist at 7:00 AM.
+    static let sampleLunchAnswersAt = time(6, 30)
 
     #if DEMO_DATA
     /// NOT FROM THE DESIGN. The design documents no password value; this placeholder exists only so the

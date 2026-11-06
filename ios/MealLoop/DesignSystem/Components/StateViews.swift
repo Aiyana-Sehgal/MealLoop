@@ -34,14 +34,14 @@ struct EmptyStateView: View {
     }
 }
 
-/// Inline error card with "Try again". "Not implemented" failures say so instead of pretending to be errors.
+/// Inline error card with "Try again". A feature with no data source says so instead of pretending to be an error.
 struct ErrorRetryView: View {
     let failure: LoadFailure
     let retry: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: MLSpacing.s12) {
-            Text(failure.isNotImplemented ? "Not implemented" : "Couldn't load")
+            Text(failure.isNotImplemented ? "Coming soon" : "Couldn't load")
                 .font(MLType.staffPrimary)
                 .foregroundStyle(MLColor.ink)
             Text(failure.message)
@@ -96,7 +96,7 @@ struct StaleNote: View {
 /// Shown wherever a screen or action is not built yet. Never imitates working functionality.
 struct NotImplementedView: View {
     let title: String
-    var detail: String = "This screen is not implemented yet."
+    var detail: String?
     var actionTitle: String?
     var action: (() -> Void)?
 
@@ -107,12 +107,14 @@ struct NotImplementedView: View {
                 Text(title)
                     .font(MLType.largeTitle)
                     .foregroundStyle(MLColor.ink)
-                Text("Not implemented")
+                Text("Coming soon")
                     .font(MLType.staffPrimary)
                     .foregroundStyle(MLColor.ink)
-                Text(detail)
-                    .font(MLType.body)
-                    .foregroundStyle(MLColor.inkSecondary)
+                if let detail {
+                    Text(detail)
+                        .font(MLType.body)
+                        .foregroundStyle(MLColor.inkSecondary)
+                }
                 if let actionTitle, let action {
                     InkActionButton(title: actionTitle, action: action)
                         .padding(.top, MLSpacing.s12)

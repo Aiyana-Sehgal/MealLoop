@@ -30,6 +30,27 @@ struct EntryRequest: Codable, Sendable, Hashable {
     let idempotencyKey: IdempotencyKey
 }
 
+/// A student's entry code: what the QR carries, and the last four digits for typing it in.
+/// It is never gated by the meal answer or the cutoff.
+struct EntryCode: Codable, Sendable, Hashable {
+    let payload: String
+    let lastFour: String
+}
+
+/// What the Door Scanner read.
+enum EntryCredential: Sendable, Hashable {
+    case qrPayload(String)
+    case lastFour(String)
+}
+
+/// What a credential turned out to be. Only `.student` may go on to `recordEntry`.
+enum EntryCredentialResult: Sendable, Hashable {
+    case student(StudentRef)
+    case notRecognised
+    /// The code is real but this is not the meal being served. `servingNow` is nil when no meal is.
+    case wrongMeal(servingNow: MealSlot?)
+}
+
 /// The outcome of a scan. There is no decline step and no supervisor approval.
 /// An offline or unverifiable scan is an error (`RepositoryError.offline`), never a result.
 enum EntryResult: Codable, Sendable, Hashable {

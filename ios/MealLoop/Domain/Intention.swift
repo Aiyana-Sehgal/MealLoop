@@ -14,6 +14,14 @@ enum IntentionResponse: Codable, Sendable, Hashable {
     case noResponse
 }
 
+/// How many students gave each answer. These are counts only; a forecast is never derived from them here.
+struct MealAnswerCounts: Codable, Sendable, Hashable {
+    let attending: Int
+    let skipping: Int
+    let notSure: Int
+    let noResponse: Int
+}
+
 enum IntentionPolicy {
     /// Planning cutoff: two hours before the meal starts (owner decision).
     static let cutoffBeforeMeal: TimeInterval = 2 * 60 * 60

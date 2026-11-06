@@ -55,3 +55,19 @@ Raised while building the launch-ready entry. Each entry records what the protot
 | P-ENTRY-5 | What tabs do Gate Security, Vendor and Super Admin have? | No design documents them. They use Home and Me as placeholders |
 | P-ENTRY-6 | Which mess or hostel scope does Super Admin have? | The seed gives it the sample mess, because the account model allows only a mess or a hostel |
 
+## Core story (2026-11-06)
+
+Proposals from the core-story contracts work. Each records what the prototype does today, not a decision.
+
+| ID | Question | What the prototype does now |
+|---|---|---|
+| P-STORY-1 | Should a student's answer move the forecast? | No. The forecast is the seeded 860, and only the counts of each answer are derived. No formula has been approved |
+| P-STORY-2 | Sample answers | **Sample, not measured.** Meera, Kiran and Dev are names from the design documents; their lunch answers are made up so counts are not empty. The counts cover this roster of four, not the 860 forecast |
+| P-STORY-3 | What is the cutoff forecast in Review? | It stays missing, because no document gives a value. Proposal: keep it missing until the owner supplies one |
+| P-STORY-4 | What does "wrong meal" mean with one static code per student? | The Door spec means a QR for another meal. With a static code, the prototype reports a wrong meal when the meal asked for is not the one being served |
+| P-STORY-5 | Should the live count start from a sample base? | **Decided by the owner (2026-11-06): no.** In Review it starts at 0 when the Supervisor starts the meal, and each recorded entry raises it |
+| P-STORY-6 | Entry QR refresh | Known difference from `08_entry_qr`: the code is static, and "Refreshes in 12 s" is not built |
+| P-STORY-7 | The sample student and the pilot mess | The pilot is Meenakshi Girls' Mess, but the sample student is Aarav and `W01` says "Aarav and his guardian". The seed mess is "Main Mess". Nothing was renamed |
+| P-STORY-8 | How much of breakfast is seeded? | Times and the student's answer only. It follows the clock, the Supervisor does not run it, and its menu is empty and its headcount values are missing. Proposal: Part 3b seeds the menu from `mess_menu_2024-08-12.md` |
+| P-STORY-9 | Lunch cutoff wording | `03_home` and `07_lunch_answer` say 9 AM, but the two-hour rule gives 10:00 AM, which is what the backend enforces |
+| P-STORY-10 | Who can save a waste report? | **Decided by the owner (2026-11-06): Kitchen Staff only.** `save` and `saveDraft` take a role and refuse every other role, so Supervisor and Admin can only read |

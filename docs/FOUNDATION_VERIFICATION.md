@@ -264,6 +264,27 @@ Screenshots are in [`docs/verification/entry-fix/`](verification/entry-fix/).
 
 Simulators that ran the earlier build keep an unused `recentAccounts.v1` value holding seeded `.example` details. The app no longer reads it, and deleting the app clears it.
 
+## Core-story contracts (2026-11-06)
+
+On `feat/ios-core-story-contracts`. Xcode 27.2, iPhone 18 Pro simulator, iOS 27.2. Test counts are from `.xcresult`.
+
+| Check | Result |
+|---|---|
+| Debug | 128 passed, 0 failed, 0 skipped |
+| Review | 127 passed, 0 failed, 0 skipped |
+| Release | `** BUILD SUCCEEDED **` |
+| Review walk-through | Temporary XCUITest in a scratch copy, from a clean install: all 11 roles and every tab showed none of "not implemented", "demo", "simulated", "choose your role", "continue as" or "not built" |
+| Binary scan | Review and Release have no "Not implemented", badge, moment titles or role picker. Release has no seed. An older build that contains the text was used to prove the scan can find it |
+
+Reachable placeholders: 32 of 33 destinations. Only Kitchen Home is built. `PlaceholderMetricTests` prints the count per role.
+
+`testTheWholeStoryRunsInOrderOnOneDataSource` runs every story step in order through the repositories, not through screens, because the screens are later parts.
+
+Not run: a physical device and an iOS 17 runtime.
+
+## Waste role guard (2026-11-06)
+
+`save` and `saveDraft` now take a role and accept Kitchen Staff only. Debug 131 passed, Review 130 passed, 0 failed, 0 skipped (`.xcresult`); Release builds. Every other role is refused, nothing is stored, and Supervisor and Admin can still read the report.
 
 ## Shared components (2026-11-06)
 
@@ -279,7 +300,9 @@ Xcode 27.2, iPhone 17e simulator, iOS 27.2. Counts come from each `.xcresult`.
 | Review tests | 0 | 99 | 99 | 0 |
 | Release build | 0 | n/a | n/a | n/a |
 
-The 15 new tests are in `SharedComponentsTests.swift`. The earlier 85 Debug and 84 Review tests still pass. The new code has no compiler warnings.
+The 14 new tests are in `SharedComponentsTests.swift`. The earlier 86 Debug and 85 Review tests still pass. The new code has no compiler warnings.
+
+**After merging PRs #10 and #11**, from a clean build: Debug 145 passed, Review 144 passed, 0 failed, 0 skipped (the foundation's 131 and 130, plus these 14); Release builds. Gallery symbols and strings are unchanged: Debug 1632 and 15, Review and Release 0 and 0. The screenshots were taken before this merge.
 
 **Gallery absent from Review and Release:** all of it is inside `#if DEBUG`, and `testGalleryIsCompiledOnlyInDebug` checks this per configuration. A scan of each built binary agrees:
 

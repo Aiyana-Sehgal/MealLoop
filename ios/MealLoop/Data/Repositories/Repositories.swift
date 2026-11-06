@@ -12,6 +12,8 @@ protocol MealRepository: Sendable {
 protocol MealStateRepository: Sendable {
     /// The meal the mess is in or about to start, or nil when there is none today.
     func currentMeal(for mess: MessID) async throws -> MealStatus?
+    /// Every meal of the day for one mess, earliest first.
+    func meals(for mess: MessID) async throws -> [MealStatus]
     func startMeal(_ meal: MealID, by role: Role) async throws -> MealStatus
     func closeMeal(_ meal: MealID, by role: Role) async throws -> MealStatus
 }
@@ -19,6 +21,11 @@ protocol MealStateRepository: Sendable {
 /// The six headcount quantities of a meal and the vendor's acknowledgment.
 protocol HeadcountRepository: Sendable {
     func headcount(for meal: MealID) async throws -> Headcount
+    /// Food Head / Admin only. A count that differs from the forecast or an earlier approval needs a reason.
+    /// A repeat of the same count changes nothing. Refused once the headcount has been sent.
+    func approveHeadcount(_ count: Int, reason: String?, for meal: MealID, by role: Role) async throws -> Headcount
+    /// Sends the approved headcount to the vendor account. Food Head / Admin only. A repeat changes nothing.
+    func publishHeadcount(for meal: MealID, by role: Role) async throws -> Headcount
     /// Records receipt by the vendor account. Throws `notAllowed` for any other account or before publication.
     /// A repeat returns the first acknowledgment unchanged.
     func acknowledgeHeadcount(for meal: MealID, by account: AccountID) async throws -> Headcount
@@ -32,12 +39,18 @@ protocol EntryRepository: Sendable {
     /// Final entries after the meal closed, or `.unavailable` (never zero).
     func finalCount(for meal: MealID) async throws -> CountReading
     func enteredWithoutVoting(for meal: MealID) async throws -> [EnteredWithoutVoting]
+    /// Always available: never gated by the answer, the cutoff or a lost connection.
+    func entryCode(for student: StudentID) async throws -> EntryCode
+    /// Checks a scanned or typed credential. It records nothing; `recordEntry` does that.
+    func resolveEntry(_ credential: EntryCredential, for meal: MealID) async throws -> EntryCredentialResult
 }
 
 /// Student answers (I'm in / Skip / Not sure) before the cutoff.
 protocol IntentionRepository: Sendable {
     func response(of student: StudentID, for meal: MealID) async throws -> IntentionResponse
+    /// The same answer again changes nothing. Throws `notAllowed` after the meal's cutoff.
     func setIntention(_ intention: MealIntention, of student: StudentID, for meal: MealID) async throws -> IntentionResponse
+    func answerCounts(for meal: MealID) async throws -> MealAnswerCounts
 }
 
 /// Shortages reported by the kitchen or the pass desk, followed up by the Supervisor.
@@ -51,9 +64,10 @@ protocol ShortageRepository: Sendable {
 protocol WasteReportRepository: Sendable {
     func summary(for meal: MealID) async throws -> WasteReportSummary
     func report(for meal: MealID) async throws -> WasteReport
-    func saveDraft(_ report: WasteReport) async throws -> WasteReport
+    /// Kitchen Staff only; every other role reads the report. Throws `notAllowed` for any other role.
+    func saveDraft(_ report: WasteReport, by role: Role) async throws -> WasteReport
     /// Throws `validationFailed` while any field is missing or invalid.
-    func save(_ report: WasteReport) async throws -> WasteReport
+    func save(_ report: WasteReport, by role: Role) async throws -> WasteReport
 }
 
 /// SOS cases. Staff claim and check; only the Supervisor closes.
