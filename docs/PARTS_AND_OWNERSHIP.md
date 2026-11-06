@@ -38,6 +38,11 @@ Only one person edits these at a time. Everyone else asks that person for the ch
 - `ios/MealLoop/DesignSystem/Tokens/**`
 - `ios/MealLoop/App/AppEnvironment.swift`
 - `ios/MealLoop/Data/Demo/DemoSeed.swift` and `ios/MealLoop/Data/Demo/DemoDataProvider.swift`
+- `ios/MealLoop/DesignSystem/Components/**`, listed in [`COMPONENT_CATALOG.md`](COMPONENT_CATALOG.md)
+- `ios/MealLoop/DesignSystem/Gallery/**`
+- `docs/COMPONENT_CATALOG.md`
+
+**Adding or changing a shared component goes through the shared-file owner.** Check the catalog first. If nothing fits, send the owner the reference image and the roles that need it. A view only your role needs stays in `Features/<Role>/`.
 
 **Shared-file owner:** Unassigned. Until one is named, the repository owner holds this.
 
@@ -46,7 +51,6 @@ Only one person edits these at a time. Everyone else asks that person for the ch
 ## Safe to work on in parallel
 
 - `ios/MealLoop/Features/<Role>/` for your own role only.
-- New files in `ios/MealLoop/DesignSystem/Components/`. Changing an existing component is a shared change: check every call site first.
 - New test files in `ios/MealLoopTests/`.
 
 A part replaces its placeholder by adding a case to `Features/Shell/RoleRootView.swift` or `StaffHomeSwitch`. These are small edits, but several parts touch them, so land them one at a time.
