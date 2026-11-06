@@ -12,9 +12,9 @@ After merging the updated base (5a12c53, the Supervisor work):
 | Review, same device | 0 | 216 | 212 | 0 | 4 |
 | Release build | 0 | n/a | n/a | n/a | n/a |
 
-The 4 skipped tests arrived with the merge; they were not skipped in the run below. Before the merge, from clean builds on a4ae9c7: Debug 175 of 175, Review 174 of 174, 0 skipped, Release built. The baseline was 145 and 144, so this adds 30 tests in `AdminTodayViewModelTests.swift`. The race test was confirmed to fail with its guard removed.
+The 4 skipped tests are all in `SupervisorScreenshotTests` (`testCaptureHome`, `testCaptureAlertsShortageAndMe`, `testCaptureSOS`, `testCaptureWasteAndHistory`). They arrived with the merge and only run when their environment variable is set. Before the merge, from clean builds on a4ae9c7: Debug 175 of 175, Review 174 of 174, 0 skipped, Release built. The baseline was 145 and 144, so this adds 30 tests in `AdminTodayViewModelTests.swift`. The race test was confirmed to fail with its guard removed.
 
-The base moved during this work. The merge changed no Admin file, but `SOSRepository` gained `raise`, so the test stub was updated. **The walk and screenshots below were taken before the merge and were not repeated.**
+The base moved during this work. The merge changed no Admin file, but `SOSRepository` gained `raise`, so the test stub was updated. The walk and screenshots below were repeated on the merged code.
 
 **Simulator walk:** six walks passed on iPhone 17e (iOS 27.2, `small/`) and iPhone 18 Pro Max (iOS 27.0, `large/`), 33 screenshots each. They were driven by a temporary XCUITest target in a scratch copy, which is not in this repository. That copy also removed the system Save Password prompt, which otherwise covers the app after sign-in.
 
