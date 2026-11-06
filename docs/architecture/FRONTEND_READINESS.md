@@ -1,5 +1,7 @@
 # Frontend readiness (review draft)
 
+> **Update (6 November 2026):** This is a **historical 1 November baseline**, not current approval status. Owner-approved frontend Decisions FE-1 through FE-6 and the PostgreSQL-backed opaque bearer-token direction are now recorded in [ADR-005](../adr/ADR-005-frontend-decisions-and-authentication-revision.md). Existing code, reviewer scope, model/API signatures and Xcode verification remain uncompleted; see ADR-005 for the current pre-frontend gates.
+
 **Date:** 1 November 2026 · **Status:** PENDING REVIEW. Nothing in this document is owner-approved except where it quotes a recorded owner decision. It does not design the frontend architecture. The next activity is a separate owner-led review of that architecture.
 
 **Dates that matter.** External SwiftUI review: 11 November 2026. PRD milestone: 10 November 2026 (every approved, active screen in SwiftUI). From 2 to 10 November there are 7 weekdays.
