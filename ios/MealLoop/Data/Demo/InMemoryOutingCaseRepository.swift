@@ -405,7 +405,14 @@ actor InMemoryOutingCaseRepository: OutingCaseRepository {
             case nil: return 3
             }
         }
-        return try blockCases(warden).filter { $0.escalation(at: now) != nil }.sorted { rank($0) < rank($1) }
+        func since(_ item: OutingCase) -> Date {
+            if case .pastDeadline(let since)? = item.escalation(at: now) { return since }
+            return item.wardenDecideBy ?? .distantFuture
+        }
+        // Past deadline first (longest overdue first), then "please watch", then the calls to make.
+        return try blockCases(warden).filter { $0.escalation(at: now) != nil }.sorted {
+            rank($0) != rank($1) ? rank($0) < rank($1) : since($0) < since($1)
+        }
     }
 
     func wardenHistory(for warden: AccountID) async throws -> [WardenHistoryItem] {
