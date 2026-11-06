@@ -308,6 +308,61 @@ final class CoreStoryTests: XCTestCase {
         XCTAssertFalse(offline.payload.isEmpty)
     }
 
+    // MARK: The whole story
+
+    /// Every step of the core story, in order, on one provider: what one student does reaches every other role.
+    func testTheWholeStoryRunsInOrderOnOneDataSource() async throws {
+        let demo = story()
+        let data = demo.makeRepositories()
+        let vendor = try XCTUnwrap(DemoSeed.accounts.first { $0.role == .vendor }).email
+
+        // Sign-in, and the student answers and has the entry QR.
+        let student = try await data.auth.signInWithSRM()
+        let aaravRef = try XCTUnwrap(student.student?.student)
+        _ = try await data.intentions.setIntention(.attending, of: aaravRef.id, for: lunch.id)
+        let code = try await data.entries.entryCode(for: aaravRef.id)
+
+        // The Food Head approves and publishes; the vendor acknowledges.
+        _ = try await data.headcount.approveHeadcount(DemoSeed.forecastDiners, reason: nil, for: lunch.id, by: .admin)
+        _ = try await data.headcount.publishHeadcount(for: lunch.id, by: .admin)
+        let vendorSession = try await data.auth.signInStaff(email: vendor, password: DemoSeed.prototypePassword)
+        let acknowledged = try await data.headcount.acknowledgeHeadcount(for: lunch.id, by: vendorSession.account.id)
+        guard case .acknowledged = acknowledged.vendorAcknowledgmentStatus else { return XCTFail("Expected acknowledged") }
+
+        // The Supervisor starts the meal; the Door Scanner verifies and records the entry.
+        _ = try await data.mealState.startMeal(lunch.id, by: .supervisor)
+        guard case .student(let scanned) = try await data.entries.resolveEntry(.qrPayload(code.payload), for: lunch.id) else {
+            return XCTFail("Expected the student")
+        }
+        _ = try await data.entries.recordEntry(EntryRequest(mealID: lunch.id, student: scanned, method: .qrScan, idempotencyKey: .make()))
+
+        // The Kitchen sees the live count and reports a shortage.
+        let live = try await data.entries.liveCount(for: lunch.id)
+        XCTAssertEqual(live.value, 1)
+        _ = try await data.shortages.reportShortage(ShortageReport(mealID: lunch.id, dishName: DemoSeed.shortageDish, level: .almostOut,
+                                                                   note: nil, reportedBy: .kitchenStaff, idempotencyKey: .make()))
+        let shortages = try await data.shortages.shortages(for: lunch.id)
+        XCTAssertEqual(shortages.map(\.dishName), [DemoSeed.shortageDish])
+
+        // The Supervisor closes the meal; the Kitchen records waste.
+        _ = try await data.mealState.closeMeal(lunch.id, by: .supervisor)
+        var report = try await data.wasteReports.report(for: lunch.id)
+        report.leftovers = report.leftovers.map { var row = $0; row.measurement = .noneLeft; return row }
+        report.plateWaste = .entered(kilograms: 1)
+        let saved = try await data.wasteReports.save(report)
+        guard case .recorded = saved.status else { return XCTFail("Expected recorded") }
+
+        // The Supervisor and Admin read the same values.
+        let summary = try await data.wasteReports.summary(for: lunch.id)
+        XCTAssertEqual(summary.status, saved.status)
+        let headcount = try await data.headcount.headcount(for: lunch.id)
+        XCTAssertEqual(headcount.finalEntries.value, 1)
+        XCTAssertEqual(headcount.approved.count, DemoSeed.forecastDiners)
+        XCTAssertEqual(headcount.sentToVendor.count, DemoSeed.forecastDiners)
+        XCTAssertEqual(headcount.actualEntries, .unavailable)
+        XCTAssertEqual(demo.clock.now(), lunch.endsAt)
+    }
+
     // MARK: Session
 
     func testAStudentSessionHasIdentityAndAMess() async throws {
