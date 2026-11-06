@@ -462,6 +462,17 @@ final class AdminTodayViewModelTests: XCTestCase {
         XCTAssertEqual(AdminCopy.initials("Devi Raman"), "DR")
         XCTAssertEqual(AdminCopy.initials("Mess food head"), "MF")
     }
+
+    func testTheGreetingUsesTheFirstNameAsOnA01() {
+        XCTAssertEqual(AdminCopy.greeting("Devi Raman"), "Hey Devi")
+        XCTAssertEqual(AdminCopy.greeting("Devi"), "Hey Devi")
+    }
+
+    func testTheSeededFoodHeadMatchesTheDesign() throws {
+        let account = try XCTUnwrap(DemoSeed.accounts.first { $0.role == .admin })
+        XCTAssertEqual(AdminCopy.greeting(account.displayName), "Hey Devi")
+        XCTAssertEqual(AdminCopy.initials(account.displayName), "DR")
+    }
 }
 
 /// Holds the next call until the test lets it go, so a slow load can be finished last on purpose.
