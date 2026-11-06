@@ -45,6 +45,11 @@ Only one person edits these at a time. Everyone else asks that person for the ch
 - `ios/MealLoop/Features/Shell/RoleRootView.swift`
 - `ios/MealLoop/Features/Staff/StaffShellViews.swift`
 - `ios/MealLoop/Data/Demo/DemoSeed.swift` and `ios/MealLoop/Data/Demo/DemoDataProvider.swift`
+- `ios/MealLoop/DesignSystem/Components/**`, listed in [`COMPONENT_CATALOG.md`](COMPONENT_CATALOG.md)
+- `ios/MealLoop/DesignSystem/Gallery/**`
+- `docs/COMPONENT_CATALOG.md`
+
+**Adding or changing a shared component goes through the shared-file owner.** Check the catalog first. If nothing fits, send the owner the reference image and the roles that need it. A view only your role needs stays in `Features/<Role>/`.
 
 **Shared-file owner:** the repository owner (VeeraaVikash), for every file above.
 
@@ -53,7 +58,6 @@ Only one person edits these at a time. Everyone else asks that person for the ch
 ## Safe to work on in parallel
 
 - `ios/MealLoop/Features/<Role>/` for your own role only.
-- New files in `ios/MealLoop/DesignSystem/Components/`. Changing an existing component is a shared change: check every call site first.
 - New test files in `ios/MealLoopTests/`.
 
 Every role has its own root file in its own folder (for example `Features/Student/StudentRootView.swift`). A part replaces its placeholder by changing the body of that file. **Parts 3 to 6 never edit `RoleRootView.swift`.** A staff role passes its Home to `StaffRootView` in its own root file.
