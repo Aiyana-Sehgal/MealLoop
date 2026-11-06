@@ -18,11 +18,13 @@ struct SupervisorWasteReportScreen: View {
 struct SupervisorWasteReportView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var model: SupervisorWasteReportViewModel
-    @State private var showsDetails = true
+    @State private var showsDetails: Bool
     let onBack: () -> Void
 
-    init(model: SupervisorWasteReportViewModel, onBack: @escaping () -> Void) {
+    /// Report details start open, as S10 draws them; S10b is the same page after a tap on "Report details".
+    init(model: SupervisorWasteReportViewModel, showsDetails: Bool = true, onBack: @escaping () -> Void) {
         _model = State(initialValue: model)
+        _showsDetails = State(initialValue: showsDetails)
         self.onBack = onBack
     }
 

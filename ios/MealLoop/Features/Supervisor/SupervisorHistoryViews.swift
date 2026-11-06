@@ -79,7 +79,7 @@ struct SupervisorHistoryView: View {
         if let value = reading.value {
             HStack(alignment: .firstTextBaseline, spacing: MLSpacing.s4) {
                 Text("\(value)").font(MLType.monoBody)
-                Text("entered").font(MLType.body)
+                Text(SupervisorCopy.enteredWord).font(MLType.body)
             }
             .foregroundStyle(MLColor.ink)
         } else {

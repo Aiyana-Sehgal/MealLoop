@@ -64,7 +64,8 @@ enum SupervisorCopy {
 
     static func shortageDetail(level: String, posted: String) -> String { "\(level) · posted \(posted)" }
     static func closedAt(_ time: String) -> String { "Closed \(time)" }
-    static func entered(_ count: Int) -> String { "\(count) entered" }
+    static let enteredWord = "entered"
+    static func entered(_ count: Int) -> String { "\(count) \(enteredWord)" }
 
     // MARK: Shortage (S12)
     static let item = "Item"
