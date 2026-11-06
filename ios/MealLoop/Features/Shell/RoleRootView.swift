@@ -31,16 +31,20 @@ struct PlaceholderRootView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            NotImplementedView(title: selectedTab.isEmpty ? MLFormat.roleName(role) : selectedTab,
-                               detail: "\(MLFormat.roleName(role)) screens are not built yet.",
-                               actionTitle: "Sign out") {
-                router.reset()
-                sessionStore.signOut()
+            if selectedTab == RoleRoot.searchTab {
+                SearchPlaceholderView(prompt: root.searchPrompt)
+            } else {
+                NotImplementedView(title: selectedTab.isEmpty ? MLFormat.roleName(role) : selectedTab,
+                                   detail: "\(MLFormat.roleName(role)) screens are not built yet.",
+                                   actionTitle: "Sign out") {
+                    router.reset()
+                    sessionStore.signOut()
+                }
             }
             if !root.placeholderTabs.isEmpty {
-                CapsuleTabBar(items: root.placeholderTabs.map { title in
-                    CapsuleTabItem(tab: title, title: title, symbol: symbol(for: title))
-                }, selection: $selectedTab)
+                GlassTabBar(items: root.placeholderTabs.map { title in
+                    GlassTabItem(tab: title, title: title, symbol: root.showsTabIcons ? symbol(for: title) : nil)
+                }, selection: $selectedTab, searchTab: root.hasSearch ? RoleRoot.searchTab : nil)
                 .padding(.horizontal, MLSpacing.s16)
                 .padding(.bottom, MLSpacing.s8)
             }
@@ -57,11 +61,43 @@ struct PlaceholderRootView: View {
         case "Students": return "person.3"
         case "Results": return "chart.bar"
         case "More": return "ellipsis"
-        case "Queue": return "tray"
-        case "Out now": return "figure.walk"
-        case "Escalated": return "exclamationmark.triangle"
-        case "History": return "clock"
         default: return "circle"
+        }
+    }
+}
+
+/// Where Search lands. The designs (student S1 to S5, Admin AD-8c) need recent searches and results that no
+/// repository provides yet, so this shows the title and field and says search is not built.
+/// It never accepts a query it could not answer.
+struct SearchPlaceholderView: View {
+    let prompt: String
+
+    var body: some View {
+        ZStack {
+            OrbitBackground()
+            VStack(alignment: .leading, spacing: MLSpacing.s12) {
+                Text("Search")
+                    .font(MLType.largeTitle)
+                    .foregroundStyle(MLColor.ink)
+                HStack(spacing: MLSpacing.s8) {
+                    Image(systemName: "magnifyingglass")
+                    Text(prompt)
+                    Spacer(minLength: 0)
+                }
+                .font(MLType.body)
+                .foregroundStyle(MLColor.inkSecondary)
+                .padding(.horizontal, MLSpacing.s16)
+                .frame(minHeight: MLSize.hit)
+                .background(Capsule().fill(MLColor.track))
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Search field, not available yet")
+                Text("Search is not built yet.")
+                    .font(MLType.body)
+                    .foregroundStyle(MLColor.inkSecondary)
+                Spacer()
+            }
+            .padding(.horizontal, MLSpacing.margin)
+            .padding(.top, MLSpacing.s32)
         }
     }
 }
