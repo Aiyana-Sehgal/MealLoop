@@ -53,6 +53,7 @@ Images are in `design/reference/redesign_2026-10/images/`, and renders in `desig
 | Answer page | Tiles show Chappati, Veg Pulao, Muttar Masala | The first three non-highlight dishes in the seed: Steamed Rice, Chappathi, Muttar Masala |
 | Answer page | Skip opens "Why skipping?" (prompt stage P5) | Not built: the pack lists it as not shown |
 | Entry QR | "Refreshes in 12 s" and its bar | Omitted: the code is static, by owner decision |
+| Entry QR | "Live" with a dot | Removed by owner ruling: a static code must not look like a live check |
 | Entry QR | "Can't scan?" is underlined | Plain text: no destination exists, so it must not look like a link |
 | Entry QR | QR 254 pt wide | 254 pt, smaller on short phones so "Can't scan?" clears the tab bar |
 | Entry QR | "You're in" chip | Shown only when the answer is I'm in. No other chip is drawn |
@@ -64,13 +65,13 @@ Proposed IDs for the owner to merge into `docs/OPEN_DECISIONS.md`.
 
 | ID | Question | What the app does now |
 |---|---|---|
-| P-STUDENT-1 | What makes the mess "closed"? The fourth card is drawn at 6:30 AM, but 03 shows the normal hero at 7:00 AM, and no rule separates them | Not built. The story starts at 7:00 AM, so it is never reached |
-| P-STUDENT-2 | Wording for Not sure | Chip "Not sure", title "Not sure about lunch", line "You can still eat." |
-| P-STUDENT-3 | Eyebrow for later meals. Only "This morning" is drawn | "This afternoon" for lunch, "This evening" for snacks and dinner |
-| P-STUDENT-4 | Next-meal row once answered. Only the question is drawn | The answer as the title, "Change by 10 AM · 3 h left", and an outlined Change |
-| P-STUDENT-5 | Should the answer page open after the cutoff? | Only the row opens it, and the row goes away at the cutoff, so its locked state cannot be reached. The hero's locked state can |
-| P-STUDENT-6 | Should a static code say "Live"? | Shown as drawn. It could read as a live server check |
-| P-STUDENT-7 | Can a student change a hero meal's answer before its cutoff? | No control is drawn. It cannot arise in the story: lunch becomes the hero only after its cutoff |
+| P-STUDENT-1 | What makes the mess "closed"? The fourth card is drawn at 6:30 AM, but 03 shows the normal hero at 7:00 AM, and no rule separates them | **Owner: leave unbuilt.** The story starts at 7:00 AM, so it is never reached |
+| P-STUDENT-2 | Wording for Not sure | **Owner: accepted as built.** Chip "Not sure", title "Not sure about lunch", line "You can still eat." |
+| P-STUDENT-3 | Eyebrow for later meals. Only "This morning" is drawn | **Owner: accepted as built.** "This afternoon" for lunch, "This evening" for snacks and dinner |
+| P-STUDENT-4 | Next-meal row once answered. Only the question is drawn | **Owner: accepted as built.** The answer as the title, "Change by 10 AM · 3 h left", and an outlined Change |
+| P-STUDENT-5 | Should the answer page open after the cutoff? | **Owner: accepted as built.** Only the row opens it, and the row goes away at the cutoff, so its locked state cannot be reached. The hero's locked state can |
+| P-STUDENT-6 | Should a static code say "Live"? | **Owner: no.** The label is removed |
+| P-STUDENT-7 | Can a student change a hero meal's answer before its cutoff? | **Owner: leave.** No control is drawn. It cannot arise in the story: lunch becomes the hero only after its cutoff |
 
 ## Shared changes needed, not made
 
