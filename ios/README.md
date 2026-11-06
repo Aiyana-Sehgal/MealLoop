@@ -2,11 +2,12 @@
 
 SwiftUI app, minimum iOS 17, one app target (`MealLoop`) and one unit-test target (`MealLoopTests`), shared scheme `MealLoop`. Structure and rules: [`docs/REPOSITORY_STRUCTURE.md`](../docs/REPOSITORY_STRUCTURE.md).
 
-> **Verified on 2026-11-06:** Debug and Release build, and all 40 unit tests pass (Xcode 27.2, iPhone 18 Pro simulator, iOS 27.2). Kitchen Home runs in the simulator; its content matches the reference, its visual match is partial. Evidence: [`docs/FOUNDATION_VERIFICATION.md`](../docs/FOUNDATION_VERIFICATION.md).
+> **Verified on 2026-11-06:** Debug, Review and Release build. 85 unit tests pass in Debug and 84 in Review (Xcode 27.2, iPhone 18 Pro simulator, iOS 27.2). All 11 roles sign in and land in their own area. Only Kitchen Home is a built role screen; its visual match is partial. Evidence: [`docs/FOUNDATION_VERIFICATION.md`](../docs/FOUNDATION_VERIFICATION.md).
 
 ## Start here
 
-- **Project and scheme:** `ios/MealLoop.xcodeproj`, scheme `MealLoop`.
+- **Project and schemes:** `ios/MealLoop.xcodeproj`. Scheme `MealLoop` for development, `MealLoop Review` for the reviewer build.
+- **Who builds what:** [`docs/PARTS_AND_OWNERSHIP.md`](../docs/PARTS_AND_OWNERSHIP.md).
 - **Run:** open the project in Xcode, pick an iPhone simulator, press ⌘R.
 - **Test:** ⌘U, or the command under [Command line](#command-line).
 - **Where code belongs:**
@@ -15,8 +16,8 @@ SwiftUI app, minimum iOS 17, one app target (`MealLoop`) and one unit-test targe
   - Models go in `MealLoop/Domain/`, and only there.
   - Repository protocols go in `MealLoop/Data/Repositories/`.
   - Sample data goes in `MealLoop/Data/Demo/`, never in a View.
-- **Branches and PRs:** one purpose per branch, named `<type>/<scope>-<short-description>`. Open one PR per branch. Never push to the default branch, force-push or merge your own work without review.
-- **Shared files:** one person at a time edits `Domain/**`, `Data/Repositories/Repositories.swift`, `Core/Navigation/**`, `DesignSystem/Tokens/**`, `App/AppEnvironment.swift` and the demo seed and provider. Agree it with the owner before changing them. `Features/<Role>/` folders and new component files are safe to work on in parallel.
+- **Branches and PRs:** one purpose per branch, named `<type>/<scope>-<short-description>`, each in its own `git worktree`. Open one PR per branch. Never push to the default branch, force-push or merge your own work without review.
+- **Shared files:** one person at a time edits `Domain/**`, `Data/Repositories/Repositories.swift`, `Core/Navigation/**`, `DesignSystem/Tokens/**`, `App/AppEnvironment.swift` and the demo seed and provider. Ask the shared-file owner for changes to them. `Features/<Role>/` folders and new component files are safe to work on in parallel.
 
 ## Requirements
 
@@ -29,7 +30,7 @@ SwiftUI app, minimum iOS 17, one app target (`MealLoop`) and one unit-test targe
 1. Open `ios/MealLoop.xcodeproj`.
 2. Pick the `MealLoop` scheme and an iPhone simulator.
 3. Run (⌘R). The Debug build uses the demo data provider and shows a black **Demo data** badge.
-4. In the development launcher, choose **Mess staff** → **Kitchen Staff** → Continue → enter the simulated password `1234`. That is a placeholder, not from the design: see `docs/OPEN_DECISIONS.md`. Kitchen Home opens.
+4. On Welcome, choose **Staff sign in** and use `kitchen@mealloop.example`. The password and every other account are in [`docs/PRESENTER_ACCOUNTS.md`](../docs/PRESENTER_ACCOUNTS.md). Kitchen Home opens.
 5. Tap **Demo data** to switch the simulated moment: before the meal (K01), during (K02), shortage reported (K03), entries stale, after the meal (K05), waste recorded, offline.
 6. Run the tests with ⌘U.
 
@@ -51,12 +52,15 @@ xcodebuild -project ios/MealLoop.xcodeproj -scheme MealLoop \
 
 ## Configurations
 
-| Configuration | Data source | `DEMO_DATA` | Use |
-|---|---|---|---|
-| Debug | Demo provider (seeded sample data, labelled) | set | Development, demos, unit tests |
-| Release | `RemoteAPI` (throws Not implemented until the backend exists) | not set | Pilot and production builds |
+| Configuration | Scheme | Data source | Flags | Use |
+|---|---|---|---|---|
+| Debug | `MealLoop` | Seeded provider, with the **Demo data** badge and moment menu | `DEBUG DEMO_DATA` | Development and unit tests |
+| Review | `MealLoop Review` | The same seeded provider, with no badge, no menu and no demo wording | `REVIEW_DATA REVIEW_CONFIGURATION` | The external review |
+| Release | `MealLoop` with `-configuration Release` | `RemoteAPI` (throws Not implemented until the backend exists), so nobody can sign in | none | Pilot and production builds |
 
-Setting `DEMO_DATA` in any configuration other than Debug stops the build with a compile error (`App/AppEnvironment.swift`).
+`App/AppEnvironment.swift` stops the build if `DEMO_DATA` appears without `DEBUG`, if `REVIEW_DATA` appears without `REVIEW_CONFIGURATION`, or if the two are combined. `BuildConfigurationTests` checks the flags in the project file, including that Release has none.
+
+To test the Review build, use the Command line section with `-scheme "MealLoop Review"`.
 
 ## Signing
 

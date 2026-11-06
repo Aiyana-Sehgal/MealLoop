@@ -1,6 +1,6 @@
 import Foundation
 
-/// Who is using a staff device after the shared role password was accepted.
+/// The mess context of a signed-in mess staff account.
 /// Staff are shown by initials only; the design never invents a staff name.
 struct StaffSession: Codable, Sendable, Hashable {
     let role: Role

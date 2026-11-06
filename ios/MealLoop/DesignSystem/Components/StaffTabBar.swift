@@ -1,52 +1,61 @@
 import SwiftUI
 
-/// The staff tab bar: Home, Alerts, Me in a white capsule; the selected tab sits on a quiet pill.
+/// One tab in the capsule tab bar.
+struct CapsuleTabItem<Tab: Hashable>: Identifiable {
+    let tab: Tab
+    let title: String
+    let symbol: String
+
+    var id: Tab { tab }
+}
+
+/// The tab bar shared by every role: a white capsule whose selected tab sits on a quiet pill.
 /// SF Symbols stand in for the drawn icons (design gap 386).
-struct StaffTabBar: View {
-    @Binding var selection: StaffTab
+struct CapsuleTabBar<Tab: Hashable>: View {
+    let items: [CapsuleTabItem<Tab>]
+    @Binding var selection: Tab
 
     var body: some View {
         HStack(spacing: 0) {
-            ForEach(StaffTab.allCases) { tab in
+            ForEach(items) { item in
                 Button {
-                    selection = tab
+                    selection = item.tab
                 } label: {
                     VStack(spacing: 2) {
-                        Image(systemName: symbol(for: tab))
+                        Image(systemName: item.symbol)
                             .font(.system(size: 20, weight: .regular))
-                        Text(title(for: tab))
+                        Text(item.title)
                             .font(MLType.meta)
                     }
                     .foregroundStyle(MLColor.ink)
                     .frame(maxWidth: .infinity, minHeight: MLSize.staffButton)
                     .background {
-                        if selection == tab {
+                        if selection == item.tab {
                             Capsule().fill(MLColor.fillQuiet)
                         }
                     }
                 }
                 .buttonStyle(.plain)
-                .accessibilityAddTraits(selection == tab ? .isSelected : [])
+                .accessibilityAddTraits(selection == item.tab ? .isSelected : [])
             }
         }
         .padding(MLSpacing.s4)
         .background(Capsule().fill(MLColor.surface))
         .overlay(Capsule().stroke(MLColor.border, lineWidth: 1))
     }
+}
 
-    private func title(for tab: StaffTab) -> String {
-        switch tab {
-        case .home: return "Home"
-        case .alerts: return "Alerts"
-        case .me: return "Me"
-        }
-    }
+/// The staff tab bar: Home, Alerts, Me.
+struct StaffTabBar: View {
+    @Binding var selection: StaffTab
 
-    private func symbol(for tab: StaffTab) -> String {
-        switch tab {
-        case .home: return "house"
-        case .alerts: return "bell"
-        case .me: return "person.crop.circle"
-        }
+    private let items = [
+        CapsuleTabItem(tab: StaffTab.home, title: "Home", symbol: "house"),
+        CapsuleTabItem(tab: StaffTab.alerts, title: "Alerts", symbol: "bell"),
+        CapsuleTabItem(tab: StaffTab.me, title: "Me", symbol: "person.crop.circle"),
+    ]
+
+    var body: some View {
+        CapsuleTabBar(items: items, selection: $selection)
     }
 }

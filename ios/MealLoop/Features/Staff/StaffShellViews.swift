@@ -1,18 +1,5 @@
 import SwiftUI
 
-/// Mess staff: the entry flow until a role password is accepted, then the role's tabs.
-struct StaffRootView: View {
-    @Environment(AppRouter.self) private var router
-
-    var body: some View {
-        if let session = router.staffSession {
-            StaffTabsView(session: session)
-        } else {
-            StaffEntryFlowView()
-        }
-    }
-}
-
 /// The shared staff pattern: Home, Alerts, Me. Each role supplies its own Home; Alerts and Me are not built yet.
 struct StaffTabsView: View {
     @Environment(AppRouter.self) private var router
@@ -36,7 +23,7 @@ struct StaffTabsView: View {
                     }
                 case .alerts:
                     NotImplementedView(title: "Alerts",
-                                       detail: "Alerts for \(MLFormat.roleName(session.role)) are not implemented yet (for example K12, D17, S07).")
+                                       detail: "Alerts for \(MLFormat.roleName(session.role)) are not built yet.")
                 case .me:
                     StaffMePlaceholderView(session: session)
                 }
@@ -48,7 +35,7 @@ struct StaffTabsView: View {
     }
 }
 
-/// Picks the Home of the signed-in role. Only Kitchen Staff has a Home in this foundation.
+/// Picks the Home of the signed-in role. Only Kitchen Staff has a Home so far.
 struct StaffHomeSwitch: View {
     let session: StaffSession
 
@@ -58,7 +45,7 @@ struct StaffHomeSwitch: View {
             KitchenHomeScreen(session: session)
         default:
             NotImplementedView(title: MLFormat.roleName(session.role),
-                               detail: "This role's Home is not implemented yet. See docs/SCREEN_INVENTORY.md.")
+                               detail: "This role's Home is not built yet.")
         }
     }
 }
@@ -66,13 +53,15 @@ struct StaffHomeSwitch: View {
 /// Not implemented: the Me page (K13, D18, S16). Only "Sign out" works so the flow can be left.
 struct StaffMePlaceholderView: View {
     @Environment(AppRouter.self) private var router
+    @Environment(SessionStore.self) private var sessionStore
     let session: StaffSession
 
     var body: some View {
         NotImplementedView(title: "Me",
                            detail: "\(session.staffInitials) · \(MLFormat.roleName(session.role)) · \(session.mess.name). The Me page is not built yet.",
                            actionTitle: "Sign out") {
-            router.signOut()
+            router.reset()
+            sessionStore.signOut()
         }
     }
 }

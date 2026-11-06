@@ -61,7 +61,7 @@ final class KitchenHomeViewModel {
         let wasteRepository = wasteReports
         switch status.state {
         case .notStarted:
-            let forecast = try await headcount.headcount(for: mealID).forecast
+            let forecast = try await headcount.headcount(for: mealID).liveForecast
             return .beforeMeal(forecast: forecast)
         case .inService:
             async let entered = entryRepository.liveCount(for: mealID)

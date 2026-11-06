@@ -67,14 +67,16 @@ enum MLFormat {
     static func roleName(_ role: Role) -> String {
         switch role {
         case .student: return "Student"
-        case .admin: return "Admin"
+        case .superAdmin: return "Super Admin"
+        case .admin: return "Food Head / Admin"
         case .doorScanner: return "Door Scanner"
         case .passDesk: return "Pass Desk"
         case .kitchenStaff: return "Kitchen Staff"
         case .supervisor: return "Supervisor"
         case .guardian: return "Guardian"
+        case .vendor: return "Vendor"
         case .warden: return "Warden"
-        case .gate: return "Gate"
+        case .gate: return "Gate Security"
         }
     }
 }

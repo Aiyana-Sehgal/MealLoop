@@ -1,15 +1,23 @@
 import Foundation
 import Observation
 
-// Demo data may exist only in the Debug configuration. If someone adds DEMO_DATA to any other
-// configuration (a pilot or production build), compilation stops here.
+// Seeded data may exist only in Debug (DEMO_DATA) and Review (REVIEW_DATA). If either flag reaches any other
+// configuration (a pilot or production build), compilation stops here. Release can have neither.
 #if DEMO_DATA && !DEBUG
 #error("DEMO_DATA is set outside the Debug configuration. Demo data must never ship in a pilot or production build.")
+#endif
+#if REVIEW_DATA && !REVIEW_CONFIGURATION
+#error("REVIEW_DATA is set outside the Review configuration. Seeded data must never ship in a pilot or production build.")
+#endif
+#if REVIEW_DATA && (DEBUG || DEMO_DATA)
+#error("REVIEW_DATA cannot be combined with DEBUG or DEMO_DATA. The Review build must not contain the demo controls.")
 #endif
 
 enum DataSourceKind: String, Sendable {
     /// Seeded sample data (Debug only). Shown with a visible "Demo data" badge.
     case demo
+    /// The same seeded data for the external review (Review only). It has no badge and no moment controls.
+    case review
     /// The real backend. Not implemented yet: every call throws `notImplemented`.
     case api
 }
@@ -52,10 +60,12 @@ final class AppEnvironment {
         dataRevision += 1
     }
 
-    /// The environment for this build configuration: demo in Debug, api in every other configuration.
+    /// The environment for this build configuration: demo in Debug, review in Review, api in every other configuration.
     static func make() -> AppEnvironment {
         #if DEMO_DATA
         return makeDemo()
+        #elseif REVIEW_DATA
+        return makeReview()
         #else
         return makeAPI()
         #endif
@@ -66,6 +76,14 @@ final class AppEnvironment {
         let provider = DemoDataProvider(scenario: scenario)
         return AppEnvironment(kind: .demo, repositories: provider.makeRepositories(), clock: provider.clock,
                               demoControls: provider)
+    }
+    #endif
+
+    #if REVIEW_DATA
+    static func makeReview(scenario: DemoScenario = .duringMeal) -> AppEnvironment {
+        let provider = DemoDataProvider(scenario: scenario)
+        return AppEnvironment(kind: .review, repositories: provider.makeRepositories(), clock: provider.clock,
+                              demoControls: nil)
     }
     #endif
 

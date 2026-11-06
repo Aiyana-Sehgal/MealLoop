@@ -1,4 +1,4 @@
-#if DEMO_DATA
+#if DEMO_DATA || REVIEW_DATA
 import XCTest
 @testable import MealLoop
 

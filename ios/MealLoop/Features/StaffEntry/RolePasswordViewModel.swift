@@ -1,3 +1,4 @@
+#if DEMO_DATA
 import Foundation
 import Observation
 
@@ -63,3 +64,4 @@ final class RolePasswordViewModel {
         digits.removeLast()
     }
 }
+#endif

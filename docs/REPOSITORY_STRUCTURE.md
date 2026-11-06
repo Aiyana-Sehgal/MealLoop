@@ -24,10 +24,12 @@ ios/
     Domain/                  The one set of models and enums (no UI types)
     Data/
       Repositories/          Repository protocols, Repositories, RepositoryError
-      Demo/                  DemoSeed and DemoDataProvider (compiled only with DEMO_DATA, i.e. Debug)
+      Demo/                  DemoSeed and DemoDataProvider (compiled only with DEMO_DATA in Debug or REVIEW_DATA in Review)
       Remote/                RemoteAPI: future HTTP implementation; every method throws Not implemented today
     Features/
-      StaffEntry/            Choose your role, What you do sheet, shared role password
+      Entry/                 Welcome, Staff sign in, Sign in with SRM
+      Shell/                 Role roots and the placeholder chrome of unbuilt roles
+      StaffEntry/            Retired role selection and shared password (Debug only, nothing opens it)
       Staff/                 Shared staff shell: Home, Alerts, Me tabs and the role Home switch
       Kitchen/               Kitchen Home (the representative screen)
       Student/ Admin/ DoorScanner/ PassDesk/ Supervisor/ Guardian/ Warden/ Gate/
@@ -51,7 +53,7 @@ ios/
 
 1. **Features import Domain and never redefine models.** If a screen needs a new field, add it to `Domain/` once. No feature-local copy of `Meal`, `Shortage` and so on.
 2. **Views never hold demo data.** A view gets every value from its view model, and the view model gets it from a repository. Interface wording lives in a `<Feature>Copy` enum; sample values live only in `Data/Demo/DemoSeed.swift`.
-3. **Demo data never reaches a non-Debug build.** Everything in `Data/Demo/` is wrapped in `#if DEMO_DATA`. Only the Debug configuration sets that flag, and `AppEnvironment.swift` stops the build with `#error` if it is set without `DEBUG`. Never mix demo and real data in one environment.
+3. **Seeded data never reaches Release.** Everything in `Data/Demo/` is compiled only with `DEMO_DATA` (Debug) or `REVIEW_DATA` (Review). Review has no badge and no moment menu. Release has neither flag, and `App/AppEnvironment.swift` stops any build that breaks these rules.
 4. **Missing is not zero.** Use `CountReading`, `Forecast`, `LeftoverMeasurement` and `PlateWasteMeasurement`. Never use a bare `Int` or `Double` for something that can be missing, and never default it to 0.
 5. **Nothing fakes success.** Unbuilt actions open a "Not implemented" page; unimplemented repositories throw `RepositoryError.notImplemented`; an offline write is an error, never a result.
 6. **Every screen loads through `LoadState` and renders through `AsyncContentView`**, so loading, empty, error, stale and offline look the same everywhere.

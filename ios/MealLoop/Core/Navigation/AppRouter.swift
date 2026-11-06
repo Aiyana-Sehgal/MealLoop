@@ -1,33 +1,18 @@
 import Foundation
 import Observation
 
-/// The separate apps (logins) MealLoop has.
-enum AppSurface: String, CaseIterable, Identifiable, Hashable, Sendable {
-    case student
-    case messStaff
-    case admin
-    case guardian
-    case warden
-    case gate
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .student: return "Student"
-        case .messStaff: return "Mess staff"
-        case .admin: return "Admin (Food head)"
-        case .guardian: return "Guardian"
-        case .warden: return "Warden"
-        case .gate: return "Gate"
-        }
-    }
+/// Pushed screens before sign-in: Welcome → Staff sign in, or Welcome → Sign in with SRM.
+enum EntryRoute: Hashable, Sendable {
+    case staffSignIn
+    case srmSignIn
 }
 
-/// Routes inside the staff entry flow (role selection → What you do sheet → shared password).
+#if DEMO_DATA
+/// Routes inside the retired role selection flow. Debug only; nothing opens it (see StaffEntryViews.swift).
 enum StaffEntryRoute: Hashable, Sendable {
     case password(Role)
 }
+#endif
 
 /// The shared staff tab pattern: Home, Alerts, Me. There is no fourth tab.
 enum StaffTab: String, CaseIterable, Identifiable, Hashable, Sendable {
@@ -43,36 +28,23 @@ enum StaffRoute: Hashable, Sendable {
     case notImplemented(title: String)
 }
 
-/// The one router shared by the whole app.
+/// Navigation state only. Who is signed in lives in `SessionStore`.
 @Observable
 final class AppRouter {
-    var surface: AppSurface?
-    var staffEntryPath: [StaffEntryRoute] = []
-    var staffSession: StaffSession?
+    var entryPath: [EntryRoute] = []
     var selectedStaffTab: StaffTab = .home
     var staffHomePath: [StaffRoute] = []
+    #if DEMO_DATA
+    var staffEntryPath: [StaffEntryRoute] = []
+    #endif
 
-    func open(_ surface: AppSurface) {
-        self.surface = surface
-    }
-
-    func signIn(_ session: StaffSession) {
-        staffSession = session
-        staffEntryPath = []
+    /// Clears every path, so the next account never inherits the previous account's position.
+    func reset() {
+        entryPath = []
         selectedStaffTab = .home
         staffHomePath = []
-    }
-
-    /// Sign out returns to role selection (Supervisor spec: "Sign out → role selection").
-    func signOut() {
-        staffSession = nil
+        #if DEMO_DATA
         staffEntryPath = []
-        staffHomePath = []
-        selectedStaffTab = .home
-    }
-
-    func leaveSurface() {
-        signOut()
-        surface = nil
+        #endif
     }
 }

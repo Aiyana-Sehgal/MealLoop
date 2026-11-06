@@ -88,3 +88,124 @@ Differences:
 
 - A person should try VoiceOver, Dynamic Type and a physical device. None of these were checked.
 - Differences 1 to 9 above are not fixed. They are outside Phase A.
+
+## Phases B and C: entry, accounts, roles and headcount (2026-11-06)
+
+**Result: Debug, Review and Release build; all tests pass; all 11 roles land in their own area.** Same Xcode and simulator as Phase A. Tested at commit `b902b45`.
+
+Test counts below come from the `.xcresult` bundles. Counting lines in the log is not reliable here: parallel test clones can lose a line of output.
+
+| Check | Command | Result |
+|---|---|---|
+| Debug | `xcodebuild -project ios/MealLoop.xcodeproj -scheme MealLoop -destination 'platform=iOS Simulator,id=D763AB62-D9C2-4A8C-983C-902463604F57' CODE_SIGNING_ALLOWED=NO build test` | 85 passed, 0 failed, 0 skipped |
+| Review | the same with `-scheme "MealLoop Review"` | 84 passed, 0 failed, 0 skipped |
+| Release | the same with `-configuration Release` and `build` only | `** BUILD SUCCEEDED **` |
+| Flags | `-showBuildSettings`, grep `ACTIVE_COMPILATION` | Debug `DEBUG DEMO_DATA`; Review `REVIEW_DATA REVIEW_CONFIGURATION`; Release empty |
+
+Review has one test fewer because the role-password test is Debug only.
+
+**Warnings:** only the two harmless `appintentsmetadataprocessor` lines from Phase A.
+
+### What each build contains
+
+Checked with `strings` and `nm` on the built app. Debug is the control that shows the check can find these items.
+
+| Item | Debug | Review | Release |
+|---|---|---|---|
+| `DemoDataBadge` type | Present | Absent | Absent |
+| "Simulated moment" text | Present | Absent | Absent |
+| Moment titles such as "Before the meal" | Present | Absent | Absent |
+| Role picker and role password code | Present | Absent | Absent |
+| Seeded accounts and provider | Present | Present | Absent |
+
+The empty `DemoControlling` protocol remains in all three. It has no UI and nothing conforms to it outside Debug.
+
+### Simulator walk-through (Review)
+
+Driven by the same temporary XCUITest approach as Phase A, from a clean install at `b902b45`. Every screen reached was also scanned for "demo", "simulated", "mock", "development launcher", "choose your role" and "docs/". None appeared.
+
+Welcome, Staff sign in (disabled until filled, Forgot password message, wrong credentials message, show or hide password), Sign in with SRM, recent accounts, Continue as, Sign out and a relaunch with recent accounts kept were all reached.
+
+| Role | Signed in with | Landing seen |
+|---|---|---|
+| Student | Sign in with SRM | Home, Meals, Community, You; placeholder |
+| Super Admin | Staff sign in (prototype exception) | Home, Me; placeholder |
+| Food Head / Admin | Staff sign in | Today, Students, Results, More; placeholder |
+| Supervisor | Staff sign in | Home, Alerts, Me; placeholder Home |
+| Kitchen Staff | Staff sign in | Home, Alerts, Me; **Kitchen Home** |
+| Door Scanner | Staff sign in | Home, Alerts, Me; placeholder Home |
+| Pass Desk | Staff sign in | Home, Alerts, Me; placeholder Home |
+| Vendor | Staff sign in | Home, Me; placeholder |
+| Guardian | Staff sign in | One page, no tabs; placeholder |
+| Warden | Staff sign in | Queue, Out now, Escalated, History; placeholder |
+| Gate Security | Staff sign in | Home, Me; placeholder |
+
+Also run on the entry code before Phase C:
+
+- **Debug:** the badge and moment menu still work after signing in.
+- **Release:** Welcome shows, with no badge. Staff sign in shows `Not implemented: Remote · staff sign in.` Sign in with SRM shows `Not implemented: Remote · SRM sign in.` with Try again. Nobody can sign in, as intended.
+
+Screenshots are in [`docs/verification/phase-b/`](verification/phase-b/).
+
+The password field looks empty in `staff_sign_in_error.png`, but it is not: the test read back five secure characters, and showing the password displayed the typed value. Secure text is left out of the screenshot.
+
+The Connecting and Getting your details screenshots were taken from a scratch copy with longer pauses, because the real steps pass too quickly to capture. The screens are otherwise the same.
+
+### Against the references
+
+| Screen | Reference | Result |
+|---|---|---|
+| Welcome | `redesign_2026-10/images/01_sign_in` | Layout matches. It adds Staff sign in and recent accounts, as the brief asks. Terms text is plain and inert, not underlined. Primary button is 56 pt where the reference measures about 80 pt |
+| Getting your details | `redesign_2026-10/images/02_getting_details` | Layout matches. The title is bold where the reference is regular, the same token difference as "Lunch" in Phase A |
+| Staff sign in | None exists | Follows the Orbit language and the brief. It cannot be called a match |
+| Logo mark | `01_sign_in` | Redrawn as a ring with a lime dot, which closes difference 5 from Phase A on every staff Home |
+
+**Known Debug-only overlap:** the Demo data badge sits over the two Welcome buttons. Both stay tappable. Review and Release do not have it.
+
+### Phase C
+
+`Headcount` now carries `liveForecast`, `cutoffForecast`, `approved`, `sentToVendor`, `actualEntries` and `finalEntries`, each with its own missing state, and an acknowledgment with actor and time. `VendorReply` is gone.
+
+The status is derived: a published headcount without a record is pending, and a record with no publication shows as not published.
+
+Seed notes:
+
+- **Cutoff forecast:** seeded as not ready, because no document gives a value. It is not copied from the live forecast.
+- **Approved and sent:** 860 and "Not acknowledged", from `admin_sample_data.md`.
+- **Sent time:** 10:15 is borrowed from another row of the sample board, because no Main time is documented.
+- **Actual entries:** available during service only, from the same source as the live count. After the meal closes, only final entries are available.
+
+No test covers acknowledging an unpublished headcount through the provider, because the seed is always published. The model-level test covers the status.
+
+### Manual checks for the owner
+
+The automated walk-through covered the sign-in and landing path. Please confirm these by hand on the `MealLoop Review` scheme, using `docs/PRESENTER_ACCOUNTS.md`:
+
+- [ ] Delete the app, run Review, and confirm Welcome shows no recent accounts.
+- [ ] Sign in as each of the 11 roles and confirm the landing matches the table above.
+- [ ] Sign out from each role and confirm Welcome returns.
+- [ ] Confirm Continue as opens the right role, and that the list scrolls past three accounts.
+- [ ] Confirm the keyboard does not cover Sign in on the smallest supported iPhone.
+- [ ] Try VoiceOver on Welcome and Staff sign in.
+- [ ] Try the largest Dynamic Type size on Welcome. Recent accounts and both buttons must stay reachable.
+- [ ] Decide whether "Not implemented" is acceptable on any screen a reviewer will see.
+- [ ] Watch for an iOS "save password" prompt after signing in on a physical device.
+
+### API operations Phase C needs
+
+`docs/backend/openapi.yaml` was not changed. It needs these before the backend can serve this model:
+
+| Operation | Change |
+|---|---|
+| `getHeadcount` | Return the six named values and the acknowledgment. Replace `forecast` and `vendorReply` |
+| Approve headcount | New. Food Head / Admin only, with the adjustment reason |
+| Publish to vendor | New. Records the actor and time |
+| Acknowledge headcount | New. Vendor account only, repeat-safe, and returns the first record on a repeat |
+| Sign in with email and password | New, replacing `/staff/sessions` and the shared role password |
+| SRM sign-in | New, once SRM SSO feasibility is confirmed |
+| Resume a remembered account | New, or replaced by the session design |
+
+### Stale documents left unchanged
+
+`docs/adr/ADR-001-ios-architecture.md` item 5 still says `AppEnvironment` picks demo or api, with no mention of Review. ADRs were out of scope for this work.
+

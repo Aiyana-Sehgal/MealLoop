@@ -41,3 +41,17 @@ Decisions the owner still has to make. Each row gives the options and a **sugges
 | T10 | When a forecast counts as stale | The design shows "Updated 8:50 AM, may be out of date" but no rule | Not implemented; needs a rule from the forecast owner |
 | T11 | Swift packages | One target with folders (now); split Domain, DesignSystem and Features into packages | Revisit if a clean build takes over 2 minutes or ownership needs enforcing |
 | T12 | Backend hosting | Institution server; cloud | Decide before External Review 4 |
+
+## Entry and accounts (2026-11-06)
+
+Raised while building the launch-ready entry. Each entry records what the prototype does today, not a decision.
+
+| ID | Question | What the prototype does now |
+|---|---|---|
+| P-ENTRY-1 | How does Super Admin reach the app before real SRM SSO exists? | The simulated SRM step returns the student, so the seeded Super Admin also works on Staff sign in. This is a prototype exception, not the intended design |
+| P-ENTRY-2 | How do Guardian, Warden, Gate Security and Vendor sign in for real? The Guardian design is an SMS link with OTP on mobile web | All four use Staff sign in with a seeded account |
+| P-ENTRY-3 | What does "Forgot password?" do? | It shows "Password reset isn't available yet. Ask your administrator." No flow exists |
+| P-ENTRY-4 | Do Choose your role, What you do and the shared role password (D01 to D03) return in any form? | Replaced by Staff sign in. The code stays in Debug only with nothing opening it |
+| P-ENTRY-5 | What tabs do Gate Security, Vendor and Super Admin have? | No design documents them. They use Home and Me as placeholders |
+| P-ENTRY-6 | Which mess or hostel scope does Super Admin have? | The seed gives it the sample mess, because the account model allows only a mess or a hostel |
+

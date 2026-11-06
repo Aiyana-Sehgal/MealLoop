@@ -125,6 +125,7 @@ struct NotImplementedView: View {
     }
 }
 
+#if DEMO_DATA
 /// Visible "Demo data" badge, shown only when the app runs on the seeded demo provider.
 /// Its menu switches the simulated moment (a time skip), like the hidden hotspots in the Figma prototype.
 struct DemoDataBadge: View {
@@ -155,3 +156,4 @@ struct DemoDataBadge: View {
         }
     }
 }
+#endif

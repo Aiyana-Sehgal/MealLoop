@@ -1,9 +1,12 @@
+#if DEMO_DATA
 import SwiftUI
 
+/// RETIRED FROM THE APP FLOW: Staff sign in replaced this role selection and shared password path.
+/// Kept in Debug only, with nothing opening it, until the owner decides whether D01 to D03 return.
 /// Staff entry: Choose your role → What you do (sheet, can be skipped next time) → shared password → role Home.
-/// Scaffold for navigation: wording matches the exports; layout has not been compared frame by frame.
 struct StaffEntryFlowView: View {
     @Environment(AppRouter.self) private var router
+    let onGranted: (StaffSession) -> Void
 
     var body: some View {
         @Bindable var router = router
@@ -12,7 +15,7 @@ struct StaffEntryFlowView: View {
                 .navigationDestination(for: StaffEntryRoute.self) { route in
                     switch route {
                     case .password(let role):
-                        RolePasswordScreen(role: role)
+                        RolePasswordScreen(role: role, onGranted: onGranted)
                     }
                 }
         }
@@ -49,7 +52,7 @@ struct RoleSelectionView: View {
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button {
-                    router.leaveSurface()
+                    router.reset()
                 } label: {
                     Image(systemName: "chevron.left")
                 }
@@ -182,18 +185,20 @@ struct WhatYouDoSheet: View {
 struct RolePasswordScreen: View {
     @Environment(AppEnvironment.self) private var environment
     let role: Role
+    let onGranted: (StaffSession) -> Void
 
     var body: some View {
-        RolePasswordView(model: RolePasswordViewModel(role: role, auth: environment.repositories.auth))
+        RolePasswordView(model: RolePasswordViewModel(role: role, auth: environment.repositories.auth), onGranted: onGranted)
     }
 }
 
 struct RolePasswordView: View {
-    @Environment(AppRouter.self) private var router
     @State private var model: RolePasswordViewModel
+    private let onGranted: (StaffSession) -> Void
 
-    init(model: RolePasswordViewModel) {
+    init(model: RolePasswordViewModel, onGranted: @escaping (StaffSession) -> Void) {
         _model = State(initialValue: model)
+        self.onGranted = onGranted
     }
 
     var body: some View {
@@ -217,7 +222,7 @@ struct RolePasswordView: View {
                 KeyPad(isEnabled: model.isKeypadEnabled) { digit in
                     Task {
                         if let session = await model.append(digit) {
-                            router.signIn(session)
+                            onGranted(session)
                         }
                     }
                 } onDelete: {
@@ -287,3 +292,4 @@ struct RolePasswordView: View {
         }
     }
 }
+#endif
