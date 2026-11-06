@@ -306,5 +306,158 @@ final class OutingScreenshotTests: XCTestCase {
         let withdrawn = try await withdrawWorld.repository.checkPassCode("7F3K", by: .gate)
         try await shot("V5_gate_pass_withdrawn", withdrawWorld) { gate(withdrawModel, [.outcome(.refused(withdrawn))]) }
     }
+
+    // MARK: Guardian
+
+    private func guardianView(_ model: GuardianModel, sheet: GuardianSheet? = nil, elapsed: Int = 0, typed: String = "",
+                              code: String = "") -> some View {
+        GuardianPageView(account: OutingSeed.guardianAccount, preparedModel: model, initialSheet: sheet,
+                         recordElapsed: elapsed, photoTyped: typed, photoCode: code)
+    }
+
+    private func guardianModel(_ world: World) async -> GuardianModel {
+        _ = world.session(.guardian)
+        let model = GuardianModel(account: OutingSeed.guardianAccount, repository: world.repository)
+        await model.load()
+        return model
+    }
+
+    func testCaptureGuardianChooseAndSheets() async throws {
+        let world = World()
+        var model = await guardianModel(world)
+        try await shot("G01_guardian_choose", world) { guardianView(model) }
+        try await shot("G01_guardian_choose_about_sheet", world) { guardianView(model, sheet: .about) }
+        try await shot("G01_guardian_choose_ask_to_change_sheet", world) { guardianView(model, sheet: .askToChange) }
+        try await shot("G01_guardian_choose_language_sheet", world) { guardianView(model, sheet: .language) }
+        try await shot("G08_guardian_reject_sheet", world) { guardianView(model, sheet: .reject) }
+        world.at(8, 16, 19, 40)
+        await model.accept()
+        try await shot("G00_guardian_consent", world) { guardianView(model) }
+        await model.agreeAndContinue()
+        try await shot("G02_guardian_record_ready", world) { guardianView(model) }
+        model.step = .record(.recording)
+        try await shot("G02_guardian_record", world) { guardianView(model, elapsed: 7) }
+        await model.finishRecording(seconds: 3)
+        try await shot("G02_guardian_record_too_short", world) { guardianView(model) }
+        model.step = .record(.tooDark)
+        try await shot("G02_guardian_record_too_dark", world) { guardianView(model) }
+        model.step = .cameraBlocked
+        try await shot("G02_guardian_record_camera_blocked", world) { guardianView(model) }
+        world.at(8, 16, 19, 42)
+        await model.finishRecording(seconds: 9)
+        try await shot("G06_guardian_sent", world) { guardianView(model) }
+        try await shot("G06_guardian_sent_withdraw_sheet", world) { guardianView(model, sheet: .withdraw) }
+        world.at(8, 16, 19, 50)
+        model.showPastAnswers()
+        try await shot("G07_guardian_past_answers", world) { guardianView(model) }
+        world.at(8, 16, 20, 10)
+        model = await guardianModel(world)
+        try await shot("G01_guardian_choose_already_answered", world) { guardianView(model) }
+        world.at(8, 16, 20, 2)
+        await model.withdraw()
+        try await shot("G06_guardian_sent_withdrawn", world) { guardianView(model) }
+
+        let late = World(at: OutingSeed.at(8, 16, 23, 5))
+        let lateModel = await guardianModel(late)
+        try await shot("G01_guardian_choose_deadline_passed", late) { guardianView(lateModel) }
+
+        let rejecting = World()
+        let rejectModel = await guardianModel(rejecting)
+        await rejectModel.reject(reason: "Exam soon")
+        try await shot("G06_guardian_sent_rejected", rejecting) { guardianView(rejectModel) }
+
+        let calling = World(at: OutingSeed.at(8, 16, 19, 45))
+        let callModel = await guardianModel(calling)
+        await callModel.askWardenToCall()
+        try await shot("G06_guardian_sent_call_requested", calling) { guardianView(callModel) }
+    }
+
+    func testCaptureGuardianRetriesAndFallbacks() async throws {
+        let heard1 = SimulatedCaptureOutcome.notMatched(heard: "I accept Aarav's outing …", missing: "code 4 7 2")
+        let heard2 = SimulatedCaptureOutcome.notMatched(heard: "I accept Aarav's outing, code 8 1 …",
+                                                        missing: "the last digit of 8 1 5")
+        let world = World(script: [heard1, heard2, heard2])
+        let model = await guardianModel(world)
+        await model.accept()
+        await model.agreeAndContinue()
+        await model.finishRecording(seconds: 9)
+        try await shot("G03_guardian_retry", world) { guardianView(model) }
+        await model.recordAgain()
+        model.step = .record(.recording)
+        try await shot("G02_guardian_record_try2", world) { guardianView(model, elapsed: 7) }
+        await model.finishRecording(seconds: 9)
+        try await shot("G03_guardian_retry_try3", world) { guardianView(model) }
+        await model.recordAgain()
+        model.step = .record(.recording)
+        try await shot("G02_guardian_record_try3", world) { guardianView(model, elapsed: 7) }
+        await model.finishRecording(seconds: 9)
+        try await shot("G04_guardian_send_video", world) { guardianView(model) }
+        world.at(8, 16, 19, 44)
+        await model.sendForReview()
+        try await shot("G06_guardian_sent_please_watch", world) { guardianView(model) }
+
+        let upload = World(script: [.uploadFails(progress: 0.38), .uploadFails(progress: 0.38)])
+        let uploadModel = await guardianModel(upload)
+        await uploadModel.accept()
+        await uploadModel.agreeAndContinue()
+        await uploadModel.finishRecording(seconds: 9)
+        try await shot("G02_guardian_record_upload_failed", upload) { guardianView(uploadModel) }
+        uploadModel.step = .uploading
+        try await shot("G02_guardian_record_uploading", upload) { guardianView(uploadModel) }
+        uploadModel.step = .checking
+        try await shot("G02_guardian_record_checking", upload) { guardianView(uploadModel) }
+        await uploadModel.retryUpload()
+        await uploadModel.takePhotoInstead()
+        try await shot("G05_guardian_photo_and_code", upload) {
+            guardianView(uploadModel, typed: "I accept 472", code: "4819")
+        }
+        upload.at(8, 16, 19, 48)
+        await uploadModel.sendPhoto(typed: "I accept 472", phoneCode: "481926")
+        try await shot("G06_guardian_sent_photo_and_text", upload) { guardianView(uploadModel) }
+    }
+
+    func testCaptureGuardianStatus() async throws {
+        let aarav = OutingSeed.aaravRequest.id
+        let warden = OutingSeed.wardenAccount
+        let world = World()
+        try await world.guardianAcceptsByVideo()
+        world.at(8, 17, 10, 40)
+        _ = try await world.repository.approve(aarav, warden: warden, by: .warden)
+        var model = await guardianModel(world)
+        try await shot("V5_guardian_status_pass_ready", world) { guardianView(model) }
+        world.at(8, 17, 14, 4)
+        _ = try await world.repository.recordExit(aarav, by: .gate)
+        world.at(8, 17, 17, 10)
+        model = await guardianModel(world)
+        try await shot("V5_guardian_status_out", world) { guardianView(model) }
+        world.at(8, 17, 19, 41)
+        _ = try await world.repository.recordReturn(aarav, by: .gate)
+        model = await guardianModel(world)
+        try await shot("V5_guardian_status_back", world) { guardianView(model) }
+
+        let late = World()
+        try await late.guardianAcceptsByVideo()
+        late.at(8, 17, 10, 40)
+        _ = try await late.repository.approve(aarav, warden: warden, by: .warden)
+        late.at(8, 17, 14, 4)
+        _ = try await late.repository.recordExit(aarav, by: .gate)
+        late.at(8, 17, 20, 40)
+        _ = try await late.repository.recordReturn(aarav, by: .gate)
+        let lateModel = await guardianModel(late)
+        try await shot("V5_guardian_status_back_late", late) { guardianView(lateModel) }
+
+        let no = World()
+        try await no.guardianAcceptsByVideo()
+        no.at(8, 17, 10, 40)
+        _ = try await no.repository.reject(aarav, reason: "Block B has a fire drill on Saturday afternoon",
+                                           warden: warden, by: .warden)
+        let noModel = await guardianModel(no)
+        try await shot("V5_guardian_status_not_going", no) { guardianView(noModel) }
+
+        let change = World(at: OutingSeed.at(8, 16, 19, 41))
+        let changeModel = await guardianModel(change)
+        await changeModel.askToChange(fields: ["Time"])
+        try await shot("V5_guardian_status_change_asked", change) { guardianView(changeModel) }
+    }
 }
 #endif
