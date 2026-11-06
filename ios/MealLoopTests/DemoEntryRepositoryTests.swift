@@ -91,7 +91,7 @@ final class DemoEntryRepositoryTests: XCTestCase {
         let report = try await demo.report(for: DemoSeed.lunch.id)
         XCTAssertGreaterThan(report.missingCount, 0)
         do {
-            _ = try await demo.save(report)
+            _ = try await demo.save(report, by: .kitchenStaff)
             XCTFail("A report with empty fields must not be recorded")
         } catch RepositoryError.validationFailed {
             // Expected.

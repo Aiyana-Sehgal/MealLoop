@@ -349,7 +349,7 @@ final class CoreStoryTests: XCTestCase {
         var report = try await data.wasteReports.report(for: lunch.id)
         report.leftovers = report.leftovers.map { var row = $0; row.measurement = .noneLeft; return row }
         report.plateWaste = .entered(kilograms: 1)
-        let saved = try await data.wasteReports.save(report)
+        let saved = try await data.wasteReports.save(report, by: .kitchenStaff)
         guard case .recorded = saved.status else { return XCTFail("Expected recorded") }
 
         // The Supervisor and Admin read the same values.
@@ -361,6 +361,47 @@ final class CoreStoryTests: XCTestCase {
         XCTAssertEqual(headcount.sentToVendor.count, DemoSeed.forecastDiners)
         XCTAssertEqual(headcount.actualEntries, .unavailable)
         XCTAssertEqual(demo.clock.now(), lunch.endsAt)
+    }
+
+    // MARK: Waste
+
+    private func closedStory() async throws -> (DemoDataProvider, WasteReport) {
+        let demo = story()
+        _ = try await demo.startMeal(lunch.id, by: .supervisor)
+        _ = try await demo.closeMeal(lunch.id, by: .supervisor)
+        var report = try await demo.report(for: lunch.id)
+        report.leftovers = report.leftovers.map { var row = $0; row.measurement = .noneLeft; return row }
+        report.plateWaste = .entered(kilograms: 1)
+        return (demo, report)
+    }
+
+    func testOnlyKitchenStaffCanSaveWaste() async throws {
+        for role in Role.allCases where role != .kitchenStaff {
+            let (demo, report) = try await closedStory()
+            await assertRefused { _ = try await demo.save(report, by: role) }
+            await assertRefused { _ = try await demo.saveDraft(report, by: role) }
+            let stored = try await demo.report(for: lunch.id)
+            XCTAssertEqual(stored.status, .notStarted, "\(role)")
+            XCTAssertEqual(stored.plateWaste, .notEntered, "\(role)")
+        }
+    }
+
+    func testKitchenStaffCanSaveADraftAndTheReport() async throws {
+        let (demo, report) = try await closedStory()
+        let draft = try await demo.saveDraft(report, by: .kitchenStaff)
+        guard case .draft = draft.status else { return XCTFail("\(draft.status)") }
+        let saved = try await demo.save(report, by: .kitchenStaff)
+        guard case .recorded = saved.status else { return XCTFail("\(saved.status)") }
+    }
+
+    func testSupervisorAndAdminCanStillReadTheReport() async throws {
+        let (demo, report) = try await closedStory()
+        let saved = try await demo.save(report, by: .kitchenStaff)
+        let repositories = demo.makeRepositories()
+        let read = try await repositories.wasteReports.report(for: lunch.id)
+        let summary = try await repositories.wasteReports.summary(for: lunch.id)
+        XCTAssertEqual(read, saved)
+        XCTAssertEqual(summary.status, saved.status)
     }
 
     // MARK: Session
