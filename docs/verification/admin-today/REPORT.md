@@ -4,13 +4,17 @@ Base `feature/swiftui-foundation` (a4ae9c7), which contains the tips of `feat/io
 
 ## Results
 
+After merging the updated base (5a12c53, the Supervisor work):
+
 | Run | Exit | Tests | Passed | Failed | Skipped |
 |---|---|---|---|---|---|
-| Debug, clean, iPhone 18 Pro iOS 27.2 | 0 | 175 | 175 | 0 | 0 |
-| Review, clean, same device | 0 | 174 | 174 | 0 | 0 |
-| Release, clean build | 0 | n/a | n/a | n/a | n/a |
+| Debug, iPhone 18 Pro iOS 27.2 | 0 | 217 | 213 | 0 | 4 |
+| Review, same device | 0 | 216 | 212 | 0 | 4 |
+| Release build | 0 | n/a | n/a | n/a | n/a |
 
-Before this work: 145 Debug and 144 Review. This adds 30 tests in `AdminTodayViewModelTests.swift`. The race test was confirmed to fail with its guard removed.
+The 4 skipped tests arrived with the merge; they were not skipped in the run below. Before the merge, from clean builds on a4ae9c7: Debug 175 of 175, Review 174 of 174, 0 skipped, Release built. The baseline was 145 and 144, so this adds 30 tests in `AdminTodayViewModelTests.swift`. The race test was confirmed to fail with its guard removed.
+
+The base moved during this work. The merge changed no Admin file, but `SOSRepository` gained `raise`, so the test stub was updated. **The walk and screenshots below were taken before the merge and were not repeated.**
 
 **Simulator walk:** six walks passed on iPhone 17e (iOS 27.2, `small/`) and iPhone 18 Pro Max (iOS 27.0, `large/`), 33 screenshots each. They were driven by a temporary XCUITest target in a scratch copy, which is not in this repository. That copy also removed the system Save Password prompt, which otherwise covers the app after sign-in.
 
@@ -70,7 +74,7 @@ Exports are in `design/audit/export_admin_redesign/`. Tabs confirmed: Today, Stu
    ```
 2. **Display name.** `DemoSeed.accounts`: `account("foodhead", "Devi", .admin, .mess(mess.id))` gives "Hey Devi" (`admin_sample_data.md`).
 3. **More messes** in the seed, for the four tiles, if the owner wants them.
-4. **Safety case** in a scenario, so Today's safety state can be reached.
+4. **Safety case:** `SOSRepository.raise` arrived with the merge, so Today's safety state may now be reachable through the Student or staff flow. Not checked here.
 5. **`docs/PRESENTER_ACCOUNTS.md`** still lists Food Head / Admin as placeholder.
 6. **`EntryViews.swift:110`:** `router.entryPath.removeLast()` crashed once on an empty path (report 2026-11-06 19:54:58), in Staff sign in. Not reproduced, and no walk step explains it. `popLast()` would be safe.
 
