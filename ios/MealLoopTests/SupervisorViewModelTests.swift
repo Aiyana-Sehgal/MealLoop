@@ -124,6 +124,22 @@ final class SupervisorViewModelTests: XCTestCase {
         XCTAssertEqual(monday?.finalEntries, .unavailable)
     }
 
+    func testBreakfastPastMealShowsUnavailableLikeFinalCountNeverZero() async throws {
+        let world = world(.duringMeal)
+        let breakfast = DemoSeed.breakfast.id
+        let model = SupervisorPastMealViewModel(mealID: breakfast, session: staff(), repositories: world.repositories)
+        await model.load()
+        let record = try XCTUnwrap(model.state.value)
+        let finalCount = try await world.repositories.entries.finalCount(for: breakfast)
+        XCTAssertEqual(record.finalEntries, finalCount)
+        XCTAssertEqual(record.finalEntries, .unavailable)
+        XCTAssertNil(record.finalEntries.value, "Shown as \"Unavailable\", never 0")
+
+        let history = SupervisorHistoryViewModel(session: staff(), repositories: world.repositories)
+        await history.load()
+        XCTAssertEqual(history.record(breakfast)?.finalEntries, .unavailable)
+    }
+
     func testClosingLeavesShortagesUnresolvedAndWasteIncomplete() async throws {
         let world = world()
         let model = home(world)

@@ -21,6 +21,27 @@ final class MealHistoryOperationTests: XCTestCase {
         XCTAssertNil(monday.wasteReport)
     }
 
+    /// Owner's ruling on SV-Q2: the history and `finalCount(for:)` must agree for Wed 14 · Breakfast. No spec
+    /// document gives that number, so both say unavailable, never zero or an invented number.
+    func testBreakfastFinalEntriesAgreeWithFinalCountAndStayUnavailableNeverZero() async throws {
+        let breakfast = DemoSeed.breakfast.id
+        var checked: [DemoScenario] = []
+        for scenario in DemoScenario.allCases where scenario != .offline {
+            let demo = DemoDataProvider(scenario: scenario)
+            let history = try await demo.mealHistory(for: mess)
+            let finalCount = try await demo.finalCount(for: breakfast)
+            let headcount = try await demo.headcount(for: breakfast)
+            XCTAssertEqual(finalCount, .unavailable, "\(scenario)")
+            XCTAssertEqual(headcount.finalEntries, finalCount, "\(scenario)")
+            guard let record = history.first(where: { $0.mealID == breakfast }) else { continue }
+            XCTAssertEqual(record.finalEntries, finalCount, "\(scenario)")
+            XCTAssertNil(record.finalEntries.value, "Unavailable is never stored as a number (\(scenario))")
+            XCTAssertNotEqual(record.finalEntries, .available(0, asOf: record.day), "\(scenario)")
+            checked.append(scenario)
+        }
+        XCTAssertFalse(checked.isEmpty, "Breakfast must be in the history once its times have passed")
+    }
+
     func testTuesdayLunchCarriesTheKitchenRowsInTheirOwnUnits() async throws {
         let history = try await DemoDataProvider(scenario: .storyStart).mealHistory(for: mess)
         let lunch = try XCTUnwrap(history.first { $0.slot == .lunch })
@@ -51,8 +72,11 @@ final class MealHistoryOperationTests: XCTestCase {
         XCTAssertEqual(record.waste, .notRecorded)
         XCTAssertNil(record.wasteReport)
         // Breakfast's own times have passed by 2:00 PM, so it is listed after lunch with its record.
+        // No spec document gives its final entries, so the record matches `finalCount(for:)`: unavailable.
         XCTAssertEqual(history[1].mealID, DemoSeed.breakfast.id)
-        XCTAssertEqual(history[1].finalEntries.value, DemoSeed.breakfastFinalEntries)
+        XCTAssertEqual(history[1].finalEntries, .unavailable)
+        let breakfastFinal = try await demo.finalCount(for: DemoSeed.breakfast.id)
+        XCTAssertEqual(history[1].finalEntries, breakfastFinal)
         XCTAssertEqual(history[1].waste, .recorded(at: DemoSeed.breakfastWasteRecordedAt))
     }
 
