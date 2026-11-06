@@ -31,7 +31,7 @@ private final class FlakyEntries: EntryRepository, @unchecked Sendable {
     }
 }
 
-/// The prototype data source seeds no SOS and has no way to raise one, so the SOS rules run against this stand-in.
+/// A stand-in that can be told to fail a write. The real prototype path is covered by `testARaisedCaseRunsThroughTheDoorOnTheRealBackend`.
 private actor FakeSOS: SOSRepository {
     private var cases: [SOSCase]
     private(set) var closeCalls = 0
@@ -40,6 +40,7 @@ private actor FakeSOS: SOSRepository {
     init(_ cases: [SOSCase]) { self.cases = cases }
 
     func setFailNext() { failNext = true }
+    func raise(_ report: SOSReport) async throws -> SOSCase { cases[0] }
     func activeCases(for mess: MessID) async throws -> [SOSCase] { cases }
     func claim(_ sos: SOSCaseID, by role: Role) async throws -> SOSCase {
         try update { $0.claim = SOSClaim(role: role, at: DemoSeed.duringMealNow) }
@@ -354,6 +355,34 @@ final class DoorScannerTests: XCTestCase {
     private func sampleCase() -> SOSCase {
         SOSCase(id: SOSCaseID("test-sos"), messID: DemoSeed.mess.id, title: "Test case", place: "Test place",
                 raisedAt: DemoSeed.duringMealNow, claim: nil, checks: [], status: .open)
+    }
+
+    func testARaisedCaseRunsThroughTheDoorOnTheRealBackend() async throws {
+        let demo = DemoDataProvider(scenario: .duringMeal)
+        let sos = demo.makeRepositories().sos
+        let model = DoorSOSViewModel(sos: sos, mess: session.mess.id, role: .doorScanner)
+        await model.load()
+        XCTAssertNil(model.current, "No tab before anything is raised")
+
+        let raised = try await sos.raise(SOSReport(messID: session.mess.id, title: DemoSeed.sosTitle, place: DemoSeed.sosPlace,
+                                                   idempotencyKey: .make()))
+        await model.load()
+        XCTAssertEqual(model.current?.id, raised.id)
+        XCTAssertEqual(model.stage, .notTaken)
+
+        await model.claim()
+        XCTAssertEqual(model.stage, .claimedByYou)
+        let checked = await model.markChecked()
+        XCTAssertTrue(checked)
+        XCTAssertEqual(model.stage, .checkedByYou(at: demo.clock.now()))
+
+        let stillActive = try await sos.activeCases(for: session.mess.id)
+        XCTAssertEqual(stillActive.map(\.id), [raised.id], "A check leaves the case open for the Supervisor")
+        XCTAssertEqual(stillActive.first?.status, .open)
+
+        _ = try await sos.close(raised.id, by: .supervisor)
+        await model.load()
+        XCTAssertNil(model.current, "The tab goes once the Supervisor closes the case")
     }
 
     func testNoTabWhileNoSOSIsActive() async {
