@@ -36,7 +36,7 @@ struct KitchenHomeView: View {
             .refreshable { await model.load() }
             if let current = sos.current {
                 SOSEdgeTab(count: sos.cases.count, isClaimedByYou: sos.isClaimedByYou,
-                           claimedStatus: KitchenCopy.youreChecking, action: onOpenSOS)
+                           claimedStatus: KitchenCopy.tabChecking, action: onOpenSOS)
                     .padding(.top, MLSize.avatar + MLSpacing.s24)
                     .id(current.id)
             }

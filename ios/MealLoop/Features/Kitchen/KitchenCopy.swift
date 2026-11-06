@@ -144,17 +144,19 @@ enum KitchenCopy {
     // SOS (K14, K19, K20)
     static let sosEyebrow = "SOS"
     static func sosActive(_ count: Int) -> String { "SOS · \(count) active" }
-    static let nobodyTaken = "Nobody has taken this"
+    static let nobodyTaken = "Nobody has taken this yet"
     static func isChecking(_ role: String) -> String { "\(role) is checking" }
-    static let youreChecking = "You're checking"
-    static let checkedByKitchen = "Checked by Kitchen Staff"
-    static let sosHelper = "Only if you're free. Keep the kitchen running first."
+    static let youreChecking = "You're checking this"
+    /// The edge tab is 58 pt wide, so it keeps the short form.
+    static let tabChecking = "You're checking"
+    static let checkedByKitchen = "Checked by the kitchen"
+    static let sosHelper = "Only if you're free. Keep cooking first if the kitchen is busy."
     static let illGoAndCheck = "I'll go and check"
     static let notNow = "Not now"
-    static func onYourWay(_ name: String) -> String { "\(name) can see you're on your way." }
+    static func onYourWay(_ name: String) -> String { "\(name) and the kitchen team can see you're on your way." }
     static let markAsChecked = "Mark as checked"
     static let markedAsChecked = "Marked as checked"
-    static let backToKitchen = "Back to the kitchen"
+    static let backToCooking = "Back to cooking"
     static let openTheSOS = "Open the SOS"
     static let sosFailed = "Couldn't update the SOS. Nothing was changed."
     static func minutesAgo(_ minutes: Int) -> String { "\(minutes) min ago" }

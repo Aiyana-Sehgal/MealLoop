@@ -140,11 +140,11 @@ struct KitchenSOSPanel: View {
                      primary: .init(title: KitchenCopy.markAsChecked) {
                          Task { if await model.markChecked() { onChecked() } }
                      },
-                     secondary: .init(title: KitchenCopy.backToKitchen, handler: onClose),
+                     secondary: .init(title: KitchenCopy.backToCooking, handler: onClose),
                      isWorking: model.isWorking, onClose: onClose)
         case .checkedByYou:
             SOSPanel(title: title, incident: incident, status: status,
-                     primary: .init(title: KitchenCopy.backToKitchen, handler: onClose),
+                     primary: .init(title: KitchenCopy.backToCooking, handler: onClose),
                      onClose: onClose)
         }
     }
