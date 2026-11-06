@@ -282,3 +282,7 @@ Reachable placeholders: 32 of 33 destinations. Only Kitchen Home is built. `Plac
 
 Not run: a physical device and an iOS 17 runtime.
 
+## Waste role guard (2026-11-06)
+
+`save` and `saveDraft` now take a role and accept Kitchen Staff only. Debug 131 passed, Review 130 passed, 0 failed, 0 skipped (`.xcresult`); Release builds. Every other role is refused, nothing is stored, and Supervisor and Admin can still read the report.
+
