@@ -65,8 +65,67 @@ enum DemoSeed {
     static let shortageLevel: ShortageLevel = .almostOut
     static let shortageReportedAt = time(13, 30)
 
+    // supervisor_spec.md: "SOS: Found something in food, Main Mess Block A, 12:45 PM."
+    static let sosTitle = "Found something in food"
+    // S04 and S08 draw the place as "Main Mess · Block A".
+    static let sosPlace = "Main Mess · Block A"
+    static let sosRaisedAt = time(12, 45)
+
     // kitchen_spec.md: "Recorded -> 'Recorded · 2:40 PM', 'You can edit until 8:40 PM.'"
     static let wasteRecordedAt = time(14, 40)
+
+    // MARK: Meal history (supervisor S18, S19b to S19f, S10, S11)
+
+    // S19d: Wed 14 · Breakfast, final entries 402, "1 shortage · Resolved" (no item or time drawn),
+    // waste "Recorded · 10:05 AM".
+    static let breakfastFinalEntries = 402
+    static let breakfastWasteRecordedAt = time(10, 5)
+
+    /// A closed meal before the story day. Only what the pack draws is filled in.
+    struct PastMeal: Sendable {
+        let id: MealID
+        let slot: MealSlot
+        let day: Date
+        let finalEntries: Int?
+        let shortages: [MealRecord.ShortageLine]
+        let waste: MealRecord.WasteStatus
+        let wasteReport: WasteReport?
+    }
+
+    private static let tuesdayLunchID = MealID("demo-2024-08-13-lunch")
+
+    /// Newest first. S18 draws Tue 13 · Dinner, Tue 13 · Lunch and Mon 12 · Dinner under the story day.
+    static let pastMeals: [PastMeal] = [
+        // S11, S19e: 598 entered, no shortage, waste not recorded.
+        PastMeal(id: MealID("demo-2024-08-13-dinner"), slot: .dinner, day: date(13, 0, 0), finalEntries: 598,
+                 shortages: [], waste: .notRecorded, wasteReport: nil),
+        // S19: 806 entered; Steamed Rice resolved 1:52 PM; recorded by the kitchen 2:40 PM.
+        PastMeal(id: tuesdayLunchID, slot: .lunch, day: date(13, 0, 0), finalEntries: 806,
+                 shortages: [MealRecord.ShortageLine(dishName: "Steamed Rice", outcome: .resolved(at: date(13, 13, 52)))],
+                 waste: .recorded(at: date(13, 14, 40)), wasteReport: tuesdayLunchWaste),
+        // S19f: final entries Unavailable, no shortage, waste recorded (no time drawn).
+        PastMeal(id: MealID("demo-2024-08-12-dinner"), slot: .dinner, day: date(12, 0, 0), finalEntries: nil,
+                 shortages: [], waste: .recorded(at: nil), wasteReport: nil),
+    ]
+
+    // S10: "Steamed Rice 4 kg, Masala Sambar 3 L, Muttar Masala 0 kg · none left, Chappathi 12 pieces",
+    // "Plate waste, whole meal 21 kg", recorded 2:40 PM.
+    private static var tuesdayLunchWaste: WasteReport {
+        func row(_ id: String, _ name: String, _ unit: WasteUnit, _ measurement: LeftoverMeasurement) -> DishLeftover {
+            DishLeftover(dishID: DishID(id), dishName: name, unit: unit, measurement: measurement)
+        }
+        return WasteReport(
+            mealID: tuesdayLunchID,
+            leftovers: [
+                row("steamed-rice", "Steamed Rice", .kilograms, .entered(4)),
+                row("masala-sambar", "Masala Sambar", .litres, .entered(3)),
+                row("muttar-masala", "Muttar Masala", .kilograms, .noneLeft),
+                row("chappathi", "Chappathi", .pieces, .entered(12)),
+            ],
+            plateWaste: .entered(kilograms: 21),
+            status: .recorded(savedAt: date(13, 14, 40))
+        )
+    }
 
     // PROJECT_CONTEXT.md sample rules: offline banner "Offline · saved 1:38 PM".
     static let offlineSavedAt = time(13, 38)
@@ -147,6 +206,14 @@ enum DemoSeed {
     }
 
     // MARK: - Helpers
+
+    /// A time on another day of the sample week (August 2024), in the mess time zone.
+    static func date(_ day: Int, _ hour: Int, _ minute: Int) -> Date {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Asia/Kolkata") ?? .current
+        let components = DateComponents(year: 2024, month: 8, day: day, hour: hour, minute: minute)
+        return calendar.date(from: components) ?? Date(timeIntervalSince1970: 0)
+    }
 
     /// A time on the sample day, Wed 14 Aug 2024, in the mess time zone.
     static func time(_ hour: Int, _ minute: Int) -> Date {
