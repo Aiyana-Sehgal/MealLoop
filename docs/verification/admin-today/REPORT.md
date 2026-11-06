@@ -49,7 +49,6 @@ Exports are in `design/audit/export_admin_redesign/`. Tabs confirmed: Today, Stu
 ## Differences left
 
 - One tile, not four: only Main Mess is seeded. North, South and Annexe are not invented.
-- "Hey Mess food head" wraps to two lines, and the avatar reads MF, because of the seeded display name.
 - The stepper has four steps, not A02's three, because approval is its own step (FR-HC-004).
 - The adjust sheet's button says "Approve 862", not "Save 720", because saving approves.
 - Status is a dot and text, not A02's pills, per the brief. The word is Pending, not Waiting or Not acknowledged.
@@ -101,3 +100,18 @@ The owner has deferred these shared changes to Monday.
 ## Later parts
 
 Students, Results and More; Live meal, Meal report and Safety case pages (Today opens Coming soon for these); real Search; Vendor acknowledgment (Part 6).
+
+## Food head name (2026-11-07)
+
+The seeded food head is now **Devi Raman**, from `design/audit/design_intent.md` line 142 ("Devi Raman, Food head", initials DR) and `design/audit/PROJECT_CONTEXT.md` line 29. Today reads "Hey Devi" on one line with the avatar DR, as `A01_today` draws it. This replaces "Hey Mess food head", which wrapped to two lines, with the avatar MF.
+
+| Run | Exit | Tests | Passed | Failed | Skipped |
+|---|---|---|---|---|---|
+| Debug, iPhone 18 Pro iOS 27.2 | 0 | 222 | 218 | 0 | 4 |
+| Review, same device | 0 | 221 | 217 | 0 | 4 |
+| Release build | 0 | n/a | n/a | n/a | n/a |
+
+Checked in the Review app on a temporary iPhone SE (3rd generation) and an iPhone 18 Pro Max: the greeting is one line on both. See `small/A01_today_devi.png` and `large/A01_today_devi.png`.
+
+The other screenshots here were not retaken, so any that show the header still have the old name.
+
