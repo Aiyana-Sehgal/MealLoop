@@ -464,5 +464,6 @@ private struct OpenCaseRepository: SOSRepository {
     func claim(_ sos: SOSCaseID, by role: Role) async throws -> SOSCase { safetyCase }
     func markChecked(_ sos: SOSCaseID, by role: Role) async throws -> SOSCase { safetyCase }
     func close(_ sos: SOSCaseID, by role: Role) async throws -> SOSCase { safetyCase }
+    func raise(_ report: SOSReport) async throws -> SOSCase { safetyCase }
 }
 #endif
