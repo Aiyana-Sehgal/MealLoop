@@ -17,6 +17,7 @@ struct RemoteAPI: MealRepository, MealStateRepository, HeadcountRepository, Entr
     func startMeal(_ meal: MealID, by role: Role) async throws -> MealStatus { throw notImplemented("start meal") }
     func closeMeal(_ meal: MealID, by role: Role) async throws -> MealStatus { throw notImplemented("close meal") }
     func meals(for mess: MessID) async throws -> [MealStatus] { throw notImplemented("meals") }
+    func mealHistory(for mess: MessID) async throws -> [MealRecord] { throw notImplemented("meal history") }
 
     func headcount(for meal: MealID) async throws -> Headcount { throw notImplemented("headcount") }
     func approveHeadcount(_ count: Int, reason: String?, for meal: MealID, by role: Role) async throws -> Headcount {

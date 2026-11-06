@@ -16,6 +16,8 @@ protocol MealStateRepository: Sendable {
     func meals(for mess: MessID) async throws -> [MealStatus]
     func startMeal(_ meal: MealID, by role: Role) async throws -> MealStatus
     func closeMeal(_ meal: MealID, by role: Role) async throws -> MealStatus
+    /// Closed meals of one mess, newest first, with their final entries, shortages and waste status. Read only.
+    func mealHistory(for mess: MessID) async throws -> [MealRecord]
 }
 
 /// The six headcount quantities of a meal and the vendor's acknowledgment.
