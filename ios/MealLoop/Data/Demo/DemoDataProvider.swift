@@ -526,6 +526,17 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
 
     // MARK: SOSRepository
 
+    func raise(_ report: SOSReport) async throws -> SOSCase {
+        try failIfOffline()
+        guard report.messID == DemoSeed.mess.id else { throw RepositoryError.notFound }
+        let id = SOSCaseID(report.idempotencyKey.rawValue)
+        if let existing = state.sosCases.first(where: { $0.id == id }) { return existing }
+        let sos = SOSCase(id: id, messID: report.messID, title: report.title, place: report.place,
+                          raisedAt: clock.now(), claim: nil, checks: [], status: .open)
+        state.sosCases.append(sos)
+        return sos
+    }
+
     func activeCases(for mess: MessID) async throws -> [SOSCase] {
         try failIfOffline()
         return state.sosCases.filter { $0.messID == mess && $0.status == .open }

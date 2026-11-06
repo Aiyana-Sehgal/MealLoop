@@ -72,6 +72,8 @@ protocol WasteReportRepository: Sendable {
 
 /// SOS cases. Staff claim and check; only the Supervisor closes.
 protocol SOSRepository: Sendable {
+    /// Opens a case for the mess. A repeat with the same idempotency key returns the case already opened.
+    func raise(_ report: SOSReport) async throws -> SOSCase
     func activeCases(for mess: MessID) async throws -> [SOSCase]
     func claim(_ sos: SOSCaseID, by role: Role) async throws -> SOSCase
     func markChecked(_ sos: SOSCaseID, by role: Role) async throws -> SOSCase

@@ -65,6 +65,12 @@ enum DemoSeed {
     static let shortageLevel: ShortageLevel = .almostOut
     static let shortageReportedAt = time(13, 30)
 
+    // supervisor_spec.md: "SOS: Found something in food, Main Mess Block A, 12:45 PM."
+    static let sosTitle = "Found something in food"
+    // S04 and S08 draw the place as "Main Mess · Block A".
+    static let sosPlace = "Main Mess · Block A"
+    static let sosRaisedAt = time(12, 45)
+
     // kitchen_spec.md: "Recorded -> 'Recorded · 2:40 PM', 'You can edit until 8:40 PM.'"
     static let wasteRecordedAt = time(14, 40)
 

@@ -51,6 +51,7 @@ struct RemoteAPI: MealRepository, MealStateRepository, HeadcountRepository, Entr
     func saveDraft(_ report: WasteReport, by role: Role) async throws -> WasteReport { throw notImplemented("save waste draft") }
     func save(_ report: WasteReport, by role: Role) async throws -> WasteReport { throw notImplemented("save waste report") }
 
+    func raise(_ report: SOSReport) async throws -> SOSCase { throw notImplemented("raise SOS") }
     func activeCases(for mess: MessID) async throws -> [SOSCase] { throw notImplemented("SOS cases") }
     func claim(_ sos: SOSCaseID, by role: Role) async throws -> SOSCase { throw notImplemented("claim SOS") }
     func markChecked(_ sos: SOSCaseID, by role: Role) async throws -> SOSCase { throw notImplemented("check SOS") }
