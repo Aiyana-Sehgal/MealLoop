@@ -86,6 +86,12 @@ struct DemoState: Sendable {
     var headcountAcknowledgment: VendorAcknowledgment?
     /// True in the story: counts come only from entries really recorded, never from the sample numbers.
     var countsRecordedEntriesOnly = false
+    var specialEntries: [StudentID: SpecialPassEntry] = [:]
+    var specialEntryResults: [IdempotencyKey: SpecialPassEntryResult] = [:]
+    /// Which sample code is live, and when its window opened. Nil until a lookup asks for one.
+    var passCodeIndex = 0
+    var passCodeIssuedAt: Date?
+    var reissueRequests = DemoSeed.sampleReissues
 
     init(scenario: DemoScenario) {
         let meal = DemoSeed.lunch
@@ -164,7 +170,7 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
 
     nonisolated func makeRepositories() -> Repositories {
         Repositories(meals: self, mealState: self, headcount: self, entries: self, intentions: self,
-                     shortages: self, wasteReports: self, sos: self, auth: self)
+                     shortages: self, wasteReports: self, sos: self, auth: self, specialPasses: self)
     }
 
     private func failIfOffline() throws {
@@ -680,6 +686,119 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
         return .wrong(triesLeft: RolePasswordPolicy.maximumTries - wrong)
     }
     #endif
+}
+
+// SIMULATED pass service. The design has no verification algorithm, so the sample codes simply take turns.
+extension DemoDataProvider: SpecialPassRepository {
+    private func holder(_ sample: DemoSeed.SampleStudent) -> SpecialPassHolder {
+        SpecialPassHolder(student: sample.ref, name: sample.name)
+    }
+
+    private func livePassCode() -> LivePassCode {
+        let sample = DemoSeed.samplePassCodes[state.passCodeIndex % DemoSeed.samplePassCodes.count]
+        let issuedAt = state.passCodeIssuedAt ?? clock.now()
+        return LivePassCode(code: sample.code, colourName: sample.colourName,
+                            changesAt: issuedAt.addingTimeInterval(DemoSeed.passCodeWindow))
+    }
+
+    private var specialRecordedCount: Int? {
+        switch state.mealStatus.state {
+        case .notStarted: return nil
+        case .inService: return (state.countsRecordedEntriesOnly ? 0 : DemoSeed.specialMealsSoFar) + state.specialEntries.count
+        case .closed: return state.countsRecordedEntriesOnly ? state.specialEntries.count : DemoSeed.specialMealsFinal
+        }
+    }
+
+    func lookUpPass(lastFour: String, for meal: MealID) async throws -> SpecialPassLookup {
+        try failIfOffline()
+        try requireKnownMeal(meal)
+        guard let sample = DemoSeed.sampleStudents.first(where: { $0.entryCode.lastFour == lastFour }) else { return .notFound }
+        if let entry = state.specialEntries[sample.ref.id] {
+            return .used(holder(sample), firstRecordedAt: entry.recordedAt, count: specialRecordedCount)
+        }
+        guard let slot = DemoSeed.samplePasses[sample.ref.id] else { return .noPass(holder(sample)) }
+        guard slot == state.mealStatus.meal.slot else { return .wrongMeal(holder(sample), passFor: slot) }
+        state.passCodeIssuedAt = clock.now()
+        return .valid(holder(sample), live: livePassCode())
+    }
+
+    func refreshPassCode(for student: StudentID, meal: MealID) async throws -> LivePassCode {
+        try failIfOffline()
+        try requireKnownMeal(meal)
+        guard DemoSeed.samplePasses[student] == state.mealStatus.meal.slot else { throw RepositoryError.notFound }
+        state.passCodeIndex += 1
+        state.passCodeIssuedAt = clock.now()
+        return livePassCode()
+    }
+
+    func recordPassEntry(_ request: SpecialPassEntryRequest) async throws -> SpecialPassEntryResult {
+        // Offline: nothing is recorded, nothing is queued and nothing comes back as a result.
+        try failIfOffline()
+        try requireKnownMeal(request.mealID)
+        guard request.recordedBy == .passDesk else {
+            throw RepositoryError.notAllowed(reason: "Only the Pass Desk records a special-meal entry.")
+        }
+        if let previous = state.specialEntryResults[request.idempotencyKey] { return previous }
+        if state.mealStatus.state == .closed {
+            return .mealEnded(closedAt: state.mealStatus.closedAt, count: specialRecordedCount)
+        }
+        guard state.mealStatus.state == .inService else {
+            throw RepositoryError.notAllowed(reason: "Checking opens when the meal starts.")
+        }
+        if let entry = state.specialEntries[request.student.id] {
+            return .alreadyRecorded(firstRecordedAt: entry.recordedAt, count: specialRecordedCount)
+        }
+        guard DemoSeed.samplePasses[request.student.id] == state.mealStatus.meal.slot else {
+            throw RepositoryError.notAllowed(reason: "This student has no valid special-meal pass for this meal.")
+        }
+        let live = livePassCode()
+        guard state.passCodeIssuedAt != nil, request.comparedCode == live.code, clock.now() < live.changesAt else {
+            return .codeChanged
+        }
+        let entry = SpecialPassEntry(mealID: request.mealID, student: request.student, recordedAt: clock.now(),
+                                     recordedBy: request.recordedBy)
+        state.specialEntries[request.student.id] = entry
+        let result = SpecialPassEntryResult.recorded(entry, count: specialRecordedCount)
+        state.specialEntryResults[request.idempotencyKey] = result
+        return result
+    }
+
+    func specialMealCount(for meal: MealID) async throws -> SpecialMealCount {
+        try failIfOffline()
+        try requireDayMeal(meal)
+        // Only the story meal is a special meal in the seed, so any other has no count and no pass total.
+        guard meal == state.mealStatus.meal.id else { return SpecialMealCount(recorded: .unavailable, passes: nil) }
+        let recorded = specialRecordedCount.map { CountReading.available($0, asOf: clock.now()) } ?? .unavailable
+        return SpecialMealCount(recorded: recorded, passes: DemoSeed.specialPassesTotal)
+    }
+
+    func specialMealEntries(for meal: MealID) async throws -> [SpecialPassEntry] {
+        try failIfOffline()
+        try requireDayMeal(meal)
+        return state.specialEntries.values.filter { $0.mealID == meal }.sorted { $0.recordedAt < $1.recordedAt }
+    }
+
+    func reissueRequests(for mess: MessID) async throws -> [PassReissueRequest] {
+        try failIfOffline()
+        guard mess == DemoSeed.mess.id else { return [] }
+        return state.reissueRequests
+    }
+
+    func requestReissue(_ submission: PassReissueSubmission) async throws -> PassReissueRequest {
+        try failIfOffline()
+        guard submission.requestedBy == .passDesk else {
+            throw RepositoryError.notAllowed(reason: "Only the Pass Desk requests a new pass.")
+        }
+        guard let sample = DemoSeed.sampleStudents.first(where: { $0.ref.id == submission.student.id }) else {
+            throw RepositoryError.notFound
+        }
+        let id = PassReissueID(submission.idempotencyKey.rawValue)
+        if let existing = state.reissueRequests.first(where: { $0.id == id }) { return existing }
+        let request = PassReissueRequest(id: id, holder: holder(sample), reason: submission.reason, status: .waiting,
+                                         updatedAt: clock.now())
+        state.reissueRequests.insert(request, at: 0)
+        return request
+    }
 }
 
 #if DEMO_DATA
