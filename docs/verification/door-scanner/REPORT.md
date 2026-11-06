@@ -1,6 +1,6 @@
 # Door Scanner verification
 
-Branch `feat/ios-door-scanner`, based on `a4ae9c7`. Checked 2026-11-06.
+Branch `feat/ios-door-scanner`, with `feature/swiftui-foundation` merged in up to `e92f205`. Code checked at `0d3f3e5` on 2026-11-06.
 
 ## Results
 
@@ -8,30 +8,29 @@ Xcode 27.2, iPhone 17e simulator, iOS 27.0, clean build. Counts come from each `
 
 | Run | Exit | Executed | Passed | Failed | Skipped |
 |---|---|---|---|---|---|
-| Debug tests | 0 | 174 | 174 | 0 | 0 |
-| Review tests | 0 | 173 | 173 | 0 | 0 |
+| Debug tests | 0 | 247 | 243 | 0 | 4 |
+| Review tests | 0 | 246 | 242 | 0 | 4 |
 | Release build | 0 | n/a | n/a | n/a | n/a |
 
-The 29 new tests are in `DoorScannerTests.swift`; the earlier 145 and 144 still pass. The Door code has no compiler warnings.
+The 30 Door tests are in `DoorScannerTests.swift` and all pass. The 4 skipped tests are the opt-in `SupervisorScreenshotTests`, which run only with `TEST_RUNNER_SUPERVISOR_SHOTS` set. The Door code has no compiler warnings.
 
 **Scope:** the diff lists only `Features/DoorScanner/`, `DoorScannerTests.swift` and this folder. No shared file changed.
 
 **Hardcoded data:** a search of the feature folder finds no sample names, seeded numbers, times or `DemoSeed` in any view, and no wording outside `DoorScannerCopy` and `DoorProblemKind`.
 
-## Merge order
+## SOS on the real backend
 
-**Merge after the Supervisor PR; this branch needs an update first.** The Supervisor branch adds `raise` to `SOSRepository`, so the `FakeSOS` in `DoorScannerTests.swift` stops compiling until it has this method:
+The merge brought in `SOSRepository.raise`, so `FakeSOS` now has it and SOS has run against the prototype backend, not only a stand-in. Here "real" means `DemoDataProvider`. `RemoteAPI.raise` is still not implemented.
 
-```swift
-func raise(_ report: SOSReport) async throws -> SOSCase { cases[0] }
-```
+- **Test:** `testARaisedCaseRunsThroughTheDoorOnTheRealBackend` raises a case, then loads, claims and marks it checked. The case stays open until the Supervisor closes it, and then the tab goes.
+- **Screens:** `SOS_real_1` to `SOS_real_5` in `small/` and `large/` show the real `DoorScannerRootView` on the real repository: no case, tab after the raise, panel, claimed, checked. A scratch copy made the raise and the taps, because no screen in the app calls `raise` yet. They were taken at `f622909`; the later merge changed only Admin files.
 
-`SOSReport` does not exist on this base, so it cannot be added yet. The app code needs no change: the SOS tab reads `activeCases`, so a raised case appears by itself.
+**A raised case does not appear by itself.** The Door reloads on `dataRevision`, on pull to refresh and when the root opens. Whatever raises the case in the Student SOS part must call `environment.dataDidChange()`, and a real backend will need a push or a poll. The scratch run made that call itself.
 
 ## How it was checked
 
-- **Screenshots:** 36 states on the iPhone 17e (390 pt, iOS 27.0) and iPhone 17 Pro Max (440 pt, iOS 26.5), in `small/` and `large/`. `compare/` has 21 side-by-side sheets with the reference on the left.
-- **Method:** the role has no way to reach most states by hand in one run, so a scratch copy added a launch hook that opens each state. The hook is not in the repository. SOS states used a stand-in repository, because nothing can raise a case on this base.
+- **Screenshots:** 41 states on the iPhone 17e (390 pt, iOS 27.0) and iPhone 17 Pro Max (440 pt, iOS 26.5), in `small/` and `large/`. `compare/` has 21 side-by-side sheets with the reference on the left.
+- **Method:** the role has no way to reach most states by hand in one run, so a scratch copy added a launch hook that opens each state. The hook is not in the repository. The D13 and D14 states used a stand-in repository, taken before `raise` reached this branch. The `SOS_real_*` states use the real one.
 - **Walk-through on the real root (scratch test, driven through the accessibility tree):** before the meal shows the time and no Type ID; Home follows the Supervisor; Type ID opens the sheet; digits find a match; the lookup records nothing; Record entry shows the lime screen; it returns to Home by itself with the count at 1; a repeat shows Already scanned and the count stays; a no-response student is listed; the sheet reopens empty; no match; Home follows the meal closing.
 - **In the running app:** Report opens, Back returns Home, and sending lands on Open problems (the `walk_` screenshots).
 - **Kitchen sees each entry:** `testKitchenSeesEachRecordedEntry` reads the count through Kitchen's own view model.
@@ -112,13 +111,12 @@ func raise(_ report: SOSReport) async throws -> SOSCase { cases[0] }
 
 ## Not run
 
-A real device, a real camera, VoiceOver by hand, largest Dynamic Type, Reduce Motion, an iOS 17 system. SOS has run only against a stand-in repository. Parallel sessions shared the machine, so several screenshots needed a retry.
+A real device, a real camera, VoiceOver by hand, largest Dynamic Type, Reduce Motion, an iOS 17 system. The SOS raise from a real screen, because none exists yet. Parallel sessions shared the machine, so several screenshots needed a retry.
 
 ## Shared changes needed, not made
 
 | File | Change |
 |---|---|
-| `DoorScannerTests.swift` | Add `raise` to `FakeSOS` after the Supervisor PR (above) |
 | `PlaceholderMetricTests.swift` | Add `.doorScanner: ["Home", "Alerts", "Me"]` to `built`, or the metric undercounts |
 | `Domain/Entry.swift` | `StudentRef.firstName: String?`, the Monday batch |
 | `Domain/Entry.swift` | `.wrongMeal(servingNow:, codeMeal: MealSlot?)`, for "This QR is for Dinner." |
