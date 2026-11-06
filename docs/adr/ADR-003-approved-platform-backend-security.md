@@ -1,6 +1,6 @@
 # ADR-003: Approved platform, backend and security decisions
 
-- Status: **Accepted.** These are decisions the owner explicitly approved, as stated in the architecture-synchronization task of 1 November 2026. The repository does not record the original date of each approval, so no earlier date is claimed here. C1 (the system context) was approved on 24 October 2026 (see `docs/architecture/C4_ARCHITECTURE.md`).
+- Status: **Partially superseded by [ADR-005](ADR-005-frontend-decisions-and-authentication-revision.md) for access-token format (A9–A12).** Other decisions remain accepted. These are decisions the owner explicitly approved, as stated in the architecture-synchronization task of 1 November 2026. The repository does not record the original date of each approval, so no earlier date is claimed here. C1 (the system context) was approved on 24 October 2026 (see `docs/architecture/C4_ARCHITECTURE.md`).
 - Scope: only the choices listed in the mapping table. Everything else stays `Proposed`, `Recommended`, `Unverified` or `Open` (see [ADR-004](ADR-004-authentication-session-and-delivery-options.md) and `docs/OPEN_DECISIONS.md`).
 - Partly supersedes the authentication wording of [ADR-002](ADR-002-backend-shape.md) ("role-based bearer tokens carrying role and mess").
 
