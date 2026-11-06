@@ -13,7 +13,8 @@ enum EntryQRImage {
     }
 }
 
-/// Entry QR (08), without the refresh countdown: the code is static. It is reachable in every answer state.
+/// Entry QR (08), without the refresh countdown or the Live label: the code is static, so nothing here may look like
+/// a live check. It is reachable in every answer state.
 struct EntryQRView: View {
     let model: StudentHomeViewModel
     let onBack: () -> Void
@@ -48,18 +49,15 @@ struct EntryQRView: View {
 
     private func card(_ code: EntryCode) -> some View {
         VStack(spacing: MLSpacing.s16) {
-            HStack {
-                if hero?.answer == .attending {
-                    Text(StudentCopy.youreInChip)
-                        .font(MLType.bodyEmphasis)
-                        .foregroundStyle(MLColor.onLime)
-                        .padding(.horizontal, MLSpacing.s16)
-                        .padding(.vertical, MLSpacing.s8)
-                        .background(Capsule().fill(MLColor.lime))
-                        .overlay(Capsule().stroke(MLColor.limeOutline, lineWidth: 1))
-                }
-                Spacer()
-                StatusText(text: StudentCopy.live)
+            if hero?.answer == .attending {
+                Text(StudentCopy.youreInChip)
+                    .font(MLType.bodyEmphasis)
+                    .foregroundStyle(MLColor.onLime)
+                    .padding(.horizontal, MLSpacing.s16)
+                    .padding(.vertical, MLSpacing.s8)
+                    .background(Capsule().fill(MLColor.lime))
+                    .overlay(Capsule().stroke(MLColor.limeOutline, lineWidth: 1))
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             qr(code)
             VStack(spacing: MLSpacing.s4) {
@@ -72,6 +70,7 @@ struct EntryQRView: View {
             }
         }
         .padding(MLSpacing.s20)
+        .frame(maxWidth: .infinity)
         .background(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).fill(MLColor.surface))
     }
 

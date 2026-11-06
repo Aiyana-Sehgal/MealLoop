@@ -53,7 +53,6 @@ enum StudentCopy {
 
     static let entryQR = "Entry QR"
     static let youreInChip = "You're in"
-    static let live = "Live"
     static let holdUp = "Hold this up to the scanner."
     static let cantScan = "Can't scan? Give the door staff your SRM ID."
     static let qrUnavailable = "The QR can't be shown right now."
