@@ -59,6 +59,8 @@ actor InMemoryOutingCaseRepository: OutingCaseRepository {
     private var phoneCodes: [OutingRequestID: String] = [:]
     private var undoSnapshots: [OutingRequestID: OutingCase] = [:]
     private var typedCodes = 0
+    /// Every Find student lookup, with its time (GA-5: "every lookup is recorded").
+    private(set) var lookups: [(srmID: String, at: Date)] = []
     private var offline = false
 
     init(clock: any StoryClock = DemoClock(OutingSeed.guardianMoment),
@@ -571,6 +573,7 @@ actor InMemoryOutingCaseRepository: OutingCaseRepository {
         try require(role, is: .gate)
         let wanted = srmID.trimmingCharacters(in: .whitespaces).uppercased()
         guard !wanted.isEmpty else { return [] }
+        lookups.append((wanted, clock.now()))
         return order.compactMap { cases[$0] }.filter { $0.student.srmID == wanted && $0.pass != nil }
     }
 
@@ -582,6 +585,7 @@ actor InMemoryOutingCaseRepository: OutingCaseRepository {
             throw RepositoryError.notAllowed(reason: "No valid signed pass for an exit now.")
         }
         item.exitAt = clock.now()
+        item.exitGate = OutingSeed.gatePost.name
         item.stage = .out
         undoSnapshots[outing] = nil
         let saved = save(item)

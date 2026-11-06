@@ -143,6 +143,8 @@ struct OutingCase: Codable, Sendable, Hashable, Identifiable {
     var wardenDecision: WardenDecision?
     var pass: OutingPass?
     var exitAt: Date?
+    /// The gate that recorded the exit ("Main Gate").
+    var exitGate: String?
     var returnAt: Date?
     var withdrawnAt: Date?
     var withdrawnBy: Role?

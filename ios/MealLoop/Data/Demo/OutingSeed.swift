@@ -191,7 +191,8 @@ enum OutingSeed {
                                     initials: nil, block: nil, srmID: nil)
         return OutingCase(id: OutingRequestID("demo-outing-gate-\(masked)"), student: student, place: nil, reason: nil,
                           leaveAt: nil, returnBy: back, guardianReplyBy: nil, wardenDecideBy: nil, guardianPhone: nil,
-                          seededPassCode: nil, pastAnswerCounts: [:], stage: .out, exitAt: out)
+                          seededPassCode: nil, pastAnswerCounts: [:], stage: .out, exitAt: out,
+                          exitGate: gatePost.name)
     }
 
     private static func history(_ id: String, _ student: OutingStudent, _ outcome: WardenHistoryItem.Outcome, on day: Date,

@@ -290,6 +290,20 @@ final class OutingCaseRepositoryTests: XCTestCase {
         XCTAssertEqual(gateOut.count, OutingSeed.mainGateOut.count)
     }
 
+    func testGateLookupsAreRecordedAndFindOnlyPasses() async throws {
+        let (repository, clock) = make()
+        let none = try await repository.findStudent(srmID: "RA2411003010238", by: .gate)
+        XCTAssertTrue(none.isEmpty, "No pass yet, so no match")
+        _ = try await acceptByVideo(repository)
+        clock.set(OutingSeed.wardenMoment)
+        _ = try await repository.approve(aarav, warden: warden, by: .warden)
+        let found = try await repository.findStudent(srmID: "ra2411003010238", by: .gate)
+        XCTAssertEqual(found.map(\.id), [aarav])
+        let lookups = await repository.lookups
+        XCTAssertEqual(lookups.count, 2)
+        await assertRefused { _ = try await repository.findStudent(srmID: "RA2411003010238", by: .warden) }
+    }
+
     func testClockOnlyMovesForward() async throws {
         let (repository, _) = make(at: OutingSeed.gateMoment)
         try await repository.begin(as: .guardian)
