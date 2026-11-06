@@ -240,7 +240,6 @@ enum AdminSeed {
                 role("wardens", "Wardens", "warden", 6), role("gate", "Gate security", "gate security", 4)],
         invited: 2, vendor: VendorContact(phone: "+91 98••• ••214", channel: .message))
 
-    static let inviteRoles = ["Door staff", "Kitchen staff", "Mess supervisor", "Food head"]
 
     // A11_more_announce_write and _confirm_sheet: "About 860 students at Main Mess"; F05: "All 3,500 students".
     static let announcement = AnnouncementDraft(
@@ -399,7 +398,9 @@ struct DemoAdminRepositories: AdminResultsRepository, AdminStudentsRepository, A
         let record = history.first { $0.mealID == base.id }
         var sentAt: Date?
         if case .sent(let sent) = headcount.sentToVendor { sentAt = sent.sentAt }
-        var change = base.headcountChange
+        let isClosed = record != nil
+        // The pack's facts about this meal describe it after service. Before the meal closes none of them has happened.
+        var change = isClosed ? base.headcountChange : nil
         if case .approved(let approved) = headcount.approved, let last = approved.adjustments.last {
             change = HeadcountChange(from: last.from, to: last.to, at: last.adjustedAt, reason: last.reason)
         }
@@ -409,15 +410,14 @@ struct DemoAdminRepositories: AdminResultsRepository, AdminStudentsRepository, A
             guard case .entered(let amount) = row.measurement else { return nil }
             return FoodAmount(dish: row.dishName, amount: amount, unit: row.unit)
         }
-        var missing = base.missing
-        if record != nil, !isWasteRecorded { missing.append(.wasteRecord) }
-        let isClosed = record != nil
+        var missing = isClosed ? base.missing : []
+        if isClosed, !isWasteRecorded { missing.append(.wasteRecord) }
         return AdminMealFacts(
             id: base.id, mess: base.mess, slot: base.slot, day: base.day, headcountSent: headcount.sentToVendor.count, sentAt: sentAt,
             finalEntries: record?.finalEntries.value, closedAt: record?.closedAt, isClosed: isClosed, leftovers: leftovers,
             plateWasteKg: rows?.plateWaste.measuredKilograms, ranOut: isClosed ? base.ranOut : [], wasReportedLate: base.wasReportedLate,
             dataCompletePercent: isClosed && isWasteRecorded ? base.dataCompletePercent : nil, missing: missing, headcountChange: change,
-            openQuestions: base.openQuestions, needsReview: base.needsReview, linkedCheck: base.linkedCheck, suggestedChange: base.suggestedChange)
+            openQuestions: isClosed ? base.openQuestions : [], needsReview: base.needsReview, linkedCheck: base.linkedCheck, suggestedChange: base.suggestedChange)
     }
 
     private func withReview(_ meal: AdminMealFacts) async -> AdminMealFacts {
