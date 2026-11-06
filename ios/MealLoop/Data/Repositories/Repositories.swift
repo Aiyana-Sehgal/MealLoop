@@ -120,4 +120,7 @@ struct Repositories: Sendable {
     let wasteReports: any WasteReportRepository
     let sos: any SOSRepository
     let auth: any AuthRepository
+    var adminResults: any AdminResultsRepository = AdminDataNotBuilt()
+    var adminStudents: any AdminStudentsRepository = AdminDataNotBuilt()
+    var adminMore: any AdminMoreRepository = AdminDataNotBuilt()
 }
