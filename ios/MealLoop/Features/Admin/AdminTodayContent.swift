@@ -65,16 +65,19 @@ struct AdminMealContent: Equatable {
         headcount.cutoffForecast.diners ?? headcount.liveForecast.diners
     }
 
-    /// Approve, then send. Once sent, nothing is left to do here.
+    /// Owner ruling on P-ADMIN-1: once the meal has closed, nothing is offered and the final state is shown.
+    var isClosed: Bool { status.state == .closed }
+
+    /// Approve, then send. Once sent, or once the meal has closed, nothing is left to do here.
     var nextAction: AdminHeadcountAction? {
-        guard case .notSent = headcount.sentToVendor else { return nil }
+        guard !isClosed, case .notSent = headcount.sentToVendor else { return nil }
         if let approved = headcount.approved.count { return .send(count: approved) }
         return forecastToApprove.map { .approve(count: $0) }
     }
 
     /// The count the adjust sheet starts from, while the headcount can still change.
     var adjustableCount: Int? {
-        guard case .notSent = headcount.sentToVendor else { return nil }
+        guard !isClosed, case .notSent = headcount.sentToVendor else { return nil }
         return headcount.approved.count ?? forecastToApprove
     }
 

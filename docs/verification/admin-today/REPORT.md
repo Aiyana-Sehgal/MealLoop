@@ -8,13 +8,13 @@ After merging the updated base (5a12c53, the Supervisor work):
 
 | Run | Exit | Tests | Passed | Failed | Skipped |
 |---|---|---|---|---|---|
-| Debug, iPhone 18 Pro iOS 27.2 | 0 | 217 | 213 | 0 | 4 |
-| Review, same device | 0 | 216 | 212 | 0 | 4 |
+| Debug, iPhone 18 Pro iOS 27.2 | 0 | 220 | 216 | 0 | 4 |
+| Review, same device | 0 | 219 | 215 | 0 | 4 |
 | Release build | 0 | n/a | n/a | n/a | n/a |
 
-The 4 skipped tests are all in `SupervisorScreenshotTests` (`testCaptureHome`, `testCaptureAlertsShortageAndMe`, `testCaptureSOS`, `testCaptureWasteAndHistory`). They arrived with the merge and only run when their environment variable is set. Before the merge, from clean builds on a4ae9c7: Debug 175 of 175, Review 174 of 174, 0 skipped, Release built. The baseline was 145 and 144, so this adds 30 tests in `AdminTodayViewModelTests.swift`. The race test was confirmed to fail with its guard removed.
+The 4 skipped tests are all in `SupervisorScreenshotTests` (`testCaptureHome`, `testCaptureAlertsShortageAndMe`, `testCaptureSOS`, `testCaptureWasteAndHistory`). They arrived with the merge and only run when their environment variable is set. Before the merge, from clean builds on a4ae9c7: Debug 175 of 175, Review 174 of 174, 0 skipped, Release built. The baseline was 145 and 144, so this adds 33 tests in `AdminTodayViewModelTests.swift`, 3 of them for the P-ADMIN-1 ruling. The race test was confirmed to fail with its guard removed.
 
-The base moved during this work. The merge changed no Admin file, but `SOSRepository` gained `raise`, so the test stub was updated. The walk and screenshots below were repeated on the merged code.
+The base moved during this work. The merge changed no Admin file, but `SOSRepository` gained `raise`, so the test stub was updated. The walk and screenshots below were repeated on the merged code, before the P-ADMIN-1 ruling. **`33_today_meal_closed.png` on both devices still shows the old "Review and approve" button; it was not retaken, so the closed state after the ruling has tests but no visual check.**
 
 **Simulator walk:** six walks passed on iPhone 17e (iOS 27.2, `small/`) and iPhone 18 Pro Max (iOS 27.0, `large/`), 33 screenshots each. They were driven by a temporary XCUITest target in a scratch copy, which is not in this repository. That copy also removed the system Save Password prompt, which otherwise covers the app after sign-in.
 
@@ -49,7 +49,6 @@ Exports are in `design/audit/export_admin_redesign/`. Tabs confirmed: Today, Stu
 ## Differences left
 
 - One tile, not four: only Main Mess is seeded. North, South and Annexe are not invented.
-- "Hey Mess food head" wraps to two lines, and the avatar reads MF, because of the seeded display name.
 - The stepper has four steps, not A02's three, because approval is its own step (FR-HC-004).
 - The adjust sheet's button says "Approve 862", not "Save 720", because saving approves.
 - Status is a dot and text, not A02's pills, per the brief. The word is Pending, not Waiting or Not acknowledged.
@@ -78,11 +77,20 @@ Exports are in `design/audit/export_admin_redesign/`. Tabs confirmed: Today, Stu
 5. **`docs/PRESENTER_ACCOUNTS.md`** still lists Food Head / Admin as placeholder.
 6. **`EntryViews.swift:110`:** `router.entryPath.removeLast()` crashed once on an empty path (report 2026-11-06 19:54:58), in Staff sign in. Not reproduced, and no walk step explains it. `popLast()` would be safe.
 
+7. **Backend guard for P-ADMIN-1.** The app no longer offers these actions, but `approveHeadcount` and `publishHeadcount` still accept a direct call after close. Add to both in `DemoDataProvider.swift`, after the role check, and state the rule on the `HeadcountRepository` protocol:
+   ```swift
+   guard state.mealStatus.state != .closed else {
+       throw RepositoryError.notAllowed(reason: "This meal has closed.")
+   }
+   ```
+
+The owner has deferred these shared changes to Monday.
+
 ## Open questions (proposed IDs for `OPEN_DECISIONS.md`)
 
 | ID | Question | What the prototype does now |
 |---|---|---|
-| P-ADMIN-1 | Can a headcount be approved or sent once the meal has started or closed? | The backend allows it, so Today offers it (32, 33). The view model does not invent a rule |
+| P-ADMIN-1 | Can a headcount be approved or sent once the meal has closed? | **Decided by the owner: no.** A closed meal offers no approve, adjust or send, and shows the final state from the repository: "Closed 2:00 PM" with Pending, Acknowledged and its time, or Not sent. While the meal is in service, Today still offers it (32); the ruling does not cover that |
 | P-ADMIN-2 | Must the headcount be approved before the Supervisor starts the meal? | `startMeal` does not check |
 | P-ADMIN-3 | What should the Food Head see for reminders and escalation (P25)? | Nothing |
 | P-ADMIN-4 | How is a change made after sending (FR-VEN-004, P66)? | The backend refuses it, so Adjust is hidden once sent |
@@ -92,3 +100,18 @@ Exports are in `design/audit/export_admin_redesign/`. Tabs confirmed: Today, Stu
 ## Later parts
 
 Students, Results and More; Live meal, Meal report and Safety case pages (Today opens Coming soon for these); real Search; Vendor acknowledgment (Part 6).
+
+## Food head name (2026-11-07)
+
+The seeded food head is now **Devi Raman**, from `design/audit/design_intent.md` line 142 ("Devi Raman, Food head", initials DR) and `design/audit/PROJECT_CONTEXT.md` line 29. Today reads "Hey Devi" on one line with the avatar DR, as `A01_today` draws it. This replaces "Hey Mess food head", which wrapped to two lines, with the avatar MF.
+
+| Run | Exit | Tests | Passed | Failed | Skipped |
+|---|---|---|---|---|---|
+| Debug, iPhone 18 Pro iOS 27.2 | 0 | 222 | 218 | 0 | 4 |
+| Review, same device | 0 | 221 | 217 | 0 | 4 |
+| Release build | 0 | n/a | n/a | n/a | n/a |
+
+Checked in the Review app on a temporary iPhone SE (3rd generation) and an iPhone 18 Pro Max: the greeting is one line on both. See `small/A01_today_devi.png` and `large/A01_today_devi.png`.
+
+The other screenshots here were not retaken, so any that show the header still have the old name.
+

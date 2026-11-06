@@ -10,7 +10,7 @@ The one prototype password is `DemoSeed.prototypePassword` in `ios/MealLoop/Data
 |---|---|---|---|---|
 | Student | Sign in with SRM | none needed | Aarav | Student tabs (placeholder) |
 | Super Admin | Staff sign in (see note) | `superadmin@mealloop.example` | SRM admin | Home and Me (placeholder) |
-| Food Head / Admin | Staff sign in | `foodhead@mealloop.example` | Mess food head | Today, Students, Results, More (placeholder) |
+| Food Head / Admin | Staff sign in | `foodhead@mealloop.example` | Devi Raman | Today, Students, Results, More (placeholder) |
 | Supervisor | Staff sign in | `supervisor@mealloop.example` | Ravi | Staff tabs (placeholder Home) |
 | Kitchen Staff | Staff sign in | `kitchen@mealloop.example` | AK | Staff tabs, **Kitchen Home** |
 | Door Scanner | Staff sign in | `door@mealloop.example` | SK | Staff tabs (placeholder Home) |

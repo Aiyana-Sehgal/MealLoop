@@ -180,7 +180,7 @@ struct AdminMessTile: View {
     private func statusLine(_ meal: AdminMealContent) -> String {
         switch meal.status.state {
         case .closed:
-            if let closedAt = meal.status.closedAt { return AdminCopy.closedAt(MLFormat.time(closedAt, in: timeZone)) }
+            return closedLine(meal)
         case .inService:
             return AdminCopy.servingNotFinal
         case .notStarted:
@@ -194,6 +194,21 @@ struct AdminMessTile: View {
         case .notPublished:
             return meal.headcount.approved.count == nil ? AdminCopy.waitingForApproval : AdminCopy.approvedNotSent
         }
+    }
+
+    /// The final state of a closed meal: what reached the vendor, read from the record.
+    private func closedLine(_ meal: AdminMealContent) -> String {
+        let vendor: String
+        switch meal.headcount.vendorAcknowledgmentStatus {
+        case .acknowledged(let record):
+            vendor = AdminCopy.acknowledgedAt(MLFormat.time(record.acknowledgedAt, in: timeZone))
+        case .pending:
+            vendor = AdminCopy.pending
+        case .notPublished:
+            vendor = AdminCopy.notSent
+        }
+        guard let closedAt = meal.status.closedAt else { return vendor }
+        return AdminCopy.closedWithStatus(MLFormat.time(closedAt, in: timeZone), status: vendor)
     }
 }
 

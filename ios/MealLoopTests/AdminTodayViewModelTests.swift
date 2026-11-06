@@ -348,6 +348,57 @@ final class AdminTodayViewModelTests: XCTestCase {
         XCTAssertEqual(model.state.value?.nodes.first { $0.slot == .lunch }?.progress, .done)
     }
 
+    func testAClosedMealOffersNothingEvenIfItWasNeverApproved() async throws {
+        let (demo, model) = try await loaded(.afterMeal)
+        XCTAssertEqual(try meal(model).headcount.approved, .notApproved)
+        XCTAssertNil(try meal(model).nextAction)
+        XCTAssertNil(try meal(model).adjustableCount)
+        XCTAssertEqual(model.state.value?.tileIsUrgent, false)
+
+        let approved = await model.approve()
+        let adjusted = await model.adjust(to: DemoSeed.forecastDiners + 1, reason: "Late")
+        let sent = await model.send()
+
+        XCTAssertFalse(approved || adjusted || sent)
+        let record = try await demo.headcount(for: lunch.id)
+        XCTAssertEqual(record.approved, .notApproved, "Nothing reached the backend")
+        XCTAssertEqual(record.sentToVendor, .notSent)
+    }
+
+    func testAnApprovedHeadcountIsNotOfferedForSendingOnceTheMealCloses() async throws {
+        let (demo, model) = try await loaded()
+        await model.approve()
+        _ = try await demo.startMeal(lunch.id, by: .supervisor)
+        _ = try await demo.closeMeal(lunch.id, by: .supervisor)
+        await model.load()
+        XCTAssertNil(try meal(model).nextAction)
+        let sent = await model.send()
+        XCTAssertFalse(sent)
+        let record = try await demo.headcount(for: lunch.id)
+        XCTAssertEqual(record.sentToVendor, .notSent)
+    }
+
+    func testAClosedMealKeepsPendingOrAcknowledgedFromTheRepository() async throws {
+        let (demo, model) = try await loaded()
+        await model.approve()
+        await model.send()
+        let sentAt = demo.clock.now()
+        _ = try await demo.startMeal(lunch.id, by: .supervisor)
+        _ = try await demo.closeMeal(lunch.id, by: .supervisor)
+        await model.load()
+        XCTAssertEqual(try meal(model).headcount.vendorAcknowledgmentStatus, .pending(publishedAt: sentAt),
+                       "Closing a meal is never an acknowledgment")
+        XCTAssertNil(try meal(model).nextAction)
+
+        let vendor = try vendorAccount()
+        _ = try await demo.acknowledgeHeadcount(for: lunch.id, by: vendor)
+        await model.load()
+        guard case .acknowledged(let record) = try meal(model).headcount.vendorAcknowledgmentStatus else {
+            return XCTFail("Expected acknowledged")
+        }
+        XCTAssertEqual(record.acknowledgedBy, vendor)
+    }
+
     func testTheDayLineFollowsTheMovedClock() async throws {
         let (_, model) = try await loaded()
         XCTAssertEqual(model.state.value?.nodes.map(\.slot), MealSlot.allCases)
@@ -410,6 +461,17 @@ final class AdminTodayViewModelTests: XCTestCase {
     func testInitialsComeFromTheName() {
         XCTAssertEqual(AdminCopy.initials("Devi Raman"), "DR")
         XCTAssertEqual(AdminCopy.initials("Mess food head"), "MF")
+    }
+
+    func testTheGreetingUsesTheFirstNameAsOnA01() {
+        XCTAssertEqual(AdminCopy.greeting("Devi Raman"), "Hey Devi")
+        XCTAssertEqual(AdminCopy.greeting("Devi"), "Hey Devi")
+    }
+
+    func testTheSeededFoodHeadMatchesTheDesign() throws {
+        let account = try XCTUnwrap(DemoSeed.accounts.first { $0.role == .admin })
+        XCTAssertEqual(AdminCopy.greeting(account.displayName), "Hey Devi")
+        XCTAssertEqual(AdminCopy.initials(account.displayName), "DR")
     }
 }
 
