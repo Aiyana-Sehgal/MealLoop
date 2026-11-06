@@ -237,6 +237,67 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
         return state.mealStatus
     }
 
+    func mealHistory(for mess: MessID) async throws -> [MealRecord] {
+        try failIfOffline()
+        guard mess == DemoSeed.mess.id else { return [] }
+        var records: [MealRecord] = []
+        if let lunch = try await storyMealRecord() { records.append(lunch) }
+        if let breakfast = breakfastRecord { records.append(breakfast) }
+        records += DemoSeed.pastMeals.map { past in
+            MealRecord(mealID: past.id, messID: mess, slot: past.slot, day: past.day, closedAt: nil,
+                       finalEntries: past.finalEntries.map { .available($0, asOf: past.day) } ?? .unavailable,
+                       shortages: past.shortages, waste: past.waste, wasteReport: past.wasteReport)
+        }
+        return records
+    }
+
+    /// The story meal once the Supervisor has closed it, read from the same state every role uses.
+    private func storyMealRecord() async throws -> MealRecord? {
+        let status = state.mealStatus
+        guard status.state == .closed else { return nil }
+        let lines = state.shortages.filter { $0.mealID == status.meal.id }.map { shortage in
+            switch shortage.status {
+            case .active: return MealRecord.ShortageLine(dishName: shortage.dishName, outcome: .active)
+            case .resolved(let at): return MealRecord.ShortageLine(dishName: shortage.dishName, outcome: .resolved(at: at))
+            }
+        }
+        let waste: MealRecord.WasteStatus
+        var rows: WasteReport?
+        if state.recordedSummaryOnly {
+            waste = .recorded(at: DemoSeed.wasteRecordedAt)
+        } else if let report = state.wasteReports[status.meal.id], case .recorded(let savedAt) = report.status {
+            waste = .recorded(at: savedAt)
+            rows = report
+        } else {
+            waste = .notRecorded
+        }
+        return MealRecord(mealID: status.meal.id, messID: status.meal.messID, slot: status.meal.slot,
+                          day: startOfDay(status.meal.startsAt), closedAt: status.closedAt,
+                          finalEntries: try await finalCount(for: status.meal.id), shortages: lines,
+                          waste: waste, wasteReport: rows)
+    }
+
+    /// Breakfast joins the history once its own times have passed (it is not run by the Supervisor in the story).
+    private var breakfastRecord: MealRecord? {
+        let status = breakfastStatus
+        guard status.state == .closed else { return nil }
+        let now = clock.now()
+        return MealRecord(
+            mealID: status.meal.id, messID: status.meal.messID, slot: status.meal.slot,
+            day: startOfDay(status.meal.startsAt), closedAt: status.closedAt,
+            finalEntries: .available(DemoSeed.breakfastFinalEntries, asOf: status.meal.endsAt),
+            shortages: [MealRecord.ShortageLine(dishName: nil, outcome: .resolved(at: nil))],
+            waste: now >= DemoSeed.breakfastWasteRecordedAt ? .recorded(at: DemoSeed.breakfastWasteRecordedAt) : .notRecorded,
+            wasteReport: nil
+        )
+    }
+
+    private func startOfDay(_ date: Date) -> Date {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = DemoSeed.mess.timeZone
+        return calendar.startOfDay(for: date)
+    }
+
     // MARK: HeadcountRepository
 
     func headcount(for meal: MealID) async throws -> Headcount {
@@ -525,6 +586,17 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
     }
 
     // MARK: SOSRepository
+
+    func raise(_ report: SOSReport) async throws -> SOSCase {
+        try failIfOffline()
+        guard report.messID == DemoSeed.mess.id else { throw RepositoryError.notFound }
+        let id = SOSCaseID(report.idempotencyKey.rawValue)
+        if let existing = state.sosCases.first(where: { $0.id == id }) { return existing }
+        let sos = SOSCase(id: id, messID: report.messID, title: report.title, place: report.place,
+                          raisedAt: clock.now(), claim: nil, checks: [], status: .open)
+        state.sosCases.append(sos)
+        return sos
+    }
 
     func activeCases(for mess: MessID) async throws -> [SOSCase] {
         try failIfOffline()
