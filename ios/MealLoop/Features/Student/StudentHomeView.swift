@@ -7,6 +7,9 @@ enum StudentHomeRoute: Hashable {
     case pass
     case crowd
     case report
+    case notifications
+    case credits
+    case creditsHistory
     /// A page another Student part builds. Until then it says Coming soon.
     case comingSoon(String)
 }
@@ -46,9 +49,9 @@ struct StudentHomeView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: MLSpacing.s16) {
                         StudentHomeHeader(credits: model.state.value?.extras?.credits,
-                                          onRewards: { path.append(.comingSoon(StudentCopy.rewards)) },
+                                          onRewards: { path.append(.credits) },
                                           onReport: { path.append(.report) },
-                                          onNotifications: { path.append(.comingSoon(StudentCopy.notifications)) })
+                                          onNotifications: { path.append(.notifications) })
                         greeting
                         content
                     }
@@ -103,6 +106,28 @@ struct StudentHomeView: View {
                 StudentReportScreen(session: session) { path.removeLast() }
             } else {
                 StudentComingSoonView(title: StudentCopy.reportIssue) { path.removeLast() }
+            }
+        case .notifications:
+            if let session, let you = StudentYouViewModel(session: session, repositories: environment.repositories,
+                                                          clock: environment.clock) {
+                StudentNotificationsView(model: you) { path.removeLast() }
+            } else {
+                StudentComingSoonView(title: StudentCopy.notifications) { path.removeLast() }
+            }
+        case .credits:
+            if let session, let you = StudentYouViewModel(session: session, repositories: environment.repositories,
+                                                          clock: environment.clock) {
+                StudentCreditsView(model: you, onHistory: { path.append(.creditsHistory) },
+                                   onGet: { path.append(.comingSoon($0)) }) { path.removeLast() }
+            } else {
+                StudentComingSoonView(title: StudentCopy.rewards) { path.removeLast() }
+            }
+        case .creditsHistory:
+            if let session, let you = StudentYouViewModel(session: session, repositories: environment.repositories,
+                                                          clock: environment.clock) {
+                StudentCreditsHistoryView(model: you) { path.removeLast() }
+            } else {
+                StudentComingSoonView(title: YouCopy.creditsHistory) { path.removeLast() }
             }
         case .comingSoon(let title):
             StudentComingSoonView(title: title) { path.removeLast() }

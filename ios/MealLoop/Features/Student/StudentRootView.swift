@@ -22,7 +22,7 @@ enum StudentTab: String, CaseIterable, Hashable {
     }
 }
 
-/// The Student root. Home, Meals, Community and Search are built; You still shows Coming soon with Sign out.
+/// The Student root: Home, Meals, Community, You and Search.
 struct StudentRootView: View {
     @Environment(AppRouter.self) private var router
     @Environment(SessionStore.self) private var sessionStore
@@ -43,7 +43,7 @@ struct StudentRootView: View {
             case .community:
                 StudentCommunityScreen(session: session)
             case .you:
-                NotImplementedView(title: tab.rawValue, actionTitle: "Sign out") {
+                StudentYouScreen(session: session) {
                     router.reset()
                     sessionStore.signOut()
                 }
