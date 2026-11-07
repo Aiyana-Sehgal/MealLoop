@@ -55,6 +55,7 @@ struct AdminFindMealScreen: View {
 }
 
 struct AdminFindMealView: View {
+    @Environment(AppEnvironment.self) private var environment
     @State private var model: AdminFindMealViewModel
     let nav: AdminNav
 
@@ -69,6 +70,22 @@ struct AdminFindMealView: View {
 
     var body: some View {
         AdminPageScaffold(title: AdminScreenCopy.findAMeal, subtitle: AdminScreenCopy.anyMeal, onBack: nav.pop) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(AdminFormat.day(environment.clock.now(), in: nav.timeZone))
+                        .font(MLType.staffPrimary)
+                        .foregroundStyle(MLColor.ink)
+                    Text(AdminScreenCopy.dateLabel)
+                        .font(MLType.body)
+                        .foregroundStyle(MLColor.inkSecondary)
+                }
+                Spacer()
+                Image(systemName: "calendar")
+                    .font(.system(size: 20))
+                    .foregroundStyle(MLColor.ink)
+                    .accessibilityHidden(true)
+            }
+            .accessibilityElement(children: .combine)
             AdminFlow {
                 ChoiceChip(title: AdminScreenCopy.allMesses, isSelected: model.mess == nil) {
                     Task { await model.select(mess: nil) }
@@ -102,7 +119,7 @@ struct AdminSafetyCasesScreen: View {
     var body: some View {
         let results = environment.repositories.adminResults
         let now = environment.clock.now()
-        AdminPageScaffold(title: AdminScreenCopy.safetyCases, onBack: nav.pop) {
+        AdminPageScaffold(title: AdminScreenCopy.safetyCases, subtitle: AdminScreenCopy.safetyCasesSubtitle, onBack: nav.pop) {
             AdminLoadedPage(model: AdminPageModel { try await results.safetyCases() }, timeZone: nav.timeZone) { cases, _ in
                 let open = cases.filter { $0.closedAt == nil }
                 let closed = cases.filter { $0.closedAt != nil }
@@ -127,8 +144,8 @@ struct AdminSafetyCasesScreen: View {
                  detail: AdminScreenCopy.caseRow(mess: item.mess, day: AdminFormat.weekday(item.day, in: nav.timeZone).prefix(3).description,
                                                  slot: MLFormat.mealSlot(item.slot).lowercased(), dish: item.dish,
                                                  elapsed: item.closedAt == nil ? AdminSafetyText.elapsed(item, now: now) : nil),
-                 action: { nav.push(.safetyCase(item.id)) }) {
-            StatusText(text: item.closedAt == nil ? AdminScreenCopy.open : AdminScreenCopy.closed, dot: item.closedAt == nil ? .filled : .empty)
+                 showsChevron: false, action: { nav.push(.safetyCase(item.id)) }) {
+            AdminChip(text: item.closedAt == nil ? AdminScreenCopy.open : AdminScreenCopy.closed, style: AdminChipRules.safety(isOpen: item.closedAt == nil))
         }
     }
 }
@@ -181,13 +198,16 @@ struct AdminSafetyCaseBody: View {
                     Text(item.title)
                         .font(MLType.title2)
                         .foregroundStyle(MLColor.onHero)
-                    VStack(alignment: .leading, spacing: MLSpacing.s4) {
-                        Text(AdminScreenCopy.proofPlace(item.place, metres: item.accuracyMetres))
-                            .font(MLType.body)
-                            .foregroundStyle(MLColor.onHero)
-                        Text(AdminScreenCopy.proofTime(MLFormat.time(item.reportedAt, in: timeZone)))
-                            .font(MLType.secondary)
-                            .foregroundStyle(MLColor.onHeroSecondary)
+                    HStack(spacing: MLSpacing.s12) {
+                        Circle().fill(MLColor.heroBackground).frame(width: 40, height: 40).accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(AdminScreenCopy.proofPlace(item.place, metres: item.accuracyMetres))
+                                .font(MLType.body)
+                                .foregroundStyle(MLColor.onHero)
+                            Text(AdminScreenCopy.proofTime(MLFormat.time(item.reportedAt, in: timeZone)))
+                                .font(MLType.body)
+                                .foregroundStyle(MLColor.onHero)
+                        }
                     }
                     .padding(MLSpacing.s12)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -197,7 +217,7 @@ struct AdminSafetyCaseBody: View {
             AdminLabel(text: AdminScreenCopy.whoDidWhat)
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(item.steps) { step in
-                    stepRow(step)
+                    stepRow(step, isLast: step.id == item.steps.last?.id)
                 }
             }
             if item.closedAt == nil {
@@ -222,7 +242,7 @@ struct AdminSafetyCaseBody: View {
         return AdminSafetyText.elapsed(item, now: now).map(AdminScreenCopy.caseOpen) ?? AdminScreenCopy.open
     }
 
-    private func stepRow(_ step: SafetyStep) -> some View {
+    private func stepRow(_ step: SafetyStep, isLast: Bool) -> some View {
         HStack(alignment: .top, spacing: MLSpacing.s12) {
             Group {
                 if step.isCurrent {
@@ -243,11 +263,15 @@ struct AdminSafetyCaseBody: View {
                     .foregroundStyle(MLColor.inkSecondary)
             }
             Spacer()
-            Text(step.who)
-                .font(MLType.body)
-                .foregroundStyle(MLColor.inkSecondary)
+            AdminChip(text: step.who, style: .outline)
         }
         .padding(.vertical, MLSpacing.s8)
+        .background(alignment: .topLeading) {
+            // The rail runs on from a step that is done.
+            if step.isDone, !isLast {
+                Rectangle().fill(MLColor.ink).frame(width: 2).padding(.leading, 11).padding(.top, 28)
+            }
+        }
         .accessibilityElement(children: .combine)
     }
 }

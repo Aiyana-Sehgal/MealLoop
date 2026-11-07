@@ -5,12 +5,13 @@ struct AdminTodayScreen: View {
     @Environment(AppEnvironment.self) private var environment
     let context: AdminContext
     @Binding var path: [AdminRoute]
+    let nav: AdminNav
     let openMore: () -> Void
 
     var body: some View {
         AdminTodayView(model: AdminTodayViewModel(context: context, repositories: environment.repositories,
                                                   clock: environment.clock),
-                       path: $path, openMore: openMore)
+                       path: $path, nav: nav, openMore: openMore)
     }
 }
 
@@ -19,11 +20,13 @@ struct AdminTodayView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var model: AdminTodayViewModel
     @Binding var path: [AdminRoute]
+    let nav: AdminNav
     let openMore: () -> Void
 
-    init(model: AdminTodayViewModel, path: Binding<[AdminRoute]>, openMore: @escaping () -> Void) {
+    init(model: AdminTodayViewModel, path: Binding<[AdminRoute]>, nav: AdminNav, openMore: @escaping () -> Void) {
         _model = State(initialValue: model)
         _path = path
+        self.nav = nav
         self.openMore = openMore
     }
 
@@ -40,7 +43,10 @@ struct AdminTodayView: View {
                                      retry: { await model.load() }) { content in
                         AdminTodayBody(content: content, displayName: model.context.account.displayName,
                                        onSelect: { slot in Task { await model.select(slot) } },
-                                       open: { path.append($0) })
+                                       open: { path.append($0) },
+                                       openCase: { safetyCase in
+                                           Task { path.append(.page(await model.safetyPage(for: safetyCase))) }
+                                       })
                     }
                 }
                 .padding(.horizontal, MLSpacing.margin)
@@ -54,6 +60,10 @@ struct AdminTodayView: View {
             case .headcount:
                 // A second tap during the pop finds the path already empty, and removeLast would crash.
                 AdminHeadcountView(model: model) { _ = path.popLast() }
+            case .live:
+                AdminLiveMealView(model: model, nav: nav)
+            case .page(let page):
+                AdminPageDestination(page: page, nav: nav)
             case .notImplemented(let title):
                 NotImplementedView(title: title)
             }
@@ -70,12 +80,13 @@ struct AdminTodayBody: View {
     let displayName: String
     let onSelect: (MealSlot) -> Void
     let open: (AdminRoute) -> Void
+    let openCase: (SOSCase) -> Void
 
     private var timeZone: TimeZone { content.mess.timeZone }
     private var mealName: String { MLFormat.mealSlot(content.selectedSlot) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: MLSpacing.s20) {
+        VStack(alignment: .leading, spacing: MLSpacing.s16) {
             HStack(alignment: .lastTextBaseline, spacing: MLSpacing.s12) {
                 Text(AdminCopy.greeting(displayName))
                     .font(MLType.largeTitle)
@@ -90,13 +101,18 @@ struct AdminTodayBody: View {
             ForEach(content.safetyCases) { safetyCase in
                 safetyCard(safetyCase)
             }
-            AdminMessTile(content: content, openHeadcount: { open(.headcount) })
+            if let due = content.otherMesses?.headcountDue {
+                Text(AdminCopy.headcountDue(meal: mealName, time: MLFormat.time(due, in: timeZone)))
+                    .font(MLType.bodyEmphasis)
+                    .foregroundStyle(MLColor.ink)
+            }
+            AdminMessGrid(content: content, open: open)
+            needsYou
             VStack(alignment: .leading, spacing: MLSpacing.s8) {
-                SectionHeader(title: AdminCopy.headcountSection(mealName))
+                AdminLabel(text: AdminCopy.headcountSection(mealName))
                 AdminHeadcountValuesCard(values: content.values)
                 AdminHeadcountStatusRows(headcount: content.meal?.headcount, timeZone: timeZone)
             }
-            needsYou
         }
     }
 
@@ -115,7 +131,7 @@ struct AdminTodayBody: View {
                 .foregroundStyle(MLColor.onHeroSecondary)
                 .padding(.top, MLSpacing.s4)
             Button {
-                open(.notImplemented(title: AdminCopy.safetyCase))
+                openCase(safetyCase)
             } label: {
                 Text(AdminCopy.openCase)
                     .font(MLType.staffPrimary)
@@ -131,7 +147,7 @@ struct AdminTodayBody: View {
 
     @ViewBuilder
     private var needsYou: some View {
-        if content.visibleShortages.isEmpty {
+        if content.visibleShortages.isEmpty && content.visibleReviews.isEmpty {
             Text(AdminCopy.nothingNeedsYou)
                 .font(MLType.staffPrimary)
                 .foregroundStyle(MLColor.ink)
@@ -140,33 +156,48 @@ struct AdminTodayBody: View {
                 .background(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).fill(MLColor.surface))
         } else {
             VStack(alignment: .leading, spacing: 0) {
-                SectionHeader(title: AdminCopy.needsYou,
-                              actionTitle: content.hasMoreShortages ? AdminCopy.seeAll : nil,
-                              onAction: content.hasMoreShortages ? { open(.notImplemented(title: AdminCopy.needsYou)) } : nil)
+                HStack {
+                    AdminLabel(text: AdminCopy.needsYou)
+                    Spacer()
+                    if content.hasMoreShortages {
+                        TextLinkButton(title: AdminCopy.seeAll) { open(.live) }
+                    }
+                }
+                .padding(.bottom, 6)
                 ForEach(content.visibleShortages) { shortage in
-                    needsYouRow(shortage)
+                    needsYouRow(title: AdminCopy.needsYouTitle(dish: shortage.dishName, level: MLFormat.shortageLevel(shortage.level)),
+                                detail: AdminCopy.needsYouDetail(mess: content.mess.name, meal: mealName),
+                                chip: AdminCopy.liveAction, style: .lime) { open(.live) }
+                }
+                ForEach(content.visibleReviews) { review in
+                    needsYouRow(title: AdminCopy.reviewTitle(review.meal), detail: AdminCopy.reviewDetail(review.meal, in: timeZone),
+                                chip: AdminScreenCopy.review, style: .outline) { open(.page(.meal(review.id))) }
                 }
             }
         }
     }
 
-    private func needsYouRow(_ shortage: Shortage) -> some View {
-        HStack(spacing: MLSpacing.s12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(AdminCopy.needsYouTitle(dish: shortage.dishName, level: MLFormat.shortageLevel(shortage.level)))
-                    .font(MLType.staffPrimary)
-                    .foregroundStyle(MLColor.ink)
-                Text(AdminCopy.needsYouDetail(mess: content.mess.name, meal: mealName))
-                    .font(MLType.body)
-                    .foregroundStyle(MLColor.inkSecondary)
+    private func needsYouRow(title: String, detail: String, chip: String, style: AdminChipStyle, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: MLSpacing.s12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(MLType.staffBody)
+                        .foregroundStyle(MLColor.ink)
+                    Text(detail)
+                        .font(MLType.body)
+                        .foregroundStyle(MLColor.inkSecondary)
+                }
+                Spacer(minLength: MLSpacing.s8)
+                AdminChip(text: chip, style: style)
             }
-            Spacer(minLength: MLSpacing.s8)
-            CompactPillButton(title: AdminCopy.liveAction) {
-                open(.notImplemented(title: AdminCopy.liveMeal))
-            }
+            .padding(.vertical, MLSpacing.s12)
+            .contentShape(Rectangle())
         }
-        .padding(.vertical, MLSpacing.s12)
-        .overlay(alignment: .bottom) {
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityValue(chip)
+        .overlay(alignment: .top) {
             Rectangle().fill(MLColor.border).frame(height: 1)
         }
     }

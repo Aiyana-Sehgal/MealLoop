@@ -89,23 +89,37 @@ struct AdminStudentsView: View {
     private func content(_ overview: AdminStudentsOverview) -> some View {
         VStack(alignment: .leading, spacing: MLSpacing.s16) {
             hero(overview)
-            SectionHeader(title: AdminScreenCopy.feedbackToActOn)
-            ForEach(overview.feedback) { item in
-                AdminRow(title: AdminScreenCopy.feedbackRowTitle(item),
-                         detail: AdminScreenCopy.feedbackRowDetail(item, day: AdminFormat.weekday(item.day, in: timeZone).prefix(3).description),
-                         action: { nav.push(.feedback(item.id)) }) {
-                    if item.isNew {
-                        StatusText(text: AdminScreenCopy.new)
+            VStack(alignment: .leading, spacing: 6) {
+                AdminLabel(text: AdminScreenCopy.feedbackToActOn)
+                VStack(spacing: 0) {
+                    ForEach(overview.feedback) { item in
+                        AdminRow(title: AdminScreenCopy.feedbackRowTitle(item),
+                                 detail: AdminScreenCopy.feedbackRowDetail(item, day: AdminFormat.weekday(item.day, in: timeZone).prefix(3).description),
+                                 showsChevron: !item.isNew, leadingDish: item.dish, action: { nav.push(.feedback(item.id)) }) {
+                            if item.isNew {
+                                AdminChip(text: AdminScreenCopy.new, style: .lime)
+                            }
+                        }
                     }
                 }
             }
-            SectionHeader(title: AdminScreenCopy.community)
-            ForEach(overview.community) { issue in
-                AdminRow(title: issue.title, detail: AdminScreenCopy.studentCount(issue.students), action: { nav.push(.community(issue.id)) }) {
-                    StatusText(text: issue.owner.map(AdminScreenCopy.ownedBy) ?? AdminScreenCopy.needsAnOwner, dot: issue.owner == nil ? .empty : .filled)
+            VStack(alignment: .leading, spacing: 6) {
+                AdminLabel(text: AdminScreenCopy.community)
+                VStack(spacing: 0) {
+                    ForEach(overview.community) { issue in
+                        AdminRow(title: issue.title, detail: AdminScreenCopy.studentCount(issue.students), showsChevron: false,
+                                 action: { nav.push(.community(issue.id)) }) {
+                            AdminChip(text: issue.owner.map(AdminScreenCopy.ownedBy) ?? AdminScreenCopy.needsAnOwner,
+                                      style: AdminChipRules.community(hasOwner: issue.owner != nil))
+                        }
+                    }
+                    AdminRow(title: AdminScreenCopy.whyStudentsSkip, action: { nav.push(.skipReasons) }) { EmptyView() }
+                    AdminRow(title: AdminScreenCopy.notAnsweredByMess,
+                             detail: AdminScreenCopy.notAnsweredRow(AdminFormat.count(overview.notAnswered), overview.mealTitle),
+                             action: { nav.push(.notAnswered) }) { EmptyView() }
                 }
+                .overlay(alignment: .bottom) { Rectangle().fill(MLColor.border).frame(height: 1) }
             }
-            QuietRow(title: AdminScreenCopy.whyStudentsSkip) { nav.push(.skipReasons) }
         }
     }
 
@@ -119,8 +133,11 @@ struct AdminStudentsView: View {
                         .foregroundStyle(MLColor.onHero)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
-                    Text(AdminScreenCopy.ofTotal(AdminFormat.count(overview.totalStudents)))
-                        .font(MLType.monoBody)
+                    Text(AdminScreenCopy.ofWord)
+                        .font(MLType.staffBody)
+                        .foregroundStyle(MLColor.onHeroSecondary)
+                    Text(AdminFormat.count(overview.totalStudents))
+                        .font(AdminType.mono20)
                         .foregroundStyle(MLColor.onHeroSecondary)
                 }
                 bar(AdminScreenCopy.yes, overview.yes, of: overview.totalStudents, color: MLColor.lime)
@@ -142,14 +159,14 @@ struct AdminStudentsView: View {
             Text(title)
                 .font(MLType.body)
                 .foregroundStyle(MLColor.onHero)
-                .frame(width: 72, alignment: .leading)
+                .frame(width: 80, alignment: .leading)
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {
-                    Capsule().fill(MLColor.onHero.opacity(0.2))
+                    Capsule().fill(MLColor.inkSecondary)
                     Capsule().fill(color).frame(width: proxy.size.width * CGFloat(value) / CGFloat(max(total, 1)))
                 }
             }
-            .frame(height: 8)
+            .frame(height: 10)
             Text(AdminFormat.count(value))
                 .font(MLType.monoBody)
                 .foregroundStyle(MLColor.onHero)
@@ -173,7 +190,7 @@ struct AdminStudentsView: View {
                 .foregroundStyle(MLColor.ink)
                 .padding(MLSpacing.s16)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: MLRadius.compact, style: .continuous).fill(MLColor.fillQuiet))
+                .background(RoundedRectangle(cornerRadius: MLRadius.compact, style: .continuous).fill(MLColor.surface))
             AdminNote(text: AdminScreenCopy.remindNote)
             if let error = model.errorText {
                 FieldErrorText(text: error)
@@ -224,24 +241,29 @@ struct AdminFeedbackBody: View {
                           subtitle: AdminScreenCopy.feedbackSubtitle(item, day: AdminFormat.weekday(item.day, in: timeZone).prefix(3).description),
                           onBack: nav.pop) {
             AdminCard {
-                Text(item.dish)
-                    .font(MLType.staffPrimary)
-                    .foregroundStyle(MLColor.ink)
-                Text(AdminScreenCopy.feedbackContext(item, day: AdminFormat.day(item.day, in: timeZone)))
-                    .font(MLType.body)
-                    .foregroundStyle(MLColor.inkSecondary)
-            }
-            SectionHeader(title: AdminScreenCopy.problemsReported)
-            ForEach(item.problems) { problem in
-                AdminRow(title: problem.title, detail: problem.severity, action: nil) {
-                    Text(AdminScreenCopy.studentCount(problem.students))
-                        .font(MLType.body)
-                        .foregroundStyle(MLColor.ink)
+                HStack(spacing: MLSpacing.s12) {
+                    AdminDishPictogram(dish: item.dish, size: 40)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(item.dish)
+                            .font(MLType.staffPrimary)
+                            .foregroundStyle(MLColor.ink)
+                        Text(AdminScreenCopy.feedbackContext(item, day: AdminFormat.day(item.day, in: timeZone)))
+                            .font(MLType.body)
+                            .foregroundStyle(MLColor.inkSecondary)
+                    }
                 }
             }
-            SectionHeader(title: AdminScreenCopy.mealsLabel)
-            AdminRow(title: AdminFormat.mealLine(meal, in: timeZone), detail: AdminScreenCopy.findRowDetail(meal),
-                     action: { nav.push(.meal(meal.id)) }) { EmptyView() }
+            VStack(alignment: .leading, spacing: 6) {
+                AdminLabel(text: AdminScreenCopy.problemsReported)
+                ForEach(item.problems) { problem in
+                    problemRow(problem)
+                }
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                AdminLabel(text: AdminScreenCopy.mealsLabel)
+                AdminRow(title: AdminFormat.mealLine(meal, in: timeZone), detail: AdminScreenCopy.feedbackMealDetail(meal),
+                         action: { nav.push(.meal(meal.id)) }) { EmptyView() }
+            }
             HStack(spacing: MLSpacing.s12) {
                 InkActionButton(title: AdminScreenCopy.sendToVendor) { isTellingVendor = true }
                 OutlineActionButton(title: AdminScreenCopy.logAFix) { isLoggingFix = true }
@@ -258,6 +280,31 @@ struct AdminFeedbackBody: View {
                 nav.push(.check(check.id))
             }
         }
+    }
+
+    private func problemRow(_ problem: FeedbackProblem) -> some View {
+        HStack(spacing: MLSpacing.s12) {
+            AdminProblemIcon()
+            VStack(alignment: .leading, spacing: 2) {
+                Text(problem.title)
+                    .font(MLType.staffBody)
+                    .foregroundStyle(MLColor.ink)
+                Text(problem.severity)
+                    .font(MLType.body)
+                    .foregroundStyle(MLColor.inkSecondary)
+            }
+            Spacer(minLength: MLSpacing.s8)
+            HStack(alignment: .firstTextBaseline, spacing: MLSpacing.s4) {
+                Text(String(problem.students))
+                    .font(AdminType.count)
+                Text(AdminScreenCopy.students(problem.students))
+                    .font(MLType.secondary)
+            }
+            .foregroundStyle(MLColor.ink)
+        }
+        .padding(.vertical, MLSpacing.s12)
+        .overlay(alignment: .top) { Rectangle().fill(MLColor.border).frame(height: 1) }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -376,7 +423,7 @@ struct AdminCommunityView: View {
                             .font(MLType.heroNumber)
                             .foregroundStyle(MLColor.onHero)
                         Text(AdminScreenCopy.saidMeToo)
-                            .font(MLType.body)
+                            .font(MLType.staffBody)
                             .foregroundStyle(MLColor.onHeroSecondary)
                     }
                     Text(AdminScreenCopy.raisedOn(AdminFormat.day(issue.raisedOn, in: nav.timeZone), issue.context))
@@ -387,9 +434,9 @@ struct AdminCommunityView: View {
             AdminStageLine(stages: [AdminScreenCopy.stageRaised, AdminScreenCopy.stageOwner, AdminScreenCopy.stageFixed],
                            current: CommunityStage.allCases.firstIndex(of: issue.stage) ?? 0)
             AdminRow(title: AdminScreenCopy.assignOwner, detail: issue.owner.map(AdminScreenCopy.ownedBy) ?? AdminScreenCopy.nobodyOwns,
-                     action: { isAssigning = true }) {
+                     showsChevron: issue.owner != nil, action: { isAssigning = true }) {
                 if issue.owner == nil {
-                    StatusText(text: AdminScreenCopy.needsAnOwner, dot: .empty)
+                    AdminChip(text: AdminScreenCopy.needsAnOwner, style: .outline)
                 }
             }
             AdminLabel(text: AdminScreenCopy.noteToStudents)
@@ -427,7 +474,7 @@ struct AdminSkipReasonsScreen: View {
                     ForEach(skips.reasons) { reason in
                         AdminRow(title: reason.title, action: nil) {
                             HStack(alignment: .firstTextBaseline, spacing: MLSpacing.s4) {
-                                Text("\(reason.students)").font(MLType.monoBody)
+                                Text("\(reason.students)").font(AdminType.mono17)
                                 Text(AdminScreenCopy.students(reason.students)).font(MLType.secondary)
                             }
                             .foregroundStyle(MLColor.ink)

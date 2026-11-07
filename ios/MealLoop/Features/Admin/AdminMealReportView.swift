@@ -125,12 +125,13 @@ struct AdminMealTicket: View {
                     .tracking(1)
                     .foregroundStyle(MLColor.onLime)
                 Spacer()
-                StatusText(text: meal.needsReview ? AdminScreenCopy.needsReview : AdminScreenCopy.reviewed,
-                           dot: meal.needsReview ? .empty : .filled)
+                AdminChip(text: meal.needsReview ? AdminScreenCopy.needsReview : AdminScreenCopy.reviewed,
+                          style: AdminChipRules.review(needsReview: meal.needsReview))
             }
-            .padding(MLSpacing.s16)
+            .padding(.horizontal, MLSpacing.s16)
+            .padding(.vertical, MLSpacing.s12)
             .background(MLColor.lime)
-            .overlay(alignment: .bottom) { Rectangle().fill(MLColor.ink).frame(height: 1) }
+            .overlay(alignment: .bottom) { Rectangle().fill(MLColor.ink).frame(height: 1.5) }
 
             VStack(alignment: .leading, spacing: MLSpacing.s16) {
                 counts
@@ -141,10 +142,7 @@ struct AdminMealTicket: View {
                 }
                 .font(MLType.body)
                 .foregroundStyle(MLColor.ink)
-                Rectangle()
-                    .stroke(style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
-                    .foregroundStyle(MLColor.border)
-                    .frame(height: 1)
+                tear
                 stats
                 if !meal.missing.isEmpty {
                     AdminFlow {
@@ -158,7 +156,36 @@ struct AdminMealTicket: View {
         }
         .background(MLColor.surface)
         .clipShape(shape)
-        .overlay(shape.stroke(MLColor.ink, lineWidth: 1))
+        .overlay(shape.stroke(MLColor.ink, lineWidth: 1.5))
+    }
+
+    /// The tear line, with a notch cut into each side of the ticket.
+    private var tear: some View {
+        HStack(spacing: MLSpacing.s8) {
+            notch
+            Line()
+                .stroke(style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                .foregroundStyle(MLColor.inkSecondary)
+                .frame(height: 1)
+            notch
+        }
+        .padding(.horizontal, -MLSpacing.s16 - 8)
+    }
+
+    private var notch: some View {
+        Circle()
+            .fill(MLColor.canvas)
+            .overlay(Circle().stroke(MLColor.ink, lineWidth: 1.5))
+            .frame(width: 16, height: 16)
+    }
+
+    private struct Line: Shape {
+        func path(in rect: CGRect) -> Path {
+            var path = Path()
+            path.move(to: CGPoint(x: rect.minX, y: rect.midY))
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.midY))
+            return path
+        }
     }
 
     private var counts: some View {
@@ -166,10 +193,7 @@ struct AdminMealTicket: View {
             count(AdminFormat.count(meal.headcountSent), AdminScreenCopy.headcountSent, alignment: .leading)
             Spacer(minLength: MLSpacing.s4)
             VStack(spacing: MLSpacing.s4) {
-                Image(systemName: "arrow.right")
-                    .font(.system(size: 17))
-                    .foregroundStyle(MLColor.inkSecondary)
-                    .accessibilityHidden(true)
+                AdminCurvedArrow()
                 if let difference = AdminMealReportContent.difference(meal) {
                     Text(difference)
                         .font(MLType.monoSecondary)

@@ -128,9 +128,9 @@ struct AdminCheckView: View {
                     comparableRow(meal)
                 }
                 if check.closedAsWorked {
-                    StatusText(text: AdminScreenCopy.workedVerified)
+                    AdminChip(text: AdminScreenCopy.workedVerified, style: .lime)
                 } else {
-                    AdminFactChip(text: AdminScreenCopy.notEnoughData, isMissing: true)
+                    AdminChip(text: AdminScreenCopy.notEnoughData, style: .dashed)
                 }
                 AdminNote(text: check.footnote)
             }
