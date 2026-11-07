@@ -209,6 +209,10 @@ enum DemoSeed {
 
     /// SAMPLE, NOT MEASURED. Figma DS-8 Me (2512:173663) and PD-8 Me (2545:7144) draw "On shift · since 11:40 AM".
     static let deskShiftStartedAt = time(11, 40)
+    // admin_sample_data.md, "Headcount (Main, Lunch)": "Sent before: Main Breakfast 410, vendor replied 7:05."
+    // SAMPLE, NOT MEASURED: the pack gives no send time, so none is seeded.
+    static let vendorBreakfastSentCount = 410
+    static let vendorBreakfastRepliedAt = time(7, 5)
 
     // MARK: - Accounts
 

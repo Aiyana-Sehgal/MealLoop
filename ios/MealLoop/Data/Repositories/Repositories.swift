@@ -185,4 +185,6 @@ struct Repositories: Sendable {
     var feedbackRatings: any FeedbackRatingRepository = UnavailableFeedbackRatings()
     /// Defaulted, so every existing caller stays as it was. Dish feedback after Not good (2159:149347).
     var dishFeedback: any DishFeedbackRepository = UnavailableDishFeedback()
+    /// Defaulted, so every existing caller stays as it was and a source with no vendor view says so.
+    var vendor: any VendorRepository = UnavailableVendor()
 }

@@ -230,6 +230,7 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
                                                                    catalogue: rewardCatalogueStore)),
                             feedbackRatings: DemoFeedbackRatings(core: self, store: feedbackRatingStore))
         repositories.dishFeedback = DemoDishFeedback(core: self, store: dishFeedbackStore)
+        repositories.vendor = self
         return repositories
     }
 
