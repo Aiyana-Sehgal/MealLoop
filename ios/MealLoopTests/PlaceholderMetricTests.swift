@@ -3,13 +3,36 @@ import XCTest
 
 /// Tracks how much of the app is still a placeholder, and that none of it says "Not implemented".
 final class PlaceholderMetricTests: XCTestCase {
-    /// Destinations a role reaches from its root that are real screens. Add to this as parts land.
-    private let built: [RoleRoot: Set<String>] = [.kitchen: ["Home"]]
+    /// Destinations a role reaches from its root that are real screens, as the combined base builds them.
+    /// Still placeholders: Student Meals, Community, You and Search (StudentRootView); Admin Search
+    /// (AdminRootView); every Super Admin and Vendor tab (PlaceholderRootView).
+    private let built: [RoleRoot: Set<String>] = [
+        .student: ["Home"],
+        .admin: ["Today", "Students", "Results", "More"],
+        .supervisor: ["Home", "Alerts", "Me"],
+        .kitchen: ["Home", "Alerts", "Me"],
+        .doorScanner: ["Home", "Alerts", "Me"],
+        .passDesk: ["Home", "Alerts", "Me"],
+        .warden: ["Queue", "Out now", "Escalated", "History"],
+        .gate: ["Home"],
+        .guardian: ["Root"],
+    ]
+
+    /// Roots whose real chrome differs from `placeholderTabs`. Gate has one home page and no tab bar (GateRootView, GA-1).
+    private let reachableOverride: [RoleRoot: [String]] = [.gate: ["Home"]]
 
     private func destinations(of root: RoleRoot) -> [String] {
+        if let override = reachableOverride[root] { return override }
         if root.usesStaffTabs { return StaffTab.allCases.map(\.rawValue.capitalized) }
         let tabs = root.placeholderTabs.isEmpty ? ["Root"] : root.placeholderTabs
         return tabs + (root.hasSearch ? ["Search"] : [])
+    }
+
+    /// Every built destination must be one the role can reach, so a renamed tab cannot hide in the count.
+    func testBuiltDestinationsAreReachable() {
+        for (root, names) in built {
+            XCTAssertTrue(names.isSubset(of: Set(destinations(of: root))), "\(root.rawValue): \(names.subtracting(destinations(of: root)))")
+        }
     }
 
     func testReportThePlaceholderCountPerRole() {
@@ -20,7 +43,7 @@ final class PlaceholderMetricTests: XCTestCase {
             let placeholders = all.filter { !(built[root] ?? []).contains($0) }
             total += placeholders.count
             reachable += all.count
-            print("PLACEHOLDERS \(root.rawValue): \(placeholders.count) of \(all.count)")
+            print("PLACEHOLDERS \(root.rawValue): \(placeholders.count) of \(all.count) \(placeholders)")
         }
         print("PLACEHOLDERS total: \(total) of \(reachable)")
         XCTAssertEqual(Set(Role.allCases.map(RoleRoot.destination(for:))).count, 11)
