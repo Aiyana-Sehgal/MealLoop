@@ -173,7 +173,9 @@ enum DemoSeed {
     /// SAMPLE, NEVER A CREDENTIAL. pass_desk_spec.md calls these illustrations. 218 Lime: P04.
     /// K2M9 Blue: export P04_check_this_pass_code_changed. 7A3F Lime: design_intent.md, "Codes and colours are sample".
     static let samplePassCodes: [(code: String, colourName: String)] = [("218", "Lime"), ("K2M9", "Blue"), ("7A3F", "Lime")]
-    // Export P04_check_this_pass_code_changed: "Changes in 10 s". No document gives the real window.
+    // The student's Special pass is the screen that displays the code (BigTicket Live: the rotating code, colour pill and
+    // "Changes in N s", design/audit/PROJECT_CONTEXT.md line 187). Its window: "the live code changes every 10 s"
+    // (design/audit/final2_report.md line 26, decision 5). The Pass Desk sheet counts down the same window.
     static let passCodeWindow: TimeInterval = 10
 
     /// SAMPLE. Who holds a pass, so every outcome can be reached: Aarav is the spec's example, Kiran's pass is the
