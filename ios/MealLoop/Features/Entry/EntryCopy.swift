@@ -7,7 +7,9 @@ enum EntryCopy {
     static let tagline = "Hostel meals, without the waste."
     static let signInWithSRM = "Sign in with SRM"
     static let staffSignIn = "Staff sign in"
-    static let terms = "By continuing you agree to the Terms and Privacy Policy."
+    /// Drawn on two lines in 221:62499, the second underlined.
+    static let termsLead = "By continuing, you agree to the"
+    static let termsLink = "Terms and Privacy Policy"
 
     static let staffSubtitle = "Use your MealLoop account."
     static let emailLabel = "Email"

@@ -30,7 +30,8 @@ struct EntryFlowView: View {
 /// and the buttons and footnote stay together at the bottom. It scrolls only if larger text no longer fits.
 struct WelcomeView: View {
     @Environment(AppRouter.self) private var router
-    @ScaledMetric(relativeTo: .largeTitle) private var wordmarkSize: CGFloat = 48
+    // Onboarding · Sign in (221:62499): wordmark 34 pt semibold, mark 44 pt.
+    @ScaledMetric(relativeTo: .largeTitle) private var wordmarkSize: CGFloat = 34
     @ScaledMetric(relativeTo: .body) private var taglineSize: CGFloat = 17
     @ScaledMetric(relativeTo: .caption) private var termsSize: CGFloat = 12
 
@@ -57,9 +58,9 @@ struct WelcomeView: View {
 
     private var brand: some View {
         VStack(spacing: MLSpacing.s12) {
-            OrbitMarkView(size: 54)
+            OrbitMarkView(size: 44)
             Text(EntryCopy.wordmark)
-                .font(.system(size: wordmarkSize, weight: .regular))
+                .font(.system(size: wordmarkSize, weight: .semibold))
                 .foregroundStyle(MLColor.ink)
                 // A brand name never wraps; at the largest text sizes it shrinks to fit.
                 .lineLimit(1)
@@ -80,11 +81,15 @@ struct WelcomeView: View {
             OutlineActionButton(title: EntryCopy.staffSignIn) {
                 router.entryPath.append(.staffSignIn)
             }
-            Text(EntryCopy.terms)
-                .font(.system(size: termsSize, weight: .medium))
-                .foregroundStyle(MLColor.inkSecondary)
-                .multilineTextAlignment(.center)
-                .padding(.top, MLSpacing.s4)
+            VStack(spacing: 2) {
+                Text(EntryCopy.termsLead)
+                Text(EntryCopy.termsLink).underline()
+            }
+            .font(.system(size: termsSize, weight: .medium))
+            .foregroundStyle(MLColor.inkSecondary)
+            .multilineTextAlignment(.center)
+            .padding(.top, MLSpacing.s4)
+            .accessibilityElement(children: .combine)
         }
         .padding(.bottom, MLSpacing.s16)
     }
