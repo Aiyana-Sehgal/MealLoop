@@ -61,3 +61,11 @@ struct AdminLiveReference: Codable, Sendable, Hashable {
     /// Nil means there is no history to compare with.
     let usualByNow: Int?
 }
+
+/// How many students of one mess have not answered yet. Counts only, never a name.
+struct AdminMessCount: Codable, Sendable, Hashable, Identifiable {
+    let name: String
+    let students: Int
+
+    var id: String { name }
+}

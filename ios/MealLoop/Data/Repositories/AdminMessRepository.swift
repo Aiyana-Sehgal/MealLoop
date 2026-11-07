@@ -10,6 +10,7 @@ protocol AdminMessRepository: Sendable {
     /// A changed number needs a reason, as it does for the headcount of the story meal.
     func adjustHeadcount(mess id: String, slot: MealSlot, to count: Int, reason: String?, by role: Role) async throws -> AdminMessHeadcount
     func liveReference(for meal: MealID) async throws -> AdminLiveReference
+    func notAnsweredByMess() async throws -> [AdminMessCount]
 }
 
 /// Used by any source with no mess data. Every call says so; nothing is faked as success.
@@ -21,4 +22,5 @@ struct AdminMessesNotBuilt: AdminMessRepository {
     func sendHeadcount(mess id: String, slot: MealSlot, key: IdempotencyKey, by role: Role) async throws -> AdminMessHeadcount { throw missing }
     func adjustHeadcount(mess id: String, slot: MealSlot, to count: Int, reason: String?, by role: Role) async throws -> AdminMessHeadcount { throw missing }
     func liveReference(for meal: MealID) async throws -> AdminLiveReference { throw missing }
+    func notAnsweredByMess() async throws -> [AdminMessCount] { throw missing }
 }

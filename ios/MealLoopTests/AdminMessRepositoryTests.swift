@@ -75,6 +75,14 @@ final class AdminMessRepositoryTests: XCTestCase {
         XCTAssertNil(breakfast.usualByNow)
     }
 
+    func testNotAnsweredByMessAddsUpToTheStudentsOverview() async throws {
+        let demo = DemoDataProvider(scenario: .storyStart)
+        let repositories = demo.makeRepositories()
+        let byMess = try await repositories.adminMesses.notAnsweredByMess()
+        let overview = try await repositories.adminStudents.studentsOverview()
+        XCTAssertEqual(byMess.map(\.students).reduce(0, +), overview.notAnswered)
+    }
+
     func testASourceWithNoMessDataSaysSo() async {
         do {
             _ = try await AdminMessesNotBuilt().messDay(for: .lunch)

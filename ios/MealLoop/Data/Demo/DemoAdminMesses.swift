@@ -41,6 +41,10 @@ enum AdminMessSeed {
 
     /// 2260:160216 Live meal · Main · Serving: "usual by now ~690". Lunch only.
     static let usualByNowLunch = 690
+
+    /// A06_students_not_answered_by_mess, the page behind the row on 2262:6. The four add up to the 630 on that frame.
+    static let notAnswered = [AdminMessCount(name: "Main Mess", students: 210), AdminMessCount(name: "North Mess", students: 180),
+                              AdminMessCount(name: "South Mess", students: 160), AdminMessCount(name: "Annexe Mess", students: 80)]
 }
 
 actor DemoAdminMessStore {
@@ -119,6 +123,11 @@ struct DemoAdminMesses: AdminMessRepository {
     func liveReference(for meal: MealID) async throws -> AdminLiveReference {
         try await core.requireConnection()
         return AdminLiveReference(usualByNow: meal == DemoSeed.lunch.id ? AdminMessSeed.usualByNowLunch : nil)
+    }
+
+    func notAnsweredByMess() async throws -> [AdminMessCount] {
+        try await core.requireConnection()
+        return AdminMessSeed.notAnswered
     }
 }
 #endif
