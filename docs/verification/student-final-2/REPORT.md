@@ -1,5 +1,125 @@
 # Student final 2: Notifications, You, Credits, Attendance, report pages and the You destinations, compared with Figma
 
+## Run 3 (8 November 2026): Student outings, and the rulings on P-FINAL2-5 to 9
+
+Run 2's three commits were pushed by the owner's go-ahead (`a8e7389..74a9eee`). CI run 42412514198 passed both jobs.
+This run adds the Student outing request (group 3) and applies the owner's suggested rulings:
+
+| Ruling | Applied |
+|---|---|
+| P-FINAL2-5 My reports entry | Kept behind the My feedback hero. Report · Receipt (221:63557) draws only its own actions, no "My reports" link. Stays open. |
+| P-FINAL2-6 Student comments | Not built. Open until moderation is decided. |
+| P-FINAL2-7 "Is it better now?" | Recorded once, like Better / Same. It is a student signal only: the report stays Fixed and nothing marks the fix as verified. |
+| P-FINAL2-8 Chip dates | The app keeps the real send day. The frames' "Wed 14 Aug" on reports sent on 12 and 3 August is a frame inconsistency. |
+| P-FINAL2-9 Data requests | The rows record the request and show "Request recorded. This prototype sends nothing." No person or time is promised. Who handles them is open, for SRM's privacy and legal review. |
+
+### Commits (on top of `74a9eee`)
+
+| Commit | Title |
+|---|---|
+| `a1f305b` | `feat(backend): add Student outing requests, fix checks and data requests` |
+| `14d4fe7` | `feat(student): build Student outings and record fix checks and requests` |
+| (this file) | `docs(student): add the Student final 2 run 3 report and screenshots` |
+
+### Results per frame (iPhone 18 Pro, Debug build; files in `compare-2b/`)
+
+**8 frames compared: 4 match, 4 differ. 1 built and not captured.**
+
+| Frame | Node | Result |
+|---|---|---|
+| You · Outings | 1848:22270 | Differs in content: the current request is the seeded Saturday request at "Waiting for your guardian", which is its repository stage; the frame draws it at "Warden reviewing". The Emergency card at the bottom is not built (Emergency outing frames are not in this brief). The rest matches. |
+| New outing · Wed | 1915:131160 | Differs in content: the rule tag ("Weekday rule · same-day decision · draft") and the ribbon's times ("by 11 AM", "11 AM–3 PM", "You'll know by Wed 3 PM") are not drawn, because the outing rules are open (P3). The ribbon shows the order and the chosen hours. The days before the outing story's today are dimmed and cannot be picked; the frame dims Saturday and Sunday. |
+| New outing · Sent | 1848:22602 | Differs in text: "Your guardian's answer shows on this request." instead of "We'll tell you when your guardian replies", because the prototype sends no notification. |
+| Outing · Waiting for guardian | 1848:22622 | Differs in content: "Edit request" is not built (no edit operation), and "Sent Fri 6:00 PM" is not shown (the request has no sent time). The ring, the status line, "Guardian replies by Fri 11 PM" and the change card match. "in 3 h" is measured from the outing story clock (7:41 PM); the frame shows "in 5 h". |
+| Outing · Cancel confirm (sheet) | 1848:22885 | Differs in text: "The request is cancelled in the outing record." instead of "Your guardian and the Block B warden are told.", because nothing is sent. The buttons match. |
+| You (status line) | 221:64576 | Matches the frame's status line under Outings, read from the repository. |
+| Report · Fixed (answers recorded) | 221:63606 | Matches: the three answers are live, and after an answer the card says "You said: still bad." |
+| Terms and privacy (requests) | 221:64669 | Matches the frame's rows. A recorded request shows the ruling's line under its title. |
+| Outing pass · Valid | 1848:22925 | Built, **not captured**: it appears only after the warden approves on the Warden screens, which this run did not drive. The pass card reuses `EntryQRImage` for the QR. "BLK B → EXP AVE" is shown as the block and the full place, because no abbreviation exists in the data. |
+
+The ring was checked after a fix: Sent is ticked and Guardian is current, as drawn. The small card ring sits on a black
+disc, as drawn.
+
+### Tap-through added this run
+
+| Element | Expected destination | Result |
+|---|---|---|
+| You · Outings | Outings | works (was Coming soon) |
+| Outings · Saturday card | its request page | works |
+| Request · Back | Outings | works |
+| Outings · New outing | New outing | works |
+| New outing · Sun 18, destination, Family, Send to guardian | Sent, request at Waiting for your guardian | works |
+| Sent · See your request | the request page | works |
+| Request · Cancel request → Cancel outing | sheet, then the request shows Cancelled | works |
+| Report Fixed · Still bad | "You said: still bad.", stage stays Fixed | works |
+| Privacy · Request a copy of your data | "Request recorded. This prototype sends nothing." | works |
+
+### Not built (this run)
+
+- **Edit request** and Outing · Edit warning (1848:22845): no edit operation exists.
+- **Emergency outing** (1848:23061, 1848:23094): not in this brief.
+- Outing pass · Out, Returned, Overdue, Revoked, Expired unused, Cancel pass (sheet): only the Valid pass is built. Its "Cancel pass" opens the same cancel sheet. The others have no capture.
+- **The rule tag and the ribbon deadlines on New outing**: they depend on outing rules, which are open (P3).
+- **Student 2 layout gaps (group 4)**: unchanged since run 2. The shared sheet and the Special pass cannot be edited, and the Crowd title on the SE was not changed.
+
+### Added backend pieces (commit `a1f305b`, additive, 12 tests)
+
+- `Domain/StudentOuting.swift`:
+  - `StudentOutingDraft`, `StudentOutingEligibility` (enabled, no guardian, not enabled) and `StudentPastOuting`
+  - `OutingStage.isFinished` and `studentCanCancel`
+- `Data/Repositories/StudentOutingRepository.swift`:
+  - the protocol, with `outings`, `outing`, `requestOuting` and `cancelOuting`
+  - `UnavailableStudentOutings`
+  - `OutingCaseRepositories.studentSource(for:)`
+- `Data/Demo/InMemoryOutingCaseRepository.swift`: additive lines only, an extension at the end of the file. The Student
+  operations run on the same story as the Guardian, Warden and Gate operations:
+  - a request enters at Waiting for guardian, with no deadline invented
+  - the same key returns the first request
+  - one open request per day
+  - a time in the past is refused
+  - cancel is allowed only before exit
+  - offline throws
+
+  None of the existing operations changed. Note: `guardianRequest` returns the student's newest request, so a request
+  the student sends becomes the one the guardian answers.
+- `Data/Demo/StudentOutingSeed.swift`: the link from the signed-in Aarav ••0238 to the outing story's Aarav, and the four
+  "Earlier" outings cited to 1848:22270.
+- `StudentRecordsRepository` gains `answerFixCheck`, `recordDataRequest` and `dataRequests`. The `fixCheck` field
+  defaults to nil, so existing callers are unchanged.
+
+### Open questions (new)
+
+- **P-FINAL2-10** Editing an outing request: the frames draw "Edit request" and an edit warning. Who may edit, and does
+  an edit restart the guardian step (the frame says "Editing asks your guardian again")?
+- **P-FINAL2-11** Which days may be picked on New outing. The frame dims the weekend under a "weekday rule · draft"
+  (P3).
+- **P-FINAL2-12** A notification when the guardian or warden answers ("We'll tell you…"). None is generated in the
+  prototype.
+
+### Commands and counts (final code)
+
+Xcode 27.2 (27B52), iOS 27.2 simulator on iPhone 18 Pro, `pgrep -x xcodebuild` reported 0 before each run, serial
+testing.
+
+| Run | Exit | Tests | Passed | Failed | Skipped |
+|---|---|---|---|---|---|
+| Debug, `MealLoop`, `test` | 0 | 663 | 640 | 0 | 23 |
+| Review, `MealLoop Review`, `test` | 0 | 662 | 639 | 0 | 23 |
+| Release build (generic iOS Simulator) | 0 | n/a | `** BUILD SUCCEEDED **` | n/a | n/a |
+
+The Release log has 1 `warning:` line. The new tests are 12 in `StudentOutingRepositoryTests` and 8 in
+`StudentOutingScreensTests`, so 20 in total.
+
+The grep for sample places, names or `DemoSeed` in `StudentOutingViews.swift` and `StudentOutingViewModel.swift` finds
+one hit: "Express Avenue Mall" in a doc comment that shows the line format (line 260). No sample value is in view code. The reason chips (Family, Shopping, Medical, Other) are the frame's own options, kept as wording in
+`OutingStudentCopy`.
+
+`main` did not move during this run (`74a9eee` at the start and at the last fetch), so there are no conflict hunks.
+The CI result for this push is recorded in the commit that follows it.
+
+---
+
+
 ## Run 2 (8 November 2026): You destinations, report pages, Issue updates, tap-through
 
 **Partial.** The run started from `origin/main` at `a8e7389`. The previous run's four commits (`f0dce15`, `64b83d6`,
