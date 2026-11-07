@@ -13,8 +13,9 @@ no id was guessed. Nothing in the Figma file was edited.
 
 The brief (owner workflow, 7 November) says to push green commits straight to `origin/main`. `CLAUDE.md` and
 `docs/BRANCHING.md` say never to push to the default branch and to open a pull request. The brief was followed for
-commits (no branch, tag or pull request). **The push to `main` was refused by this session's permission check**, so the
-commits below are local only until the owner allows or makes the push. The brief's separate worktree
+commits (no branch, tag or pull request). The first push to `main` was refused by this session's permission check; after
+the owner allowed it, `f0dce15`, `64b83d6`, `080d3cc` and `590529e` were pushed (`f48e0ee..590529e`), with no rebase
+needed because `main` had not moved. The brief's separate worktree
 `../MealLoop-student-final-2` was not created: this session's own worktree was detached at `origin/main` (`f48e0ee`)
 instead, and its `claude/...` branch was never pushed.
 
@@ -160,12 +161,13 @@ Files outside the Student folder and its tests: `Domain/StudentYou.swift`, `Data
 `Data/Demo/DemoStudentYouSeed.swift` (all in the `feat(backend)` commit). `RoleRootView`, shared components, tokens,
 `GlassTabBar`, `openapi.yaml`, ADRs, project settings, the Special pass, Pass Desk and entry screens were not touched.
 
-`git ls-remote --heads origin`: only `refs/heads/main` (`f48e0ee`). `git ls-remote --tags origin | wc -l`: 29, all from
-before this task; this task created none. `gh run list --branch main --limit 1` before the push attempt: run 42384777179
-on `f48e0ee`, success.
+`git ls-remote --heads origin`: only `refs/heads/main` (`590529e` after the push). `git ls-remote --tags origin | wc -l`:
+29, all from before this task; this task created none.
+
+CI: before the push, run 42384777179 on `f48e0ee` was green. After the push, run 42389794456 on `590529e` passed both
+jobs, "build and test (Debug, Review, Release build)" and "commit and repository rules".
 
 ## Not run
 
 A physical device, the camera, Dynamic Type, VoiceOver, iPhone SE, and a full tap walk (simulator taps through the
-helper were unreliable; the screens were captured by hosting the views instead). CI did not run on this work because
-nothing was pushed.
+helper were unreliable; the screens were captured by hosting the views instead).
