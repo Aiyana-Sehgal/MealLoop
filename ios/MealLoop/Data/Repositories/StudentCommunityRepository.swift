@@ -3,7 +3,7 @@ import Foundation
 /// Community and non-urgent reports for students. Separate from the core repositories, so nothing existing changes.
 /// Urgent reports do not come here: they are raised with `SOSRepository.raise`.
 protocol StudentCommunityRepository: Sendable {
-    /// Open problems first by stage, then Fixed ones.
+    /// Open problems, most recently updated first, then Fixed ones.
     func issues(at mess: MessID, for student: StudentID) async throws -> [StudentIssue]
     func issue(_ id: CommunityIssueID, for student: StudentID) async throws -> StudentIssue
     /// "Me too". Once per student per problem: backing again changes nothing.

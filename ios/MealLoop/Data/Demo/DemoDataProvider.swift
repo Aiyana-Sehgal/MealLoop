@@ -1088,7 +1088,8 @@ extension DemoDataProvider: StudentCommunityRepository {
     func issues(at mess: MessID, for student: StudentID) async throws -> [StudentIssue] {
         try failIfOffline()
         guard mess == DemoSeed.mess.id else { return [] }
-        let open = state.studentIssues.filter { $0.stage != .fixed }.sorted { $0.stage > $1.stage }
+        // Community (221:63630) lists the most recently updated problem first.
+        let open = state.studentIssues.filter { $0.stage != .fixed }.sorted { $0.updatedAt > $1.updatedAt }
         let fixed = state.studentIssues.filter { $0.stage == .fixed }
         return (open + fixed).map { view($0, for: student) }
     }

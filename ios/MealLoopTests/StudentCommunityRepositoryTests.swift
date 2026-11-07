@@ -25,12 +25,12 @@ final class StudentCommunityRepositoryTests: XCTestCase {
                              meal: .lunch, idempotencyKey: IdempotencyKey(key))
     }
 
-    func testTheDrawnProblemsOpenSeenFirstWithTheirCounts() async throws {
+    func testTheDrawnProblemsNewestFirstWithTheirCounts() async throws {
         let (demo, _) = make()
         let issues = try await demo.issues(at: mess, for: aarav)
-        XCTAssertEqual(issues.map(\.title), ["Sambar too watery at dinner", "Long wait at counter 3 after 1 PM"])
-        XCTAssertEqual(issues.map(\.backers), [38, 64])
-        XCTAssertEqual(issues.map(\.stage), [.fixing, .seen])
+        XCTAssertEqual(issues.map(\.title), ["Long wait at counter 3 after 1 PM", "Sambar too watery at dinner"])
+        XCTAssertEqual(issues.map(\.backers), [64, 38])
+        XCTAssertEqual(issues.map(\.stage), [.seen, .fixing])
         XCTAssertFalse(issues.contains { $0.isBackedByMe })
         XCTAssertFalse(issues.contains { $0.stage == .fixed }, "Nothing is fixed yet, as Community · Fixed · Empty draws.")
     }
