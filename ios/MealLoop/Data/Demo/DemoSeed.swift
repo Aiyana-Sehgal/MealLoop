@@ -184,14 +184,15 @@ enum DemoSeed {
     ]
 
     /// P10_new_pass_requests, row by row. P10 gives Dev's row no time, so it has none.
+    /// Only the waiting row names a reason: Figma PD-4 (2538:5739) draws "Phone lost" on Aarav's row alone.
     static var sampleReissues: [PassReissueRequest] {
-        func request(_ lastFour: String, _ status: PassReissueStatus, _ at: Date?) -> PassReissueRequest? {
+        func request(_ lastFour: String, _ status: PassReissueStatus, _ at: Date?, reason: PassReissueReason? = nil) -> PassReissueRequest? {
             guard let sample = sampleStudents.first(where: { $0.ref.maskedID.hasSuffix(lastFour) }) else { return nil }
             return PassReissueRequest(id: PassReissueID("demo-reissue-\(lastFour)"),
                                       holder: SpecialPassHolder(student: sample.ref, name: sample.name),
-                                      reason: nil, status: status, updatedAt: at)
+                                      reason: reason, status: status, updatedAt: at)
         }
-        return [request("0238", .waiting, time(12, 20)), request("0412", .approved, time(12, 8)),
+        return [request("0238", .waiting, time(12, 20), reason: .phoneLost), request("0412", .approved, time(12, 8)),
                 request("0377", .done, time(11, 52)), request("0190", .rejected, nil)].compactMap { $0 }
     }
 

@@ -30,6 +30,12 @@ final class StaffDirectoryTests: XCTestCase {
         XCTAssertNil(time)
     }
 
+    func testOnlyTheWaitingRequestNamesAReason() {
+        let reasons = DemoSeed.sampleReissues.map { $0.status == .waiting ? $0.reason : nil }
+        XCTAssertEqual(DemoSeed.sampleReissues.first { $0.status == .waiting }?.reason, .phoneLost)
+        XCTAssertEqual(DemoSeed.sampleReissues.compactMap(\.reason).count, reasons.compactMap { $0 }.count)
+    }
+
     func testTheDefaultSourceAnswersNothing() async throws {
         let directory = UnavailableStaffDirectory()
         let name = try await directory.studentName(DemoSeed.sampleStudent.id)
