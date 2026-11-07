@@ -1,0 +1,117 @@
+# MealLoop CI. Runs on every push to main and on every pull request into main.
+# Put this file at .github/workflows/ios-ci.yml
+#
+# NOT VERIFIED: this workflow was written without running it. The first run may need small fixes
+# (the runner's Xcode version, the simulator name, scheme names). Read the first run's log before trusting it.
+name: ios-ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ios-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rules:
+    name: commit and repository rules
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Commit messages and tracked junk
+        shell: bash
+        run: |
+          set -u
+          fail=0
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            RANGE="origin/${{ github.base_ref }}..HEAD"
+          else
+            BEFORE="${{ github.event.before }}"
+            if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then RANGE="HEAD~1..HEAD"; else RANGE="$BEFORE..${{ github.sha }}"; fi
+          fi
+          echo "Checking commits in $RANGE"
+          # 1. No co-author trailers, no tool-attribution lines.
+          if git log "$RANGE" --format=%B | grep -i -E '^co-authored-by:|generated with|claude\.ai/code'; then
+            echo "::error::A commit message has a co-author trailer or a tool attribution line."; fail=1
+          fi
+          # 2. Conventional Commits for every non-merge commit.
+          while IFS=$'\t' read -r sha subject; do
+            case "$subject" in Merge\ *) continue;; esac
+            if ! echo "$subject" | grep -q -E '^(feat|fix|docs|design|chore|refactor|test|spike)(\([^)]+\))?: .+'; then
+              echo "::error::Commit $sha does not follow Conventional Commits: $subject"; fail=1
+            fi
+          done < <(git log "$RANGE" --no-merges --format='%h%x09%s')
+          # 3. No editor or Xcode user files tracked.
+          if git ls-files | grep -E '(^|/)\.DS_Store$|xcuserdata/|\.xcuserstate$'; then
+            echo "::error::Tracked files that should be ignored (listed above)."; fail=1
+          fi
+          exit $fail
+
+  ios-build-test:
+    name: build and test (Debug, Review, Release build)
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select the newest Xcode on the runner
+        shell: bash
+        run: |
+          X=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select -s "$X/Contents/Developer"
+          xcodebuild -version
+      - name: Pick an iPhone simulator
+        id: sim
+        shell: bash
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)['devices']; best=''
+          for rt in sorted(d):
+              for dev in d[rt]:
+                  if dev.get('isAvailable') and dev['name'].startswith('iPhone'): best=dev['udid']
+          print(best)")
+          if [ -z "$UDID" ]; then echo "::error::No iPhone simulator is available on this runner"; exit 1; fi
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          echo "Using simulator $UDID"
+      - name: Debug tests (scheme MealLoop)
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild test -project ios/MealLoop.xcodeproj -scheme "MealLoop" \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1 \
+            -resultBundlePath build/debug.xcresult CODE_SIGNING_ALLOWED=NO
+      - name: Review tests (scheme MealLoop Review)
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild test -project ios/MealLoop.xcodeproj -scheme "MealLoop Review" \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1 \
+            -resultBundlePath build/review.xcresult CODE_SIGNING_ALLOWED=NO
+      - name: Release build
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild build -project ios/MealLoop.xcodeproj -scheme "MealLoop" -configuration Release \
+            -destination "generic/platform=iOS Simulator" CODE_SIGNING_ALLOWED=NO
+      - name: Test summaries (best effort)
+        if: always()
+        shell: bash
+        run: |
+          for b in build/debug.xcresult build/review.xcresult; do
+            echo "== $b"; xcrun xcresulttool get test-results summary --path "$b" 2>&1 | head -40 || true
+          done
+      - name: Keep the result bundles
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcresult
+          path: build/*.xcresult
+          retention-days: 7
