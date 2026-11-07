@@ -1,10 +1,14 @@
 import SwiftUI
 
-/// Adjust headcount (A02 sheet): a number, a reason and one action. Saving approves the new number, and the
-/// backend refuses a change without a reason, so its answer is shown here instead of being guessed.
+/// Adjust headcount (A02 sheet): a number, a reason and one action. The backend refuses a change without a
+/// reason, so its answer is shown here instead of being guessed. On the Food Head's own mess, saving approves.
 struct AdminAdjustHeadcountSheet: View {
-    let model: AdminTodayViewModel
-    let forecast: Int?
+    let forecastLine: String?
+    /// Nil writes "Approve 860", for the headcount where saving is the approval.
+    let saveTitle: String?
+    let isSaving: Bool
+    let errorText: String?
+    let save: (Int, String?) async -> Bool
     let onSaved: (Int) -> Void
     let onClose: () -> Void
 
@@ -14,10 +18,13 @@ struct AdminAdjustHeadcountSheet: View {
 
     private let reasons = [AdminCopy.reasonEvent, AdminCopy.reasonExam, AdminCopy.reasonHoliday, AdminCopy.reasonOther]
 
-    init(model: AdminTodayViewModel, startCount: Int, forecast: Int?,
-         onSaved: @escaping (Int) -> Void, onClose: @escaping () -> Void) {
-        self.model = model
-        self.forecast = forecast
+    init(startCount: Int, forecastLine: String?, saveTitle: String?, isSaving: Bool, errorText: String?,
+         save: @escaping (Int, String?) async -> Bool, onSaved: @escaping (Int) -> Void, onClose: @escaping () -> Void) {
+        self.forecastLine = forecastLine
+        self.saveTitle = saveTitle
+        self.isSaving = isSaving
+        self.errorText = errorText
+        self.save = save
         self.onSaved = onSaved
         self.onClose = onClose
         _count = State(initialValue: startCount)
@@ -39,17 +46,14 @@ struct AdminAdjustHeadcountSheet: View {
                 stepButton(symbol: "plus", label: AdminCopy.increase) { count += 1 }
             }
             .frame(maxWidth: .infinity)
-            if let forecast {
-                Text(AdminCopy.forecastLine(forecast))
+            if let forecastLine {
+                Text(forecastLine)
                     .font(MLType.body)
                     .foregroundStyle(MLColor.inkSecondary)
                     .frame(maxWidth: .infinity)
             }
-            Text(AdminCopy.reason)
-                .font(MLType.secondary)
-                .foregroundStyle(MLColor.inkSecondary)
-                .accessibilityAddTraits(.isHeader)
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: MLSpacing.s8) {
+            AdminLabel(text: AdminCopy.reason)
+            AdminFlow {
                 ForEach(reasons, id: \.self) { reason in
                     ChoiceChip(title: reason, isSelected: chosenReason == reason) { chosenReason = reason }
                 }
@@ -64,12 +68,12 @@ struct AdminAdjustHeadcountSheet: View {
             Text(AdminCopy.adjustNote)
                 .font(MLType.body)
                 .foregroundStyle(MLColor.inkSecondary)
-            if let error = model.actionError {
-                FieldErrorText(text: error)
+            if let errorText {
+                FieldErrorText(text: errorText)
             }
-            InkActionButton(title: AdminCopy.approve(count), isLoading: model.isApproving) {
+            InkActionButton(title: saveTitle.map { "\($0) \(count)" } ?? AdminCopy.approve(count), isLoading: isSaving) {
                 Task {
-                    if await model.adjust(to: count, reason: reasonToSend) { onSaved(count) }
+                    if await save(count, reasonToSend) { onSaved(count) }
                 }
             }
         }

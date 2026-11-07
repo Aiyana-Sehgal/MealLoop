@@ -248,12 +248,12 @@ enum AdminScreenCopy {
     static let studentsTitle = "Students"
     static let whatNeedsYou = "What needs you"
     static func answered(_ meal: String) -> String { "\(meal) · answered" }
-    static func ofTotal(_ total: String) -> String { "of \(total)" }
+    static let ofWord = "of"
     static let yes = "Yes"
     static let no = "No"
     static let notSure = "Not sure"
     static func remind(_ count: String) -> String { "Remind \(count) students" }
-    static func reminderSent(_ time: String) -> String { "Reminder sent · \(time)" }
+    static func reminderSent(_ time: String) -> String { "Reminder queued · \(time)" }
     static let feedbackToActOn = "Feedback to act on"
     static let community = "Community"
     static let new = "New"
@@ -268,9 +268,9 @@ enum AdminScreenCopy {
     static let who = "Who"
     static let messageLabel = "Message"
     static func remindWho(_ count: String, meal: String) -> String { "\(count) students who haven't answered for \(meal), all messes." }
-    static let remindNote = "Sends one notification. Students who already answered get nothing."
+    static let remindNote = "Queues one notification. Students who already answered are left out."
     static func sendTo(_ count: String) -> String { "Send to \(count) students" }
-    static let reminderToast = "Reminder sent"
+    static let reminderToast = "Reminder queued"
 
     static func feedbackSubtitle(_ item: FeedbackItem, day: String) -> String {
         "\(item.mess) · \(day) \(MLFormat.mealSlot(item.slot).lowercased()) · \(item.students) \(students(item.students))"
@@ -356,7 +356,7 @@ enum AdminScreenCopy {
     static let addADish = "Add a dish"
     static let tellStudentsChange = "Tell students about this change"
     static let saveChanges = "Save changes"
-    static let savedTold = "Saved. Students see it now."
+    static let savedTold = "Saved and marked to tell students."
     static let saved = "Saved."
     static func deleted(_ dish: String) -> String { "\(dish) removed" }
     static let checkThisWord = "Check this word"
@@ -393,9 +393,9 @@ enum AdminScreenCopy {
     static let dinnerChanged = "Dinner changed"
     static let now = "now"
     static let nowTitle = "Now"
-    static func everyoneGets(_ total: String) -> String { "All \(total) students get this now, in Notifications and on Home." }
+    static func everyoneGets(_ total: String) -> String { "This is addressed to all \(total) students, in Notifications and on Home." }
     static let send = "Send"
-    static let sentDinner = "Sent. Students see the new dinner."
+    static let sentDinner = "Dinner change saved and marked to tell students."
     static let dinnerChangedSaved = "Dinner changed."
     static func changeLine(_ change: QuickChange) -> String {
         switch change {
@@ -424,7 +424,7 @@ enum AdminScreenCopy {
     static let phonePrefix = "+91"
     static let role = "Role"
     static let sendInvite = "Send invite"
-    static let inviteSent = "Invite sent"
+    static let inviteSent = "Invite queued"
     static let vendorSheetDetail = "Headcounts and messages go to this number from your phone."
     static let sendHeadcountsBy = "Send headcounts by"
     static let vendorSaved = "Vendor contact saved"
@@ -435,11 +435,11 @@ enum AdminScreenCopy {
     static let reviewAndSend = "Review and send"
     static func sendToAudience(_ name: String) -> String { "Send to \(name)?" }
     static func audienceReach(_ audience: AnnouncementAudience) -> String {
-        guard let count = audience.students else { return "Students at \(audience.confirmName) get a notification now." }
-        return "About \(AdminFormat.count(count)) students at \(audience.confirmName) get a notification now."
+        guard let count = audience.students else { return "This is addressed to students at \(audience.confirmName)." }
+        return "This is addressed to about \(AdminFormat.count(count)) students at \(audience.confirmName)."
     }
     static let sendNow = "Send now"
-    static let announcementSent = "Announcement sent"
+    static let announcementSent = "Announcement queued"
     static func characters(_ used: Int, _ limit: Int) -> String { "\(used) / \(limit)" }
 
     // Secondary pages
@@ -458,5 +458,28 @@ enum AdminScreenCopy {
     static func byTime(_ partner: String, _ time: String) -> String { "\(partner) · by \(time)" }
     static let entriesToday = "entries today"
     static let late = "Late"
+    static let rules = "Rules"
+    static let decide = "Decide"
+    static let catalogue = "Catalogue"
+    static let redemptions = "Redemptions"
+    static let awaitingSRM = "Awaiting SRM"
+    static let seeDishesAndSteps = "See dishes and steps"
+    static let allTypes = "All types"
+    static func seeAllCount(_ count: Int) -> String { "See all · \(count)" }
+    /// Said by a control the frame draws but the prototype has no page for.
+    static let notInPrototype = "This isn't part of this prototype."
+    static let unsureMark = "(?)"
+    static let dateLabel = "Date"
+    static let safetyCasesSubtitle = "Last 4 weeks · all messes"
+    static let notAnswered = "Not answered"
+    static let notAnsweredByMess = "Not answered by mess"
+    static func notAnsweredRow(_ count: String, _ meal: String) -> String { "\(count) students for \(meal.lowercased())" }
+    static func notAnsweredSubtitle(_ meal: String, _ count: String) -> String { "\(meal) · \(count) students" }
+    /// 2263:6 names the food left on this row, where Find a meal says it needs review.
+    static func feedbackMealDetail(_ meal: AdminMealFacts) -> String {
+        let counts = "\(AdminFormat.count(meal.headcountSent)) sent → \(AdminFormat.count(meal.finalEntries)) came"
+        guard !meal.leftovers.isEmpty else { return counts }
+        return "\(counts) · " + meal.leftovers.map { "\($0.dish) \(AdminFormat.amount($0))" }.joined(separator: ", ") + " left"
+    }
     static let outNow = "Out now"
 }

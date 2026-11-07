@@ -16,6 +16,8 @@ struct AdminRootView: View {
 /// Pushed screens inside the Today tab.
 enum AdminRoute: Hashable {
     case headcount
+    case live
+    case page(AdminPage)
     case notImplemented(title: String)
 }
 
@@ -34,7 +36,7 @@ private struct AdminTabsView: View {
         ZStack(alignment: .bottom) {
             if selectedTab == todayTab {
                 NavigationStack(path: $todayPath) {
-                    AdminTodayScreen(context: context, path: $todayPath) {
+                    AdminTodayScreen(context: context, path: $todayPath, nav: todayNav) {
                         selectedTab = moreTab
                     }
                 }
@@ -56,6 +58,11 @@ private struct AdminTabsView: View {
         .mlToast(message: $toast, bottomInset: AdminLayout.tabBarClearance)
     }
 
+    /// Today's pages share the other tabs' screens, so a meal or a case opens the same page from anywhere.
+    private var todayNav: AdminNav {
+        AdminNav(context: context, push: { todayPath.append(.page($0)) }, pop: { _ = todayPath.popLast() }, toast: { toast = $0 })
+    }
+
     private func tab<Root: View>(_ path: Binding<[AdminPage]>, @ViewBuilder root: @escaping (AdminNav) -> Root) -> some View {
         let nav = AdminNav(context: context, push: { path.wrappedValue.append($0) },
                            pop: { _ = path.wrappedValue.popLast() }, toast: { toast = $0 })
@@ -73,14 +80,14 @@ private struct AdminTabsView: View {
     private func symbol(for title: String) -> String {
         switch title {
         case "Today": return "calendar"
-        case "Students": return "person.3"
+        case "Students": return "person.2"
         case "Results": return "chart.bar"
         default: return "ellipsis"
         }
     }
 }
 
-private struct AdminPageDestination: View {
+struct AdminPageDestination: View {
     let page: AdminPage
     let nav: AdminNav
 
@@ -109,6 +116,8 @@ private struct AdminPageDestination: View {
             case .spareFood: AdminSpareFoodScreen(nav: nav)
             case .history: AdminHistoryScreen(nav: nav)
             case .outings: AdminOutingsScreen(nav: nav)
+            case .messHeadcount(let id, let slot): AdminMessHeadcountScreen(id: id, slot: slot, nav: nav)
+            case .notAnswered: AdminNotAnsweredScreen(nav: nav)
             }
         }
         .toolbar(.hidden, for: .navigationBar)

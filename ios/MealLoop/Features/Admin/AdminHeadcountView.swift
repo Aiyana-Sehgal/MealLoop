@@ -15,7 +15,7 @@ struct AdminHeadcountView: View {
             OrbitBackground()
             ScrollView {
                 VStack(alignment: .leading, spacing: MLSpacing.s16) {
-                    BackButton(action: onBack)
+                    AdminBackButton(action: onBack)
                     AsyncContentView(state: model.state,
                                      emptyTitle: AdminCopy.noMealTitle,
                                      emptyMessage: AdminCopy.noMealDetail,
@@ -37,7 +37,9 @@ struct AdminHeadcountView: View {
         .mlToast(message: $toast, bottomInset: 92)
         .mlSheet(isPresented: $isAdjusting) {
             if let meal = model.state.value?.meal, let count = meal.adjustableCount {
-                AdminAdjustHeadcountSheet(model: model, startCount: count, forecast: meal.forecastToApprove) { saved in
+                AdminAdjustHeadcountSheet(startCount: count, forecastLine: meal.forecastToApprove.map(AdminCopy.forecastLine),
+                                          saveTitle: nil, isSaving: model.isApproving, errorText: model.actionError,
+                                          save: { await model.adjust(to: $0, reason: $1) }) { saved in
                     isAdjusting = false
                     toast = AdminCopy.approvedToast(saved)
                 } onClose: {
@@ -100,8 +102,10 @@ struct AdminHeadcountView: View {
         HeroCard {
             HeroEyebrow(label: lead.label, time: lead.time.map { MLFormat.time($0, in: timeZone) })
             Text(lead.count.map { String($0) } ?? "—")
-                .font(MLType.heroNumber)
+                .font(AdminType.heroMetric)
                 .foregroundStyle(MLColor.onHero)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
                 .padding(.top, MLSpacing.s8)
             if lead.count == nil {
                 Text(AdminCopy.forecastNotReady)

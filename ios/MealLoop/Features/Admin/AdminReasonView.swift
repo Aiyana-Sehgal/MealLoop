@@ -26,7 +26,7 @@ struct AdminReasonBody: View {
     var body: some View {
         AdminPageScaffold(title: detail.reason.title, onBack: nav.pop) {
             HStack(spacing: MLSpacing.s8) {
-                ReasonTagText(tag: detail.reason.tag)
+                ReasonTagDot(tag: detail.reason.tag)
                 Text("· \(AdminScreenCopy.reasonLine(detail.reason.meals))")
                     .font(MLType.body)
                     .foregroundStyle(MLColor.inkSecondary)
@@ -91,12 +91,9 @@ struct AdminReasonBody: View {
         HStack(alignment: .top, spacing: MLSpacing.s8) {
             ForEach(detail.foods) { food in
                 VStack(alignment: .leading, spacing: MLSpacing.s4) {
-                    Image(systemName: "fork.knife")
-                        .font(.system(size: 20))
-                        .foregroundStyle(MLColor.ink)
-                        .accessibilityHidden(true)
+                    AdminDishPictogram(dish: food.dish, size: 36)
                     Text(food.dish)
-                        .font(MLType.bodyEmphasis)
+                        .font(MLType.staffPrimary)
                         .foregroundStyle(MLColor.ink)
                     Text(foodDetail(food))
                         .font(MLType.secondary)
@@ -118,10 +115,14 @@ struct AdminReasonBody: View {
 
     private func feedback(_ line: DishFeedbackLine) -> some View {
         AdminCard {
-            Text(line.dish)
-                .font(MLType.staffPrimary)
-                .foregroundStyle(MLColor.ink)
-            HStack {
+            HStack(spacing: MLSpacing.s12) {
+                AdminDishPictogram(dish: line.dish)
+                Text(line.dish)
+                    .font(MLType.staffPrimary)
+                    .foregroundStyle(MLColor.ink)
+            }
+            HStack(spacing: MLSpacing.s8) {
+                AdminProblemIcon()
                 Text(line.problem)
                     .font(MLType.body)
                     .foregroundStyle(MLColor.ink)

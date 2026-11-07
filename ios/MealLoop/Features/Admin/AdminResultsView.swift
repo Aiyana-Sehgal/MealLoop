@@ -101,7 +101,7 @@ struct AdminResultsBody: View {
             HStack(spacing: MLSpacing.s12) {
                 VStack(alignment: .leading, spacing: 0) {
                     Text("\(reason.meals)")
-                        .font(MLType.title2)
+                        .font(AdminType.count)
                         .foregroundStyle(MLColor.ink)
                     Text(AdminScreenCopy.meals(reason.meals))
                         .font(MLType.meta)
@@ -138,15 +138,15 @@ struct AdminResultsBody: View {
             AdminLabel(text: AdminScreenCopy.reviewTheseMeals(overview.toReview.count))
             ForEach(overview.toReview) { row in
                 AdminRow(title: "\(AdminFormat.weekday(row.meal.day, in: nav.timeZone).prefix(3)) \(MLFormat.mealSlot(row.meal.slot).lowercased()) · \(row.meal.mess)",
-                         detail: AdminScreenCopy.reviewDetail(row.meal), action: { nav.push(.meal(row.id)) }) {
-                    StatusText(text: AdminScreenCopy.review, dot: .empty)
+                         detail: AdminScreenCopy.reviewDetail(row.meal), showsChevron: false, action: { nav.push(.meal(row.id)) }) {
+                    AdminChip(text: AdminScreenCopy.review, style: .outline)
                 }
             }
             AdminLabel(text: AdminScreenCopy.changesBeingTested(overview.changes.count))
                 .padding(.top, MLSpacing.s16)
             ForEach(overview.changes) { check in
-                AdminRow(title: check.listTitle, detail: changeDetail(check), action: { nav.push(.check(check.id)) }) {
-                    StatusText(text: AdminScreenCopy.stage(check.stage), dot: check.stage == .open ? .empty : .filled)
+                AdminRow(title: check.listTitle, detail: changeDetail(check), showsChevron: false, action: { nav.push(.check(check.id)) }) {
+                    AdminChip(text: AdminScreenCopy.stage(check.stage), style: AdminChipRules.stage(check.stage))
                 }
             }
             VStack(spacing: 0) {

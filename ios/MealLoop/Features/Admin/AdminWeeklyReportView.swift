@@ -127,11 +127,22 @@ struct AdminWeeklyReportView: View {
             AdminLabel(text: AdminScreenCopy.inTheReport)
             VStack(spacing: 0) {
                 ForEach(report.sections) { section in
-                    AdminRow(title: section.title, action: nil) {
+                    HStack(spacing: MLSpacing.s12) {
+                        Image(systemName: "checkmark.circle")
+                            .font(.system(size: 20))
+                            .foregroundStyle(MLColor.ink)
+                            .accessibilityHidden(true)
+                        Text(section.title)
+                            .font(MLType.staffBody)
+                            .foregroundStyle(MLColor.ink)
+                        Spacer(minLength: MLSpacing.s8)
                         Text(AdminScreenCopy.page(section.page))
                             .font(MLType.body)
                             .foregroundStyle(MLColor.inkSecondary)
                     }
+                    .frame(minHeight: 56)
+                    .overlay(alignment: .top) { Rectangle().fill(MLColor.border).frame(height: 1) }
+                    .accessibilityElement(children: .combine)
                 }
             }
             InkActionButton(title: model.exportState == .preparing ? AdminScreenCopy.preparing : AdminScreenCopy.exportPDF,
@@ -151,7 +162,7 @@ struct AdminWeeklyReportView: View {
     private func figure(_ value: String, _ label: String, color: Color) -> some View {
         VStack(alignment: .leading, spacing: MLSpacing.s4) {
             Text(value)
-                .font(.system(size: 40, weight: .bold, design: .monospaced))
+                .font(AdminType.stat)
                 .foregroundStyle(color)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
