@@ -65,6 +65,29 @@ struct StudentFiledReport: Codable, Sendable, Hashable, Identifiable {
     /// The student's reply, once recorded.
     let reply: String?
     let events: [StudentReportEvent]
+    /// "Is it better now?" on a fixed report. A student signal only: it never marks the fix as verified, which is a
+    /// separate state from "corrective action completed" (ruling on P-FINAL2-7).
+    var fixCheck: StudentFixCheckAnswer? = nil
+}
+
+/// The answers of "Is it better now?" (Report · Fixed 221:63606).
+enum StudentFixCheckAnswer: String, Codable, Sendable, Hashable, CaseIterable {
+    case better
+    case stillBad
+    case didntTry
+}
+
+/// The two data requests of Terms and privacy (221:64669).
+enum StudentDataRequestKind: String, Codable, Sendable, Hashable, CaseIterable {
+    case copy
+    case deletion
+}
+
+/// A data request as the prototype records it. It never says the request reached a person or promises a time
+/// (ruling on P-FINAL2-9); who handles it is open.
+struct StudentDataRequestReceipt: Codable, Sendable, Hashable {
+    let kind: StudentDataRequestKind
+    let recordedAt: Date
 }
 
 /// Where a dish feedback stands (My feedback 2159:151331).

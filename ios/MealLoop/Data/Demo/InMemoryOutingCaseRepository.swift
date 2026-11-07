@@ -626,4 +626,85 @@ actor InMemoryOutingCaseRepository: OutingCaseRepository {
         return GateProblemReport(problem: problem, sentAt: clock.now())
     }
 }
+// MARK: - Student (additive)
+
+/// The student's own outings on the same story, so the guardian answers the request the student sent. Added in the
+/// Student final 2 run; the Guardian, Warden and Gate operations above are unchanged.
+extension InMemoryOutingCaseRepository: StudentOutingRepository {
+    private func outingStudent(_ student: StudentID) throws -> OutingStudent {
+        guard let linked = StudentOutingSeed.links[student] else {
+            throw RepositoryError.notAllowed(reason: "Outings aren't set up for you in the app. Use the hostel's process.")
+        }
+        return linked
+    }
+
+    private func hasGuardian(_ student: OutingStudent) -> Bool {
+        links.values.contains { $0.student.id == student.id }
+    }
+
+    private func ownCase(_ id: OutingRequestID, _ student: StudentID) throws -> OutingCase {
+        let linked = try outingStudent(student)
+        guard let item = cases[id], item.student.id == linked.id else { throw RepositoryError.notFound }
+        return item
+    }
+
+    func outings(for student: StudentID) async throws -> StudentOutings {
+        if offline { throw RepositoryError.offline(lastSavedAt: nil) }
+        guard let linked = StudentOutingSeed.links[student] else {
+            return StudentOutings(eligibility: .notEnabled, current: [], earlier: [])
+        }
+        guard hasGuardian(linked) else { return StudentOutings(eligibility: .noGuardian, current: [], earlier: []) }
+        let own = order.compactMap { cases[$0] }.filter { $0.student.id == linked.id }
+        return StudentOutings(eligibility: .enabled, current: own.filter { !$0.stage.isFinished }.reversed(),
+                              earlier: StudentOutingSeed.earlier)
+    }
+
+    func outing(_ id: OutingRequestID, for student: StudentID) async throws -> OutingCase {
+        if offline { throw RepositoryError.offline(lastSavedAt: nil) }
+        return try ownCase(id, student)
+    }
+
+    func requestOuting(_ draft: StudentOutingDraft, by student: StudentID) async throws -> OutingCase {
+        if offline { throw RepositoryError.offline(lastSavedAt: nil) }
+        let linked = try outingStudent(student)
+        let id = OutingRequestID("student-\(draft.idempotencyKey.rawValue)")
+        if let first = cases[id] { return first }
+        guard hasGuardian(linked) else {
+            throw RepositoryError.notAllowed(reason: "No guardian is linked to you yet.")
+        }
+        let place = draft.place.trimmingCharacters(in: .whitespacesAndNewlines)
+        var problems: [String] = []
+        if place.isEmpty { problems.append("Add where you're going.") }
+        if draft.returnBy <= draft.leaveAt { problems.append("Back-by must be after the leave time.") }
+        if draft.leaveAt < clock.now() { problems.append("The leave time has passed.") }
+        guard problems.isEmpty else { throw RepositoryError.validationFailed(problems) }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Asia/Kolkata") ?? .current
+        let sameDay = order.compactMap { cases[$0] }.contains {
+            $0.student.id == linked.id && !$0.stage.isFinished && $0.leaveAt.map { calendar.isDate($0, inSameDayAs: draft.leaveAt) } == true
+        }
+        guard !sameDay else {
+            throw RepositoryError.notAllowed(reason: "You already have a request for that day. Change or cancel it instead.")
+        }
+        let phone = links.values.first { $0.student.id == linked.id }?.phone
+        let item = OutingCase(id: id, student: linked, place: place, reason: draft.reason, leaveAt: draft.leaveAt,
+                              returnBy: draft.returnBy, guardianReplyBy: nil, wardenDecideBy: nil, guardianPhone: phone,
+                              seededPassCode: nil, pastAnswerCounts: [:], stage: .awaitingGuardian)
+        order.append(id)
+        return save(item)
+    }
+
+    func cancelOuting(_ id: OutingRequestID, by student: StudentID) async throws -> OutingCase {
+        if offline { throw RepositoryError.offline(lastSavedAt: nil) }
+        var item = try ownCase(id, student)
+        if item.stage == .withdrawn { return item }
+        guard item.stage.studentCanCancel else {
+            throw RepositoryError.notAllowed(reason: "This outing can't be cancelled now.")
+        }
+        item.stage = .withdrawn
+        item.withdrawnAt = clock.now()
+        item.withdrawnBy = .student
+        return save(item)
+    }
+}
 #endif

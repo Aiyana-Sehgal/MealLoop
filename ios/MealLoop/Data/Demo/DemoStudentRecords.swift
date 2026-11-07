@@ -5,6 +5,23 @@ import Foundation
 actor DemoStudentRecordsStore {
     private var replies: [StudentFiledReportID: (text: String, at: Date)] = [:]
     private var rechecks: [StudentFeedbackID: StudentRecheckAnswer] = [:]
+    private var fixChecks: [StudentFiledReportID: StudentFixCheckAnswer] = [:]
+    private var dataRequests: [StudentDataRequestKind: Date] = [:]
+
+    func fixCheck(_ id: StudentFiledReportID) -> StudentFixCheckAnswer? { fixChecks[id] }
+    /// The first answer stays.
+    func recordFixCheck(_ id: StudentFiledReportID, _ answer: StudentFixCheckAnswer) {
+        if fixChecks[id] == nil { fixChecks[id] = answer }
+    }
+    /// The first request of a kind stays.
+    func recordDataRequest(_ kind: StudentDataRequestKind, at: Date) -> Date {
+        if let first = dataRequests[kind] { return first }
+        dataRequests[kind] = at
+        return at
+    }
+    func dataRequestList() -> [StudentDataRequestReceipt] {
+        StudentDataRequestKind.allCases.compactMap { kind in dataRequests[kind].map { StudentDataRequestReceipt(kind: kind, recordedAt: $0) } }
+    }
 
     func reply(_ id: StudentFiledReportID) -> (text: String, at: Date)? { replies[id] }
     func recordReply(_ id: StudentFiledReportID, text: String, at: Date) { replies[id] = (text, at) }
@@ -56,6 +73,32 @@ struct DemoStudentRecords: StudentRecordsRepository {
         return await withReply(report)
     }
 
+    func answerFixCheck(_ id: StudentFiledReportID, _ answer: StudentFixCheckAnswer, by student: StudentID) async throws
+        -> StudentFiledReport {
+        try await core.requireConnection()
+        guard isSample(student), let report = DemoSeed.sampleFiledReports.first(where: { $0.id == id }) else {
+            throw RepositoryError.notFound
+        }
+        guard report.stage == .fixed else {
+            throw RepositoryError.notAllowed(reason: "Only a fixed report asks if it is better.")
+        }
+        await store.recordFixCheck(id, answer)
+        return await withReply(report)
+    }
+
+    func recordDataRequest(_ kind: StudentDataRequestKind, by student: StudentID) async throws -> StudentDataRequestReceipt {
+        try await core.requireConnection()
+        guard isSample(student) else { throw RepositoryError.notFound }
+        let at = await store.recordDataRequest(kind, at: core.clock.now())
+        return StudentDataRequestReceipt(kind: kind, recordedAt: at)
+    }
+
+    func dataRequests(for student: StudentID) async throws -> [StudentDataRequestReceipt] {
+        try await core.requireConnection()
+        guard isSample(student) else { return [] }
+        return await store.dataRequestList()
+    }
+
     func feedback(for student: StudentID) async throws -> StudentFeedbackSummary {
         try await core.requireConnection()
         guard isSample(student) else { return StudentFeedbackSummary(items: []) }
@@ -100,11 +143,13 @@ struct DemoStudentRecords: StudentRecordsRepository {
 
     /// Adds the recorded reply to the timeline. The stage stays Need more info: only the mess moves it on.
     private func withReply(_ report: StudentFiledReport) async -> StudentFiledReport {
+        var report = report
+        report.fixCheck = await store.fixCheck(report.id)
         guard let reply = await store.reply(report.id) else { return report }
         let events = report.events + [StudentReportEvent(kind: .replied(reply.text), at: reply.at, isCurrent: false)]
         return StudentFiledReport(id: report.id, reference: report.reference, category: report.category, place: report.place,
                                   meal: report.meal, sentAt: report.sentAt, stage: report.stage, question: report.question,
-                                  reply: reply.text, events: events)
+                                  reply: reply.text, events: events, fixCheck: report.fixCheck)
     }
 }
 #endif
