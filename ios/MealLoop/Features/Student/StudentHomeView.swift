@@ -1,9 +1,11 @@
 import SwiftUI
 
-/// Pushed screens on the Student Home tab. The tab bar stays, as on 07 and 08.
+/// Pushed screens on the Student Home tab. The tab bar stays, as on Answer and Entry QR.
 enum StudentHomeRoute: Hashable {
     case answer(MealID)
     case entryQR
+    /// A page another Student part builds. Until then it says Coming soon.
+    case comingSoon(String)
 }
 
 /// Builds the view model from the environment and reloads whenever the shared data changes.
@@ -20,11 +22,12 @@ struct StudentHomeScreen: View {
     }
 }
 
-/// Student Home (03): the top card for the meal at hand, then the next meal's answer row.
+/// Student Home: header, greeting, the top card and the rows under it (Home frames, page 07).
 struct StudentHomeView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var model: StudentHomeViewModel
     @State private var path: [StudentHomeRoute] = []
+    @State private var skipping: MealID?
 
     init(model: StudentHomeViewModel) {
         _model = State(initialValue: model)
@@ -36,215 +39,347 @@ struct StudentHomeView: View {
                 OrbitBackground()
                 ScrollView {
                     VStack(alignment: .leading, spacing: MLSpacing.s16) {
-                        header
-                        AsyncContentView(state: model.state,
-                                         emptyTitle: "No meals today",
-                                         timeZone: model.timeZone,
-                                         retry: { await model.load() }) { content in
-                            StudentHomeBody(content: content, name: model.name, timeZone: model.timeZone,
-                                            answerState: model.answerState(for: content.hero),
-                                            onAnswer: { intention in Task { await model.answer(intention, for: content.hero.id) } },
-                                            onShowEntry: { path.append(.entryQR) },
-                                            onOpenAnswer: { path.append(.answer($0)) })
-                        }
-                        // With nothing loaded the top card is gone, and the QR must still be reachable.
-                        if model.showsEntryFallback {
-                            InkActionButton(title: StudentCopy.showEntryQR) { path.append(.entryQR) }
-                        }
+                        StudentHomeHeader(credits: model.state.value?.extras?.credits,
+                                          onRewards: { path.append(.comingSoon(StudentCopy.rewards)) },
+                                          onReport: { path.append(.comingSoon(StudentCopy.reportIssue)) },
+                                          onNotifications: { path.append(.comingSoon(StudentCopy.notifications)) })
+                        greeting
+                        content
                     }
                     .padding(.horizontal, MLSpacing.margin)
-                    .padding(.bottom, 120)
+                    .padding(.top, MLSpacing.s8)
+                    .padding(.bottom, StudentMetric.scrollBottom)
                 }
                 .refreshable { await model.load() }
+                StudentScrollFade()
             }
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: StudentHomeRoute.self) { route in
-                Group {
-                    switch route {
-                    case .answer(let meal):
-                        StudentAnswerView(model: model, mealID: meal) { path.removeLast() }
-                    case .entryQR:
-                        EntryQRView(model: model) { path.removeLast() }
-                    }
-                }
-                .toolbar(.hidden, for: .navigationBar)
-                .navigationBarBackButtonHidden(true)
+                destination(route)
+                    .toolbar(.hidden, for: .navigationBar)
+                    .navigationBarBackButtonHidden(true)
             }
         }
         .task(id: environment.dataRevision) {
             await model.load()
         }
+        .mlSheet(isPresented: Binding(get: { skipping != nil }, set: { if !$0 { skipping = nil } })) {
+            if let meal = skipping, let card = model.card(id: meal) {
+                WhySkippingSheet(slot: card.meal.slot, onClose: { skipping = nil }) { reason in
+                    skipping = nil
+                    Task { await model.answer(.skipping, for: meal, reason: reason) }
+                }
+            }
+        }
     }
 
-    private var header: some View {
-        HStack(spacing: MLSpacing.s8) {
-            OrbitMarkView()
-            Text(StudentCopy.brand)
-                .font(MLType.bodyEmphasis)
-                .foregroundStyle(MLColor.ink)
+    @ViewBuilder
+    private func destination(_ route: StudentHomeRoute) -> some View {
+        switch route {
+        case .answer(let meal):
+            StudentAnswerView(model: model, mealID: meal, onShowEntry: { path.append(.entryQR) }) { path.removeLast() }
+        case .entryQR:
+            EntryQRView(model: model) { path.removeLast() }
+        case .comingSoon(let title):
+            StudentComingSoonView(title: title) { path.removeLast() }
         }
-        .frame(minHeight: MLSize.hit)
-        .accessibilityElement(children: .combine)
+    }
+
+    private var greeting: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(StudentCopy.greeting(model.name))
+                .font(MLType.largeTitle)
+                .foregroundStyle(MLColor.ink)
+                .accessibilityAddTraits(.isHeader)
+            Text(StudentFormat.day(model.state.value?.today ?? model.now, in: model.timeZone))
+                .font(StudentType.body)
+                .foregroundStyle(MLColor.inkSecondary)
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if let content = model.state.value {
+            StudentHomeBody(content: content, mess: model.context.mess.name, timeZone: model.timeZone, isOffline: model.isOffline,
+                            savedAt: savedAtText,
+                            heroAnswerState: model.answerState(for: content.shownHero),
+                            onAnswer: { intention in
+                                if intention == .skipping {
+                                    skipping = content.shownHero.id
+                                } else {
+                                    Task { await model.answer(intention, for: content.shownHero.id) }
+                                }
+                            },
+                            onShowEntry: { path.append(.entryQR) },
+                            onOpenAnswer: { path.append(.answer($0)) },
+                            onComingSoon: { path.append(.comingSoon($0)) })
+        } else if model.isLoadingHome {
+            StudentHomeLoading()
+        } else {
+            if case .empty = model.state {
+                StudentHomeEmpty()
+            } else {
+                AsyncContentView(state: model.state, timeZone: model.timeZone, retry: { await model.load() }) { _ in EmptyView() }
+            }
+            // With nothing loaded the top card is gone, and the QR must still be reachable.
+            if model.showsEntryFallback {
+                InkActionButton(title: StudentCopy.showEntryQR) { path.append(.entryQR) }
+            }
+        }
+    }
+
+    private var savedAtText: String? {
+        guard case .offline(_, let savedAt) = model.state else { return nil }
+        return savedAt.map { MLFormat.time($0, in: model.timeZone) }
+    }
+}
+
+/// Mark, wordmark, credits and two glass buttons (Home header 2147:539).
+struct StudentHomeHeader: View {
+    let credits: Int?
+    let onRewards: () -> Void
+    let onReport: () -> Void
+    let onNotifications: () -> Void
+
+    var body: some View {
+        HStack(spacing: 6) {
+            HStack(spacing: 6) {
+                OrbitMarkView(size: 32)
+                Text(StudentCopy.brand)
+                    .font(StudentType.brand)
+                    .foregroundStyle(MLColor.ink)
+                    .lineLimit(1)
+            }
+            .accessibilityElement(children: .combine)
+            Spacer(minLength: 0)
+            Button(action: onRewards) {
+                HStack(spacing: 6) {
+                    Image("student-star").resizable().frame(width: 16, height: 16).accessibilityHidden(true)
+                    Text(StudentCopy.points(credits))
+                        .font(StudentType.mono)
+                        .foregroundStyle(MLColor.ink)
+                        .lineLimit(1)
+                }
+                .padding(.leading, MLSpacing.s12)
+                .padding(.trailing, 14)
+                .frame(height: MLSize.hit)
+                .modifier(StudentGlass(shape: Capsule()))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(StudentCopy.pointsLabel(credits))
+            StudentGlassButton(symbol: "exclamationmark.bubble", label: StudentCopy.reportIssue, action: onReport)
+            StudentGlassButton(symbol: "bell", label: StudentCopy.notifications, action: onNotifications)
+        }
     }
 }
 
 /// The loaded screen. Pure layout: every value comes from `StudentHomeContent`.
 struct StudentHomeBody: View {
     let content: StudentHomeContent
-    let name: String
+    let mess: String
     let timeZone: TimeZone
-    let answerState: MealAnswerState
+    let isOffline: Bool
+    let savedAt: String?
+    let heroAnswerState: MealAnswerState
     let onAnswer: (MealIntention) -> Void
     let onShowEntry: () -> Void
     let onOpenAnswer: (MealID) -> Void
+    let onComingSoon: (String) -> Void
 
-    private var meal: Meal { content.hero.meal }
-    private var serving: String {
-        StudentCopy.serving(MLFormat.timeRange(meal.startsAt, meal.endsAt, in: timeZone))
-    }
+    private var extras: StudentHomeExtras? { content.extras }
 
     var body: some View {
         VStack(alignment: .leading, spacing: MLSpacing.s16) {
-            ScreenTitleBlock(title: StudentCopy.greeting(name), subtitle: StudentFormat.day(content.today, in: timeZone))
-            topCard
-            if let next = content.nextMeal {
-                NextMealRow(card: next, now: content.today, timeZone: timeZone) { onOpenAnswer(next.id) }
+            if isOffline {
+                StudentOfflineBanner(text: StudentCopy.offlineSaved(savedAt))
             }
-            VStack(spacing: MLSpacing.s4) {
-                Text(StudentCopy.footerLocked)
-                Text(StudentCopy.footerPlan)
+            StudentHomeHero(content: content, mess: mess, timeZone: timeZone, isOffline: isOffline, answerState: heroAnswerState,
+                            onAnswer: onAnswer, onShowEntry: onShowEntry)
+            if let closed = content.lastClosedMeal, content.heroCase == .nextMeal {
+                StudentMealFeedbackCard(slot: closed.slot) { onComingSoon(StudentCopy.howWas(closed.slot)) }
             }
-            .font(MLType.secondary)
-            .foregroundStyle(MLColor.inkSecondary)
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity)
-            .padding(.top, MLSpacing.s8)
+            Group {
+                if let row = content.answerRow {
+                    StudentAnswerRow(card: row, now: content.today, timeZone: timeZone) { onOpenAnswer(row.id) }
+                }
+                if let pass = extras?.pass {
+                    StudentTicketRow(pass: pass, timeZone: timeZone) { onComingSoon(StudentCopy.specialPass) }
+                }
+            }
+            .opacity(isOffline ? 0.5 : 1)
+            .disabled(isOffline)
+            StudentCrowdRow(crowd: isOffline ? nil : extras?.crowd, mess: mess, timeZone: timeZone)
+            if let recheck = extras?.recheck {
+                Rectangle().fill(MLColor.border).frame(height: 1)
+                StudentRecheckRow(recheck: recheck) { onComingSoon(StudentCopy.reportIssue) }
+            }
         }
     }
+}
 
-    private var topCard: some View {
-        HeroCard {
-            HStack(alignment: .center) {
-                HeroEyebrow(label: StudentCopy.eyebrow(meal.slot))
+/// The top card, in the five cases of HeroCard 2135:2336.
+struct StudentHomeHero: View {
+    let content: StudentHomeContent
+    let mess: String
+    let timeZone: TimeZone
+    let isOffline: Bool
+    let answerState: MealAnswerState
+    let onAnswer: (MealIntention) -> Void
+    let onShowEntry: () -> Void
+
+    private var card: StudentMealCard { content.shownHero }
+    private var meal: Meal { card.meal }
+    private var range: String { MLFormat.timeRange(meal.startsAt, meal.endsAt, in: timeZone) }
+
+    var body: some View {
+        StudentHeroCard {
+            HStack {
+                Text(eyebrow.uppercased())
+                    .font(StudentType.eyebrow)
+                    .tracking(0.72)
+                    .foregroundStyle(MLColor.onHeroSecondary)
                 Spacer(minLength: MLSpacing.s8)
                 chip
             }
+            .frame(minHeight: StudentMetric.chipHeight)
             Text(title)
-                .font(MLType.heroTitle)
+                .font(StudentType.heroTitle)
                 .foregroundStyle(MLColor.onHero)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, MLSpacing.s12)
             Text(detail)
-                .font(MLType.body)
+                .font(StudentType.secondary)
                 .foregroundStyle(MLColor.onHeroSecondary)
-                .padding(.top, MLSpacing.s4)
-            if content.hero.answer == nil {
-                HeroAnswerRow(state: answerState, attendingTitle: StudentCopy.imIn, onAnswer: onAnswer, onShowEntry: onShowEntry)
-                    .padding(.top, MLSpacing.s16)
-                if !content.hero.isAnswerOpen {
-                    Text(StudentCopy.answersClosed(StudentFormat.shortTime(content.hero.cutoff, in: timeZone)))
-                        .font(MLType.secondary)
-                        .foregroundStyle(MLColor.onHeroSecondary)
-                        .padding(.top, MLSpacing.s12)
-                }
-            } else {
-                HeroSurfaceButton(title: StudentCopy.showEntryQR, action: onShowEntry)
-                    .padding(.top, MLSpacing.s16)
+                .fixedSize(horizontal: false, vertical: true)
+            actions.padding(.top, MLSpacing.s16)
+        }
+    }
+
+    private var eyebrow: String {
+        switch content.heroCase {
+        case .nowServing: return StudentCopy.nowServing
+        case .nextMeal: return StudentCopy.nextMealEyebrow
+        case .messClosed, .question, .answered: return StudentCopy.eyebrow(meal.slot)
+        }
+    }
+
+    private var title: String {
+        switch content.heroCase {
+        case .messClosed: return StudentCopy.messOpensAt(StudentFormat.clock(meal.startsAt, in: timeZone))
+        case .nowServing: return StudentCopy.isOpen(meal.slot)
+        case .nextMeal: return StudentCopy.mealAt(meal.slot, time: StudentFormat.shortTime(meal.startsAt, in: timeZone))
+        case .question: return StudentCopy.mealToday(meal.slot)
+        case .answered:
+            switch card.answer {
+            case .attending?: return StudentCopy.youreIn(meal.slot)
+            case .skipping?: return StudentCopy.youSkipped(meal.slot)
+            case .notSure?: return StudentCopy.youreNotSure(meal.slot)
+            case nil: return StudentCopy.mealToday(meal.slot)
+            }
+        }
+    }
+
+    private var detail: String {
+        if isOffline { return StudentCopy.savedQRWorks(range) }
+        switch content.heroCase {
+        case .messClosed: return StudentCopy.mealRange(meal.slot, range: range, mess: mess)
+        case .nowServing: return StudentCopy.till(StudentFormat.shortTime(meal.endsAt, in: timeZone), mess: mess)
+        case .nextMeal: return StudentCopy.servingAt(range, mess: mess)
+        case .question: return StudentCopy.serving(range)
+        case .answered:
+            switch card.answer {
+            case .skipping?: return StudentCopy.canStillEat
+            case .notSure?: return StudentCopy.notSureCanEat
+            case .attending?, nil: return StudentCopy.serving(range)
             }
         }
     }
 
     @ViewBuilder
     private var chip: some View {
-        switch content.hero.answer {
-        case .attending?:
-            HeroStatusChip(text: StudentCopy.imIn, style: .lime, showsCheck: true)
-        case .skipping?:
-            HeroStatusChip(text: StudentCopy.skipped, style: .outline)
-        case .notSure?:
-            HeroStatusChip(text: StudentCopy.notSure, style: .outline)
-        case nil:
-            HeroStatusChip(text: StudentCopy.notAnswered, style: .dashed)
-        }
-    }
-
-    private var title: String {
-        switch content.hero.answer {
-        case .attending?: return StudentCopy.youreIn(meal.slot)
-        case .skipping?: return StudentCopy.youSkipped(meal.slot)
-        case .notSure?: return StudentCopy.youreNotSure(meal.slot)
-        case nil: return StudentCopy.mealToday(meal.slot)
-        }
-    }
-
-    private var detail: String {
-        switch content.hero.answer {
-        case .skipping?: return StudentCopy.canStillEat
-        case .notSure?: return StudentCopy.notSureCanEat
-        case .attending?, nil: return serving
-        }
-    }
-}
-
-/// The next meal's row (03): its question or the answer given, and one action.
-struct NextMealRow: View {
-    let card: StudentMealCard
-    let now: Date
-    let timeZone: TimeZone
-    let onOpen: () -> Void
-
-    private var slot: MealSlot { card.meal.slot }
-    private var cutoffTime: String { StudentFormat.shortTime(card.cutoff, in: timeZone) }
-    private var timeLeft: String { MLFormat.elapsed(minutes: MLFormat.minutes(from: now, to: card.cutoff)) }
-
-    private var title: String {
-        switch card.answer {
-        case .attending?: return StudentCopy.youreIn(slot)
-        case .skipping?: return StudentCopy.youSkipped(slot)
-        case .notSure?: return StudentCopy.youreNotSure(slot)
-        case nil: return StudentCopy.youInFor(slot)
-        }
-    }
-
-    var body: some View {
-        HStack(spacing: MLSpacing.s12) {
-            Image(systemName: "fork.knife")
-                .font(.system(size: 18))
-                .foregroundStyle(MLColor.ink)
-                .frame(width: MLSize.iconSquare, height: MLSize.iconSquare)
-                .background(RoundedRectangle(cornerRadius: MLRadius.icon, style: .continuous).fill(MLColor.fillQuiet))
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(MLType.staffPrimary)
-                    .foregroundStyle(MLColor.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(card.answer == nil ? StudentCopy.decideBy(cutoffTime, left: timeLeft) : StudentCopy.changeBy(cutoffTime, left: timeLeft))
-                    .font(MLType.secondary)
-                    .foregroundStyle(MLColor.inkSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
+        if content.heroCase != .messClosed {
+            switch card.answer {
+            case .attending?:
+                StudentHeroChip(text: StudentCopy.imIn, style: .lime, showsCheck: true)
+            case .skipping?:
+                StudentHeroChip(text: StudentCopy.skipped, style: .outline)
+            case .notSure?:
+                StudentHeroChip(text: StudentCopy.notSure, style: .outline)
+            case nil:
+                if content.heroCase == .question {
+                    StudentHeroChip(text: StudentCopy.notAnswered, style: .dashed)
+                }
             }
-            Spacer(minLength: MLSpacing.s8)
-            action
         }
-        .padding(MLSpacing.s12)
-        .background(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).fill(MLColor.surface))
     }
 
     @ViewBuilder
-    private var action: some View {
-        if card.answer == nil {
-            Button(action: onOpen) {
-                Text(StudentCopy.answer)
-                    .font(MLType.bodyEmphasis)
-                    .foregroundStyle(MLColor.onHero)
-                    .padding(.horizontal, MLSpacing.s16)
-                    .frame(minHeight: MLSize.hit)
-                    .background(Capsule().fill(MLColor.ink))
+    private var actions: some View {
+        if content.heroCase == .question && card.isAnswerOpen && !isOffline {
+            HStack(spacing: MLSpacing.s8) {
+                StudentHeroButton(title: answerState == .saving(.attending) ? StudentCopy.saving : StudentCopy.imIn, style: .lime) { onAnswer(.attending) }
+                StudentHeroButton(title: StudentCopy.skip, style: .outline, expands: false) { onAnswer(.skipping) }
+                StudentHeroButton(title: StudentCopy.entryQRShort, style: .cream, action: onShowEntry)
             }
-            .buttonStyle(.plain)
+            .disabled(isSaving)
         } else {
-            CompactPillButton(title: StudentCopy.change, action: onOpen)
+            VStack(alignment: .leading, spacing: MLSpacing.s12) {
+                StudentHeroButton(title: StudentCopy.showEntryQR, style: .cream, action: onShowEntry)
+                if content.heroCase == .question {
+                    Text(StudentCopy.answersClosed(StudentFormat.shortTime(card.cutoff, in: timeZone)))
+                        .font(MLType.secondary)
+                        .foregroundStyle(MLColor.onHeroSecondary)
+                }
+            }
         }
+    }
+
+    private var isSaving: Bool {
+        if case .saving = answerState { return true }
+        return false
+    }
+}
+
+/// Home · Loading (221:64894): quiet blocks where the cards will be.
+struct StudentHomeLoading: View {
+    private let blocks: [CGFloat] = [214, 72, 72, 103]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: MLSpacing.s16) {
+            ForEach(Array(blocks.enumerated()), id: \.offset) { index, height in
+                RoundedRectangle(cornerRadius: index == 0 ? StudentMetric.heroRadius : StudentMetric.rowRadius, style: .continuous)
+                    .fill(MLColor.track.opacity(0.8))
+                    .frame(height: height)
+            }
+            Text(StudentCopy.gettingMeals)
+                .font(StudentType.secondary)
+                .foregroundStyle(MLColor.inkSecondary)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(StudentCopy.gettingMeals)
+    }
+}
+
+/// Home · Empty (221:64850).
+struct StudentHomeEmpty: View {
+    var body: some View {
+        VStack(spacing: MLSpacing.s12) {
+            Image(systemName: "checkmark.circle")
+                .font(.system(size: 24))
+                .foregroundStyle(MLColor.ink)
+                .frame(width: 64, height: 64)
+                .background(RoundedRectangle(cornerRadius: MLRadius.compact, style: .continuous).fill(MLColor.fillQuiet))
+                .accessibilityHidden(true)
+            Text(StudentCopy.noMealsTitle)
+                .font(StudentType.bodySemibold)
+                .foregroundStyle(MLColor.ink)
+            Text(StudentCopy.noMealsDetail)
+                .font(StudentType.secondary)
+                .foregroundStyle(MLColor.inkSecondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(.horizontal, MLSpacing.s24)
+        .padding(.vertical, MLSpacing.s32)
+        .frame(maxWidth: .infinity)
+        .background(RoundedRectangle(cornerRadius: StudentMetric.heroRadius, style: .continuous).fill(MLColor.surface))
     }
 }
