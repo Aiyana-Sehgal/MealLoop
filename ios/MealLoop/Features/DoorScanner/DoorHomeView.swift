@@ -15,6 +15,12 @@ struct DoorHomeView: View {
     @State private var isEntryOpen = false
 
     var body: some View {
+        GeometryReader { proxy in
+            page(isCompact: proxy.size.height < DoorLayout.compactHeightLimit)
+        }
+    }
+
+    private func page(isCompact: Bool) -> some View {
         ZStack(alignment: .topTrailing) {
             OrbitBackground()
             ScrollView {
@@ -22,25 +28,28 @@ struct DoorHomeView: View {
                     StaffHeader(initials: model.session.staffInitials) {
                         router.selectedStaffTab = .me
                     }
-                    AsyncContentView(state: model.state,
-                                     emptyTitle: DoorScannerCopy.noMealTitle,
-                                     emptyMessage: DoorScannerCopy.noMealDetail,
-                                     timeZone: model.session.mess.timeZone,
-                                     retry: onReload) { content in
-                        DoorHomeBody(content: content, mess: model.session.mess, isOffline: model.isOffline,
-                                     openProblems: openProblems,
-                                     onTypeID: { isEntryOpen = true },
-                                     open: { path.append($0) })
+                    // DS-1 Offline draws its own line, so last values show without the shared banner.
+                    if case .offline(let content?, _) = model.state {
+                        homeBody(content, isCompact: isCompact)
+                    } else {
+                        AsyncContentView(state: model.state,
+                                         emptyTitle: DoorScannerCopy.noMealTitle,
+                                         emptyMessage: DoorScannerCopy.noMealDetail,
+                                         timeZone: model.session.mess.timeZone,
+                                         retry: onReload) { content in
+                            homeBody(content, isCompact: isCompact)
+                        }
                     }
                 }
                 .padding(.horizontal, MLSpacing.margin)
+                .padding(.top, 2)
                 .padding(.bottom, DoorLayout.scrollBottomInset)
             }
             .refreshable { await onReload() }
             if let current = sos.current {
                 SOSEdgeTab(count: sos.cases.count, isClaimedByYou: sos.isClaimedByYou,
                            claimedStatus: DoorScannerCopy.youreChecking, action: onOpenSOS)
-                    .padding(.top, MLSize.avatar + MLSpacing.s24)
+                    .padding(.top, MLSize.avatar + MLSpacing.s16)
                     .id(current.id)
             }
         }
@@ -56,6 +65,13 @@ struct DoorHomeView: View {
         }
     }
 
+    private func homeBody(_ content: DoorHomeContent, isCompact: Bool) -> some View {
+        DoorHomeBody(content: content, mess: model.session.mess, isOffline: model.isOffline, isCompact: isCompact,
+                     openProblems: openProblems,
+                     onTypeID: { isEntryOpen = true },
+                     open: { path.append($0) })
+    }
+
     private func closeEntry() {
         isEntryOpen = false
         Task { await onReload() }
@@ -67,6 +83,7 @@ struct DoorHomeBody: View {
     let content: DoorHomeContent
     let mess: Mess
     let isOffline: Bool
+    var isCompact: Bool = false
     let openProblems: Int
     let onTypeID: () -> Void
     let open: (DoorRoute) -> Void
@@ -76,13 +93,17 @@ struct DoorHomeBody: View {
     var body: some View {
         VStack(alignment: .leading, spacing: MLSpacing.s16) {
             ScreenTitleBlock(title: mealName, subtitle: subtitle)
+                .padding(.top, MLSpacing.s4)
             switch content.phase {
             case .beforeMeal(let opensAt):
-                DoorWaitingCard(text: DoorScannerCopy.scanningOpens(at: MLFormat.time(opensAt, in: mess.timeZone)))
+                DoorWaitingCard(text: DoorScannerCopy.scanningOpens(at: MLFormat.time(opensAt, in: mess.timeZone)), isCompact: isCompact)
                 reportCard
             case .duringMeal(let recorded, let minutes):
+                if isOffline {
+                    DoorOfflineLine()
+                }
                 MealProgressChip(text: DoorScannerCopy.mealInProgress(MLFormat.elapsed(minutes: minutes)))
-                DoorScanCard(isOffline: isOffline)
+                DoorScanCard(isOffline: isOffline, isCompact: isCompact)
                 HStack(spacing: MLSpacing.s12) {
                     DoorCountTile(label: DoorScannerCopy.recordedIn, value: recorded.value)
                     typeIDButton
@@ -127,7 +148,7 @@ struct DoorHomeBody: View {
     @ViewBuilder
     private func afterMeal(finalEntries: CountReading, withoutVoting: Int) -> some View {
         HeroCard {
-            HeroEyebrow(label: DoorScannerCopy.mealEndedEyebrow, showsDot: true)
+            StaffHeroLabel(text: DoorScannerCopy.mealEndedEyebrow)
             Text(DoorScannerCopy.hasEnded(mealName))
                 .font(MLType.heroTitle)
                 .foregroundStyle(MLColor.onHero)
@@ -163,11 +184,12 @@ struct DoorHomeBody: View {
 /// The black card before scanning opens (D04): a dimmed QR and one line, nothing to act on.
 struct DoorWaitingCard: View {
     let text: String
+    var isCompact: Bool = false
 
     var body: some View {
         VStack(spacing: MLSpacing.s24) {
             Image(systemName: "qrcode")
-                .font(.system(size: 72))
+                .font(.system(size: 96))
                 .foregroundStyle(MLColor.onHeroSecondary.opacity(0.5))
                 .accessibilityHidden(true)
             Text(text)
@@ -176,7 +198,7 @@ struct DoorWaitingCard: View {
                 .multilineTextAlignment(.center)
         }
         .padding(MLSpacing.s20)
-        .frame(maxWidth: .infinity, minHeight: DoorLayout.waitingCardHeight)
+        .frame(maxWidth: .infinity, minHeight: DoorLayout.waitingCardHeight(isCompact: isCompact))
         .background(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).fill(MLColor.heroBackground))
         .accessibilityElement(children: .combine)
     }
@@ -186,11 +208,12 @@ struct DoorWaitingCard: View {
 /// It has no torch, because a control that does nothing would be a dead button.
 struct DoorScanCard: View {
     let isOffline: Bool
+    var isCompact: Bool = false
 
     var body: some View {
         VStack(spacing: MLSpacing.s12) {
             Image(systemName: isOffline ? "wifi.slash" : "qrcode")
-                .font(.system(size: 44))
+                .font(.system(size: isOffline ? 44 : 80))
                 .foregroundStyle(MLColor.onHeroSecondary.opacity(isOffline ? 1 : 0.5))
                 .accessibilityHidden(true)
             if isOffline {
@@ -208,11 +231,11 @@ struct DoorScanCard: View {
         }
         .multilineTextAlignment(.center)
         .padding(MLSpacing.s32)
-        .frame(maxWidth: .infinity, minHeight: DoorLayout.scanCardHeight)
+        .frame(maxWidth: .infinity, minHeight: isOffline ? DoorLayout.offlineScanCardHeight : DoorLayout.scanCardHeight(isCompact: isCompact))
         .background(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).fill(MLColor.heroBackground))
         .overlay {
             DoorBrackets()
-                .stroke(isOffline ? MLColor.onHeroSecondary : MLColor.lime, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                .stroke(isOffline ? MLColor.onHeroSecondary : MLColor.lime, style: StrokeStyle(lineWidth: 5, lineCap: .round))
                 .padding(MLSpacing.s16)
         }
         .accessibilityElement(children: .combine)
@@ -222,7 +245,7 @@ struct DoorScanCard: View {
 /// The four viewfinder corners of the scanner card.
 struct DoorBrackets: Shape {
     func path(in rect: CGRect) -> Path {
-        let arm = MLSpacing.s32
+        let arm: CGFloat = 44
         let radius = MLRadius.compact
         var path = Path()
         func corner(_ start: CGPoint, _ turn: CGPoint, _ end: CGPoint) {
@@ -238,7 +261,25 @@ struct DoorBrackets: Shape {
     }
 }
 
-/// A white tile with a label and a number (D05, D18). A missing count shows "—", never 0.
+/// The black line above the chip when the connection is gone (DS-1 Offline).
+struct DoorOfflineLine: View {
+    var body: some View {
+        HStack(spacing: MLSpacing.s12) {
+            Image(systemName: "wifi.slash")
+                .accessibilityHidden(true)
+            Text(DoorScannerCopy.notBeingRecorded)
+                .font(MLType.bodyEmphasis)
+        }
+        .foregroundStyle(MLColor.onHero)
+        .padding(.horizontal, MLSpacing.s16)
+        .padding(.vertical, MLSpacing.s8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).fill(MLColor.heroBackground))
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// A white tile with a label and a number (D05). A missing count shows "—", never 0.
 struct DoorCountTile: View {
     let label: String
     let value: Int?

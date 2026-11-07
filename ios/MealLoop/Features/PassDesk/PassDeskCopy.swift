@@ -100,12 +100,12 @@ enum PassDeskCopy {
     static let requestSubtitle = "For a student who can't show a valid pass."
     static let why = "Why"
     static let sendRequest = "Send request"
-    static let passAdminApproves = "The pass admin approves it. You can follow it here."
-    static let requestSent = "Request sent"
+    static let passAdminApproves = "The pass admin approves it. You can follow it under New pass requests."
+    static let requestSent = "Request sent to the pass admin."
     static let requestsSeparator = " · "
     static func requestsSubtitle(meal: String?, mess: String) -> String { meal.map { "\($0) · \(mess)" } ?? mess }
     static let noRequests = "No requests yet"
-    static let requestsNote = "Approved means the admin said yes. Done means the student has the new pass."
+    static let requestsNote = "Approved means the admin said yes. Done means the student has the new pass. The student's Special pass page shows the new pass only when it is Done."
     static func reason(_ reason: PassReissueReason) -> String {
         switch reason {
         case .phoneLost: return "Phone lost"
@@ -123,24 +123,26 @@ enum PassDeskCopy {
         }
     }
     static func sent(_ time: String) -> String { "Sent \(time)" }
+    static func sent(_ time: String, reason: String) -> String { "Sent \(time) · \(reason)" }
     static func approvedAt(_ time: String) -> String { "Approved \(time)" }
     static func issuedAt(_ time: String) -> String { "New pass issued \(time)" }
     static let rejectedLine = "Rejected · ask the pass admin"
 
     // Report a problem
-    static func pickOne(_ name: String) -> String { "Pick one. \(name) gets it at once." }
-    static let sentOnTap = "It is sent as soon as you tap."
-    static func sentTo(_ name: String) -> String { "Sent to \(name)" }
-    static func sentLine(to name: String) -> String { "Sent to \(name) ·" }
-    static let couldNotSend = "Couldn't send. Nothing was sent."
+    // Only Food running short leaves this phone (PassDeskProblemLog), so the others say saved, whatever the frame draws.
+    static let pickOne = "Pick what went wrong."
+    static let sentOnTap = "It is saved as soon as you tap."
+    static let savedToast = "Report saved. It is under Open problems."
+    static let savedLine = "Saved ·"
+    static let couldNotSend = "Couldn't save. Nothing was saved."
     static let whichFood = "Which food is short?"
     static let somethingElse = "Something else"
     static let sendToKitchen = "Send to the kitchen"
     static func kitchenGetsIt(_ name: String) -> String { "\(name) and the kitchen team get it at once." }
-    static let foodShortSent = "Sent to the kitchen"
-    static func foodShort(_ dish: String) -> String { "Food short · \(dish)" }
+    static func foodShortSent(_ name: String) -> String { "Sent to the kitchen and \(name)." }
+    static let foodRunningShort = "Food running short"
     static let waiting = "Waiting"
-    static func waitingNote(_ name: String) -> String { "Waiting until \(name) sees it." }
+    static let savedOnPhone = "Reports are saved on this phone. Food shortages go to the kitchen."
     static let noOpenProblems = "No open problems"
     static let noOpenProblemsDetail = "Anything you report shows here."
 
@@ -154,7 +156,7 @@ enum PassDeskCopy {
     static let foodShortageSeen = "Food shortage seen"
     static let kitchenOnIt = "The kitchen is on it."
     static let nothingNew = "Nothing new"
-    static func alertsShowHere(_ name: String) -> String { "Messages from \(name) show here." }
+    static let alertsShowHere = "Alerts from your supervisor show here."
 
     // SOS
     static let sosEyebrow = "SOS"
@@ -169,17 +171,19 @@ enum PassDeskCopy {
     static let illGoAndCheck = "I'll go and check"
     static let notNow = "Not now"
     static let markAsChecked = "Mark as checked"
-    static let backToChecking = "Back to checking"
+    static let backToChecking = "Back to checking passes"
     static let openTheSOS = "Open the SOS"
-    static let markedAsChecked = "Marked as checked"
+    static func markedAsChecked(_ name: String) -> String { "Marked as checked. \(name) will close it." }
     static let sosFailed = "Couldn't save that. Try again."
 
     // Me
     static let me = "Me"
     static let onShift = "On shift"
+    static func onShift(since time: String) -> String { "On shift · since \(time)" }
     static let passesChecked = "Passes checked"
     static let problemsReported = "Problems reported"
     static let language = "Language"
+    static let english = "English"
     static let help = "Help"
     static let signOut = "Sign out"
 }

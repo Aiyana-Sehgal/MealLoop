@@ -11,6 +11,7 @@ enum DoorScannerCopy {
     static let typeID = "Type ID"
     static let reportProblem = "Report a problem"
     static let noConnection = "No connection"
+    static let notBeingRecorded = "No connection. Entries are not being recorded."
     static let noConnectionDetail = "Scans can't be checked right now. Nothing is recorded."
     static let mealEndedEyebrow = "Meal ended"
     static func hasEnded(_ meal: String) -> String { "\(meal) has ended" }
@@ -28,6 +29,10 @@ enum DoorScannerCopy {
     static let lastFourField = "Student's last 4 digits"
     static let recordEntry = "Record entry"
     static let tryAgain = "Try again"
+    static let matchesShowHere = "Matches show here as you type."
+    static func studentLine(_ student: StudentRef, name: String?) -> String {
+        name.map { "\($0) \(student.maskedID)" } ?? student.maskedID
+    }
     static func noStudent(_ digits: String, mess: String) -> String { "No student with \(digits) in \(mess)." }
     static let checkCard = "Check the last 4 digits on the SRM ID card."
     static func cantCheck(_ digits: String) -> String { "Can't check \(digits) right now" }
@@ -48,7 +53,11 @@ enum DoorScannerCopy {
     static let nothingAdded = "Nothing was added to the count."
     static let qrNotRecognised = "QR not recognised"
     static let notEntryCode = "This is not a MealLoop entry code."
-    static let notRecognisedNote = "It may be a QR for another meal or an old screenshot. Ask them to open Entry QR in the app."
+    static let itMayBe = "It may be"
+    static let anotherMealQR = "A QR for another meal"
+    static let anotherMealDetail = "Then it says this code is for another meal."
+    static let oldScreenshot = "An old screenshot"
+    static let oldScreenshotDetail = "Ask them to open Entry QR in the app."
     static let scanAgain = "Scan again"
     static let wrongMeal = "Wrong meal"
     static let wrongMealDetail = "This code isn't for the meal being served."
@@ -67,11 +76,13 @@ enum DoorScannerCopy {
     static let backToHome = "Back to Home"
 
     // Report a problem
-    static func pickOne(_ name: String) -> String { "Pick one. \(name) gets it at once." }
-    static let sentOnTap = "It is sent as soon as you tap."
-    static func sentToast(_ name: String) -> String { "Sent to \(name). It is under Open problems." }
-    static let couldNotSend = "Couldn't send. No connection, so nothing was sent."
-    static func sentLine(to name: String) -> String { "Sent to \(name) ·" }
+    // These reports stay on this phone (DoorProblemLog), so no line says they were delivered, whatever the frame draws.
+    static let pickOne = "Pick what went wrong."
+    static let sentOnTap = "It is saved as soon as you tap."
+    static let savedToast = "Report saved. It is under Open problems."
+    static let couldNotSend = "Couldn't save. No connection, so nothing was saved."
+    static let savedLine = "Saved ·"
+    static let savedOnPhone = "Reports are saved on this phone."
     static let waiting = "Waiting"
     static let noOpenProblems = "No open problems"
     static let noOpenProblemsDetail = "Problems you report show here."
@@ -88,7 +99,7 @@ enum DoorScannerCopy {
     static let alerts = "Alerts"
     static let earlier = "Earlier"
     static let nothingNew = "Nothing new"
-    static func alertsShowHere(_ name: String) -> String { "Alerts from \(name) show here." }
+    static let alertsShowHere = "Alerts from your supervisor show here."
     static let mealStarted = "Meal started"
     static func opened(by name: String, meal: String) -> String { "\(name) opened \(meal)." }
     static func closed(_ meal: String) -> String { "\(meal) closed" }
@@ -108,7 +119,8 @@ enum DoorScannerCopy {
     static let notNow = "Not now"
     static let markAsChecked = "Mark as checked"
     static let backToScanning = "Back to scanning"
-    static let markedAsChecked = "Marked as checked"
+    static func markedAsChecked(_ name: String) -> String { "Marked as checked. \(name) will close it." }
+    static func checkedAlert(_ name: String) -> String { "Checked by the door · \(name) will close it" }
     static func checkedBy(_ role: Role) -> String {
         switch role {
         case .doorScanner: return "Checked by the door"
@@ -123,9 +135,10 @@ enum DoorScannerCopy {
     // Me
     static let me = "Me"
     static let onShift = "On shift"
+    static func onShift(since time: String) -> String { "On shift · since \(time)" }
     static let problemsReported = "Problems reported"
-    static let switchRole = "Switch role"
     static let language = "Language"
+    static let english = "English"
     static let help = "Help"
     static let signOut = "Sign out"
 }

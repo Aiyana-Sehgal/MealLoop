@@ -47,21 +47,56 @@ struct SupervisorHistoryView: View {
 
     private var timeZone: TimeZone { model.session.mess.timeZone }
 
+    private var isLoading: Bool {
+        switch model.state {
+        case .idle, .loading: return true
+        default: return false
+        }
+    }
+
+    /// Nothing to show and no way to get it: SV-7 Error, never an empty history.
+    private var didFail: Bool {
+        switch model.state {
+        case .failed, .offline(nil, _): return true
+        default: return false
+        }
+    }
+
     var body: some View {
         SupervisorPage(bottomInset: MLSpacing.s32) {
             SupervisorPageHeader(title: SupervisorCopy.historyTitle, subtitle: model.session.mess.name, onBack: onBack)
-            AsyncContentView(state: model.state, emptyTitle: SupervisorCopy.noMealsYet,
-                             emptyMessage: SupervisorCopy.noMealsYetDetail, timeZone: timeZone,
-                             retry: { await model.load() }) { content in
-                VStack(spacing: 0) {
-                    Rectangle().fill(MLColor.border).frame(height: 1)
-                    ForEach(content.records) { record in
-                        SupervisorTaskRow(
-                            title: SupervisorHistoryText.title(record, in: timeZone),
-                            detail: "\(SupervisorHistoryText.shortageSummary(record.shortages)) · \(SupervisorHistoryText.wasteSummary(record.waste))",
-                            action: { openMeal(record.mealID) }
-                        ) {
-                            entered(record.finalEntries)
+            if isLoading {
+                SupervisorHistorySkeleton(text: SupervisorCopy.loadingHistory)
+            } else if didFail {
+                VStack(spacing: MLSpacing.s8) {
+                    Text(SupervisorCopy.couldntLoadHistory)
+                        .font(MLType.staffPrimary)
+                        .foregroundStyle(MLColor.ink)
+                    Text(SupervisorCopy.checkConnection)
+                        .font(MLType.staffBody)
+                        .foregroundStyle(MLColor.inkSecondary)
+                        .multilineTextAlignment(.center)
+                    OutlineActionButton(title: SupervisorCopy.retry) { Task { await model.load() } }
+                        .frame(width: 130)
+                        .padding(.top, MLSpacing.s12)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, MLSpacing.s32)
+                .padding(.top, 110)
+            } else {
+                AsyncContentView(state: model.state, emptyTitle: SupervisorCopy.noMealsYet,
+                                 emptyMessage: SupervisorCopy.noMealsYetDetail, timeZone: timeZone,
+                                 retry: { await model.load() }) { content in
+                    VStack(spacing: 0) {
+                        Rectangle().fill(MLColor.border).frame(height: 1)
+                        ForEach(content.records) { record in
+                            SupervisorHistoryRow(
+                                title: SupervisorHistoryText.title(record, in: timeZone),
+                                detail: "\(SupervisorHistoryText.shortageSummary(record.shortages)) · \(SupervisorHistoryText.wasteSummary(record.waste))",
+                                action: { openMeal(record.mealID) }
+                            ) {
+                                entered(record.finalEntries)
+                            }
                         }
                     }
                 }
@@ -141,7 +176,7 @@ struct SupervisorPastMealView: View {
             SupervisorFactRow(label: SupervisorCopy.finalEntries) {
                 if let value = record.finalEntries.value {
                     Text("\(value)")
-                        .font(.system(size: 34, weight: .bold, design: .monospaced))
+                        .font(MLType.heroTitle.monospaced())
                         .foregroundStyle(MLColor.ink)
                 } else {
                     Text(SupervisorCopy.unavailable)

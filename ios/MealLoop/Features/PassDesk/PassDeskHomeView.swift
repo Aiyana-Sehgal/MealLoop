@@ -61,17 +61,19 @@ struct PassDeskHomeBody: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: MLSpacing.s16) {
+            // Home during the meal is being redesigned by the owner, so its layout stays exactly as it was.
             ScreenTitleBlock(title: mealName, subtitle: subtitle)
+                .padding(.top, content.phase == .duringMeal ? 0 : MLSpacing.s4)
             switch content.phase {
             case .beforeMeal(let opensAt):
                 waitingCard(opensAt)
-                IconCardRow(symbol: "magnifyingglass", title: PassDeskCopy.lookUp, detail: PassDeskCopy.lookUpDetail) {
+                StaffHomeRow(symbol: "magnifyingglass", title: PassDeskCopy.lookUp, detail: PassDeskCopy.lookUpDetail) {
                     open(.lookUp(content.meal))
                 }
-                IconCardRow(symbol: "arrow.right", title: PassDeskCopy.requestNewPass) {
+                StaffHomeRow(symbol: "arrow.right", title: PassDeskCopy.requestNewPass) {
                     open(.requestPass(content.meal, digits: nil))
                 }
-                IconCardRow(symbol: "exclamationmark.triangle", title: PassDeskCopy.reportProblem) {
+                StaffHomeRow(symbol: "exclamationmark.triangle", title: PassDeskCopy.reportProblem) {
                     open(.reportProblem)
                 }
             case .duringMeal:
@@ -90,7 +92,7 @@ struct PassDeskHomeBody: View {
             case .afterMeal:
                 endedCard
                 quietRows {
-                    QuietRow(title: PassDeskCopy.newPassRequests, value: PassDeskCopy.waitingCount(content.waitingRequests)) {
+                    StaffMeRow(title: PassDeskCopy.newPassRequests, value: PassDeskCopy.waitingCount(content.waitingRequests)) {
                         open(.requests)
                     }
                     QuietRow(title: PassDeskCopy.openProblems, value: String(openProblems)) { open(.openProblems) }
@@ -115,36 +117,37 @@ struct PassDeskHomeBody: View {
     }
 
     private func waitingCard(_ opensAt: Date) -> some View {
-        VStack(spacing: MLSpacing.s16) {
+        VStack(spacing: MLSpacing.s24) {
             Image(systemName: "ticket")
                 .font(.system(size: 44))
                 .foregroundStyle(MLColor.onHeroSecondary.opacity(0.5))
                 .accessibilityHidden(true)
             Text(PassDeskCopy.checkingOpens(MLFormat.time(opensAt, in: mess.timeZone)))
-                .font(MLType.staffPrimary)
+                .font(MLType.title2)
                 .foregroundStyle(MLColor.onHero)
                 .multilineTextAlignment(.center)
         }
-        .padding(MLSpacing.s32)
-        .frame(maxWidth: .infinity)
+        .padding(MLSpacing.s20)
+        .frame(maxWidth: .infinity, minHeight: keyHeight < PassDeskLayout.keyHeight ? PassDeskLayout.compactWaitingHeight : PassDeskLayout.waitingHeight)
         .background(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).fill(MLColor.heroBackground))
         .accessibilityElement(children: .combine)
     }
 
     private var endedCard: some View {
         HeroCard {
-            HeroEyebrow(label: PassDeskCopy.mealEndedEyebrow, showsDot: true)
+            StaffHeroLabel(text: PassDeskCopy.mealEndedEyebrow)
             Text(PassDeskCopy.specialHasEnded(mealName))
-                .font(MLType.title2)
+                .font(MLType.heroTitle)
                 .foregroundStyle(MLColor.onHero)
                 .padding(.top, MLSpacing.s8)
             Text(PassDeskCopy.checkingClosed)
                 .font(MLType.body)
                 .foregroundStyle(MLColor.onHeroSecondary)
+                .padding(.top, MLSpacing.s8)
             Text(PassDeskCopy.specialMealsRecorded)
                 .font(MLType.body)
                 .foregroundStyle(MLColor.onHeroSecondary)
-                .padding(.top, MLSpacing.s16)
+                .padding(.top, MLSpacing.s24)
             HStack(alignment: .firstTextBaseline, spacing: MLSpacing.s8) {
                 Text(content.count.recorded.value.map(String.init) ?? "—")
                     .font(MLType.heroNumber)

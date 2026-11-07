@@ -12,12 +12,14 @@ struct PassDeskPage<Content: View>: View {
             OrbitBackground()
             ScrollView {
                 VStack(alignment: .leading, spacing: MLSpacing.s16) {
-                    BackButton(action: onBack)
-                    ScreenTitleBlock(title: title, subtitle: subtitle)
+                    VStack(alignment: .leading, spacing: MLSpacing.s8) {
+                        BackButton(action: onBack)
+                            .padding(.leading, -MLSpacing.s4)
+                        ScreenTitleBlock(title: title, subtitle: subtitle)
+                    }
                     content
                 }
                 .padding(.horizontal, MLSpacing.margin)
-                .padding(.top, MLSpacing.s8)
                 .padding(.bottom, MLSpacing.s32)
             }
         }
@@ -43,11 +45,11 @@ struct PassDeskLookUpView: View {
     var body: some View {
         PassDeskPage(title: PassDeskCopy.lookUp, subtitle: PassDeskCopy.lookUpSubtitle, onBack: onBack) {
             Text(PassDeskCopy.lastFourDigits)
-                .font(MLType.secondary)
+                .font(MLType.body)
                 .foregroundStyle(MLColor.inkSecondary)
-            DigitBoxes(entry: model.entry, accessibilityTitle: PassDeskCopy.lastFourDigits)
+            StaffDigitBoxes(entry: model.entry, accessibilityTitle: PassDeskCopy.lastFourDigits)
             if case .idle = model.state {
-                KeyPad(keyHeight: PassDeskLayout.keyHeight) { digit in
+                KeyPad(keyHeight: PassDeskLayout.pageKeyHeight) { digit in
                     Task { await model.type(digit) }
                 } onDelete: {
                     model.deleteLast()
@@ -56,9 +58,18 @@ struct PassDeskLookUpView: View {
                 AsyncContentView(state: model.state, timeZone: session.mess.timeZone, retry: { model.reset() }) { lookup in
                     result(lookup)
                 }
+            }
+        }
+        .staffPinnedFooter {
+            if !isIdle {
                 InkActionButton(title: PassDeskCopy.lookUpAnother) { model.reset() }
             }
         }
+    }
+
+    private var isIdle: Bool {
+        if case .idle = model.state { return true }
+        return false
     }
 
     @ViewBuilder
@@ -69,37 +80,55 @@ struct PassDeskLookUpView: View {
         case .notFound:
             FieldErrorText(text: PassDeskCopy.noStudent(model.entry.text, mess: session.mess.name))
         case .valid(let holder, _):
-            card(holder, status: StatusText(text: PassDeskCopy.valid, dot: .filled),
+            card(holder, status: StaffStatusPill(text: PassDeskCopy.valid, style: .lime),
                  rows: [FactRow(label: PassDeskCopy.pass, value: name, isMono: false),
                         FactRow(label: PassDeskCopy.used, value: PassDeskCopy.notYet, isMono: false)],
                  note: PassDeskCopy.notAnEntry)
         case .used(let holder, let at, _):
-            card(holder, status: StatusText(text: PassDeskCopy.used, dot: .empty),
+            card(holder, status: StaffStatusPill(text: PassDeskCopy.used, style: .outline),
                  rows: [FactRow(label: PassDeskCopy.pass, value: name, isMono: false),
                         FactRow(label: PassDeskCopy.used, value: MLFormat.time(at, in: timeZone))],
                  note: PassDeskCopy.notAnEntry)
         case .noPass(let holder):
-            card(holder, status: StatusText(text: PassDeskCopy.noPass, dot: .dashed),
+            card(holder, status: StaffStatusPill(text: PassDeskCopy.noPass, style: .dashed),
                  rows: [FactRow(label: PassDeskCopy.pass, value: PassDeskCopy.noneFor(mealName), isMono: false)],
                  note: PassDeskCopy.regularMealNotEntry())
         case .wrongMeal(let holder, let slot):
-            card(holder, status: StatusText(text: PassDeskCopy.wrongMeal, dot: .empty),
+            card(holder, status: StaffStatusPill(text: PassDeskCopy.wrongMeal, style: .outline),
                  rows: [FactRow(label: PassDeskCopy.pass, value: PassDeskCopy.specialName(MLFormat.mealSlot(slot)), isMono: false),
                         FactRow(label: PassDeskCopy.used, value: PassDeskCopy.notYet, isMono: false)],
                  note: PassDeskCopy.passIsForNotEntry(MLFormat.mealSlot(slot)))
         }
     }
 
-    private func card(_ holder: SpecialPassHolder, status: StatusText, rows: [FactRow], note: String) -> some View {
+    /// One card as the frame draws it: holder and pill, a hairline, then the facts.
+    private func card(_ holder: SpecialPassHolder, status: StaffStatusPill, rows: [FactRow], note: String) -> some View {
         VStack(spacing: MLSpacing.s12) {
-            VStack(alignment: .leading, spacing: MLSpacing.s8) {
-                PassDeskHolderRow(holder: holder, detail: session.mess.name)
-                status
+            VStack(spacing: 0) {
+                HStack(spacing: MLSpacing.s8) {
+                    PassDeskHolderRow(holder: holder, detail: session.mess.name)
+                    status
+                }
+                .padding(.bottom, MLSpacing.s12)
+                ForEach(rows) { row in
+                    Rectangle().fill(MLColor.border).frame(height: 1)
+                    HStack {
+                        Text(row.label)
+                            .font(MLType.staffBody)
+                            .foregroundStyle(MLColor.inkSecondary)
+                        Spacer(minLength: MLSpacing.s8)
+                        Text(row.value ?? "—")
+                            .font(row.isMono ? MLType.monoBody : MLType.staffPrimary)
+                            .foregroundStyle(MLColor.ink)
+                    }
+                    .frame(minHeight: 50)
+                    .accessibilityElement(children: .combine)
+                }
             }
-            .padding(MLSpacing.s16)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, MLSpacing.s16)
+            .padding(.top, MLSpacing.s16)
+            .padding(.bottom, MLSpacing.s4)
             .background(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).fill(MLColor.surface))
-            FactCard(rows: rows)
             Text(note)
                 .font(MLType.body)
                 .foregroundStyle(MLColor.inkSecondary)
@@ -129,21 +158,20 @@ struct PassDeskRequestView: View {
         @Bindable var form = form
         PassDeskPage(title: PassDeskCopy.requestNewPass, subtitle: PassDeskCopy.requestSubtitle, onBack: onBack) {
             Text(PassDeskCopy.lastFourDigits)
-                .font(MLType.secondary)
+                .font(MLType.body)
                 .foregroundStyle(MLColor.inkSecondary)
-            DigitBoxes(entry: form.entry, accessibilityTitle: PassDeskCopy.lastFourDigits)
+            StaffDigitBoxes(entry: form.entry, accessibilityTitle: PassDeskCopy.lastFourDigits)
             if let holder = form.holder {
                 PassDeskHolderRow(holder: holder, detail: form.messName)
                     .padding(MLSpacing.s16)
                     .background(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).fill(MLColor.surface))
-                TextLinkButton(title: PassDeskCopy.lookUpAnother) { form.clear() }
                 Text(PassDeskCopy.why)
-                    .font(MLType.secondary)
+                    .font(MLType.body)
                     .foregroundStyle(MLColor.inkSecondary)
                     .accessibilityAddTraits(.isHeader)
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: MLSpacing.s8) {
+                StaffWrapLayout {
                     ForEach(PassReissueReason.allCases, id: \.self) { reason in
-                        ChoiceChip(title: PassDeskCopy.reason(reason), isSelected: form.reason == reason) {
+                        StaffChip(title: PassDeskCopy.reason(reason), isSelected: form.reason == reason) {
                             form.reason = reason
                         }
                     }
@@ -151,6 +179,24 @@ struct PassDeskRequestView: View {
                 if let problem = form.problem {
                     FieldErrorText(text: problem)
                 }
+                Text(PassDeskCopy.passAdminApproves)
+                    .font(MLType.body)
+                    .foregroundStyle(MLColor.inkSecondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+            } else {
+                if let problem = form.problem {
+                    FieldErrorText(text: problem)
+                }
+                KeyPad(keyHeight: PassDeskLayout.pageKeyHeight) { digit in
+                    Task { await form.type(digit) }
+                } onDelete: {
+                    form.deleteLast()
+                }
+            }
+        }
+        .staffPinnedFooter {
+            if form.holder != nil {
                 InkActionButton(title: PassDeskCopy.sendRequest, isLoading: form.isSending) {
                     Task {
                         if await form.send() {
@@ -161,30 +207,16 @@ struct PassDeskRequestView: View {
                     }
                 }
                 .disabled(!form.canSend)
-                Text(PassDeskCopy.passAdminApproves)
-                    .font(MLType.body)
-                    .foregroundStyle(MLColor.inkSecondary)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
-            } else {
-                if let problem = form.problem {
-                    FieldErrorText(text: problem)
-                }
-                KeyPad(keyHeight: PassDeskLayout.keyHeight) { digit in
-                    Task { await form.type(digit) }
-                } onDelete: {
-                    form.deleteLast()
-                }
             }
         }
-        .mlToast(message: $toast, bottomInset: MLSpacing.s32)
+        .mlToast(message: $toast, bottomInset: PassDeskLayout.footerAboveTabBar)
         .task {
             if let digits, form.entry.digits.isEmpty { await form.prefill(digits) }
         }
     }
 }
 
-/// New pass requests (P10). Approved and Done are different words and different dots: Approved is never Done.
+/// New pass requests (P10). Approved and Done are different words and different pills: Approved is never Done.
 struct PassDeskRequestsView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var model: PassDeskRequestsModel
@@ -234,7 +266,7 @@ struct PassDeskRequestsView: View {
                     .foregroundStyle(MLColor.inkSecondary)
             }
             Spacer(minLength: MLSpacing.s8)
-            StatusText(text: PassDeskCopy.status(request.status), dot: dot(request.status))
+            StaffStatusPill(text: PassDeskCopy.status(request.status), style: pill(request.status))
         }
         .padding(.vertical, MLSpacing.s12)
         .overlay(alignment: .bottom) {
@@ -246,18 +278,19 @@ struct PassDeskRequestsView: View {
     private func detail(_ request: PassReissueRequest) -> String {
         let time = request.updatedAt.map { MLFormat.time($0, in: session.mess.timeZone) } ?? "—"
         switch request.status {
-        case .waiting: return PassDeskCopy.sent(time)
+        case .waiting: return request.reason.map { PassDeskCopy.sent(time, reason: PassDeskCopy.reason($0)) } ?? PassDeskCopy.sent(time)
         case .approved: return PassDeskCopy.approvedAt(time)
         case .done: return PassDeskCopy.issuedAt(time)
         case .rejected: return PassDeskCopy.rejectedLine
         }
     }
 
-    private func dot(_ status: PassReissueStatus) -> StatusText.Dot {
+    /// Done alone is lime: Approved is never drawn as Done.
+    private func pill(_ status: PassReissueStatus) -> StaffStatusPill.Style {
         switch status {
         case .waiting: return .dashed
-        case .approved, .rejected: return .empty
-        case .done: return .filled
+        case .approved, .rejected: return .outline
+        case .done: return .lime
         }
     }
 }
@@ -276,9 +309,9 @@ struct PassDeskReportProblemView: View {
     @State private var isChoosingFood = false
 
     var body: some View {
-        PassDeskPage(title: PassDeskCopy.reportProblem, subtitle: PassDeskCopy.pickOne(session.supervisorName), onBack: onBack) {
+        PassDeskPage(title: PassDeskCopy.reportProblem, subtitle: PassDeskCopy.pickOne, onBack: onBack) {
             ForEach(PassDeskProblemKind.allCases) { kind in
-                IconCardRow(symbol: kind.symbol, title: kind.title, detail: kind.detail) {
+                StaffReportRow(symbol: kind.symbol, title: kind.title, detail: kind.detail, isHighlighted: kind == .foodShort) {
                     Task { await choose(kind) }
                 }
             }
@@ -306,14 +339,14 @@ struct PassDeskReportProblemView: View {
             isChoosingFood = true
             return
         }
-        await finish(await log.report(kind), toastText: PassDeskCopy.sentTo(session.supervisorName))
+        await finish(await log.report(kind), toastText: PassDeskCopy.savedToast)
     }
 
     private func sendFood(_ dish: String) async {
         guard let meal else { return }
         let didSend = await log.reportFoodShort(dish, meal: meal.id)
         isChoosingFood = false
-        await finish(didSend, toastText: PassDeskCopy.foodShortSent)
+        await finish(didSend, toastText: PassDeskCopy.foodShortSent(session.supervisorName))
     }
 
     private func finish(_ didSend: Bool, toastText: String) async {
@@ -362,7 +395,7 @@ struct PassDeskFoodSheet: View {
     }
 }
 
-/// Open problems. Each stays Waiting: nothing reports back yet, and "seen" is never made up.
+/// Open problems. Each stays Waiting, as a dashed pill: nothing reports back yet, and "seen" is never made up.
 struct PassDeskOpenProblemsView: View {
     let log: PassDeskProblemLog
     let session: StaffSession
@@ -375,18 +408,21 @@ struct PassDeskOpenProblemsView: View {
                      subtitle: PassDeskCopy.requestsSubtitle(meal: mealName, mess: session.mess.name), onBack: onBack) {
             if log.problems.isEmpty {
                 StateBlock(symbol: "checkmark", title: PassDeskCopy.noOpenProblems, message: PassDeskCopy.noOpenProblemsDetail)
-                    .padding(.vertical, MLSpacing.s32)
+                    .padding(.top, PassDeskLayout.noProblemsTop)
             } else {
                 VStack(spacing: 0) {
                     ForEach(log.problems) { problem in
                         row(problem)
                     }
                 }
-                Text(PassDeskCopy.waitingNote(session.supervisorName))
+                Text(PassDeskCopy.savedOnPhone)
                     .font(MLType.body)
                     .foregroundStyle(MLColor.inkSecondary)
+                    .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity)
             }
+        }
+        .staffPinnedFooter(bottomInset: PassDeskLayout.footerAboveTabBar) {
             InkActionButton(title: PassDeskCopy.reportProblem, action: onReport)
         }
     }
@@ -398,13 +434,13 @@ struct PassDeskOpenProblemsView: View {
                     .font(MLType.staffPrimary)
                     .foregroundStyle(MLColor.ink)
                 HStack(spacing: MLSpacing.s4) {
-                    Text(PassDeskCopy.sentLine(to: session.supervisorName)).font(MLType.body)
+                    Text(problem.dish.map { "\($0) ·" } ?? PassDeskCopy.savedLine).font(MLType.body)
                     Text(MLFormat.time(problem.sentAt, in: session.mess.timeZone)).font(MLType.monoSecondary)
                 }
                 .foregroundStyle(MLColor.inkSecondary)
             }
             Spacer(minLength: MLSpacing.s8)
-            StatusText(text: PassDeskCopy.waiting, dot: .dashed)
+            StaffStatusPill(text: PassDeskCopy.waiting, style: .dashed)
         }
         .padding(.vertical, MLSpacing.s12)
         .overlay(alignment: .bottom) {

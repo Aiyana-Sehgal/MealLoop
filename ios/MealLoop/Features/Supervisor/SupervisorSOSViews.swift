@@ -13,7 +13,8 @@ enum SupervisorSOSText {
         case .notTaken:
             return .notTaken(SupervisorCopy.nobodyYet)
         case .claimedByYou:
-            return .claimed(SupervisorCopy.youreChecking)
+            // SV-5 draws this one outlined. `.claimed` is lime, as the door and the desk draw it.
+            return .notTaken(SupervisorCopy.youreChecking)
         case .claimedBy(let role):
             return .notTaken(SupervisorCopy.isChecking(SupervisorFormat.who(role)))
         case .checked(let role, let at):

@@ -29,7 +29,7 @@ struct PassDeskOutcomeView: View {
                 onDone: onDone
             )
         case .noPass(let holder):
-            OutcomeScreen(
+            StaffOutcomeScreen(
                 onBack: onDone, badge: .outlined, symbol: "ticket", title: PassDeskCopy.noSpecialPass,
                 message: PassDeskCopy.noValidPass(PassDeskCopy.holderLine(holder), meal: mealName),
                 facts: [FactRow(label: PassDeskCopy.pass, value: PassDeskCopy.noneFor(mealName), isMono: false),
@@ -39,7 +39,7 @@ struct PassDeskOutcomeView: View {
                 secondary: .init(title: PassDeskCopy.requestNewPass, handler: onRequest)
             )
         case .wrongMeal(_, let slot):
-            OutcomeScreen(
+            StaffOutcomeScreen(
                 onBack: onDone, badge: .outlined, symbol: "ticket", title: PassDeskCopy.wrongMeal,
                 message: PassDeskCopy.passIsFor(MLFormat.mealSlot(slot)),
                 facts: [FactRow(label: PassDeskCopy.pass, value: PassDeskCopy.specialName(MLFormat.mealSlot(slot)), isMono: false),
@@ -49,7 +49,7 @@ struct PassDeskOutcomeView: View {
                 secondary: .init(title: PassDeskCopy.requestNewPass, handler: onRequest)
             )
         case .alreadyRecorded(let holder, let at, let count):
-            OutcomeScreen(
+            StaffOutcomeScreen(
                 onBack: onDone, symbol: "person.fill.checkmark", title: PassDeskCopy.alreadyRecorded,
                 message: PassDeskCopy.tookSpecial(PassDeskCopy.holderLine(holder), time: MLFormat.time(at, in: timeZone)),
                 facts: [FactRow(label: PassDeskCopy.firstRecorded, value: MLFormat.time(at, in: timeZone)),
@@ -58,7 +58,7 @@ struct PassDeskOutcomeView: View {
                 primary: .init(title: PassDeskCopy.checkNextStudent, handler: onDone)
             )
         case .mismatch(let live):
-            OutcomeScreen(
+            StaffOutcomeScreen(
                 onBack: onDone, badge: .outlined, symbol: "xmark.rectangle", title: PassDeskCopy.doesntMatchTitle,
                 message: PassDeskCopy.codeOrColourDifferent,
                 facts: [FactRow(label: PassDeskCopy.shouldShow, value: live.code),
@@ -68,7 +68,7 @@ struct PassDeskOutcomeView: View {
                 secondary: .init(title: PassDeskCopy.backToHome, handler: onDone)
             )
         case .cantCheck(let lastUpdate):
-            OutcomeScreen(
+            StaffOutcomeScreen(
                 onBack: onDone, badge: .outlined, symbol: "wifi.slash", title: PassDeskCopy.cantCheck,
                 message: PassDeskCopy.notChecked, isMessageEmphasized: true,
                 facts: [FactRow(label: PassDeskCopy.lastUpdate, value: lastUpdate.map { MLFormat.time($0, in: timeZone) }),
@@ -79,7 +79,7 @@ struct PassDeskOutcomeView: View {
                 footnote: PassDeskCopy.neverShownChecked
             )
         case .mealEnded(let closedAt, let count, let passes):
-            OutcomeScreen(
+            StaffOutcomeScreen(
                 symbol: "clock", title: PassDeskCopy.specialHasEnded(mealName),
                 message: closedAt.map { PassDeskCopy.endedWhileChecking(by: session.supervisorName, at: MLFormat.time($0, in: timeZone)) }
                     ?? PassDeskCopy.endedWhileCheckingNoTime,
