@@ -96,6 +96,9 @@ struct DemoState: Sendable {
     var repeatScans: Set<EntryKey> = []
     var skipReasons: [IntentionKey: MealSkipReason] = [:]
     var entryCorrections: [IdempotencyKey: EntryCorrection] = [:]
+    /// Students who chose "Hold to use" on their special-meal pass, keyed by the request that did it.
+    var passStarts: [StudentID: Date] = [:]
+    var passStartResults: [IdempotencyKey: StudentPassStanding] = [:]
 
     init(scenario: DemoScenario) {
         let meal = DemoSeed.lunch
@@ -178,7 +181,7 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
         let admin = DemoAdminRepositories(core: self, store: adminStore)
         return Repositories(meals: self, mealState: self, headcount: self, entries: self, intentions: self,
                             shortages: self, wasteReports: self, sos: self, auth: self, specialPasses: self,
-                            studentExtras: self, adminResults: admin, adminStudents: admin, adminMore: admin,
+                            studentExtras: self, studentMeals: self, adminResults: admin, adminStudents: admin, adminMore: admin,
                             adminMesses: DemoAdminMesses(core: self, store: adminMessStore), staffDirectory: self)
     }
 
@@ -926,6 +929,143 @@ extension DemoDataProvider: StudentExtrasRepository {
         let correction = EntryCorrection(request: request, sentAt: clock.now())
         state.entryCorrections[request.idempotencyKey] = correction
         return correction
+    }
+}
+
+// MARK: - StudentMealsRepository
+
+extension DemoDataProvider: StudentMealsRepository {
+    private static let slotOrder: [MealSlot] = [.breakfast, .lunch, .snacks, .dinner]
+
+    /// The same clock time on another day of the week. The mess is in India, so there is no daylight saving to shift.
+    private func onDay(_ day: Date, _ time: Date) -> Date {
+        time.addingTimeInterval(day.timeIntervalSince(DemoSeed.date(14, 0, 0)))
+    }
+
+    private func servingWindow(_ slot: MealSlot, on day: Date) -> (from: Date, until: Date)? {
+        DemoSeed.servingTimes(slot).map { (onDay(day, $0.from), onDay(day, $0.until)) }
+    }
+
+    private static func dish(_ item: MenuDish) -> Dish {
+        let id = item.name.lowercased().replacingOccurrences(of: " ", with: "-")
+        return Dish(id: DishID(id), name: item.name, isHighlight: item.isHighlight, diet: item.isNonVeg ? .nonVeg : .veg,
+                    wasteUnit: .kilograms)
+    }
+
+    func week(for mess: MessID) async throws -> StudentWeek {
+        try failIfOffline()
+        let menu = await adminStore.weekMenu
+        return StudentWeek(days: menu.days.map(\.day), today: menu.today)
+    }
+
+    func mealMenu(on day: Date, slot: MealSlot, mess: MessID) async throws -> StudentMealMenu {
+        try failIfOffline()
+        let week = await adminStore.weekMenu
+        let window = servingWindow(slot, on: day)
+        guard let menuDay = week.days.first(where: { $0.day == day }) else {
+            return StudentMealMenu(day: day, slot: slot, status: .notPublished, servedFrom: window?.from, servedUntil: window?.until,
+                                   highlight: nil, mains: [], curries: [], slimRows: [], sides: [], special: nil, changedAt: nil,
+                                   isAnswerable: slot != .snacks)
+        }
+        let items = menuDay.meals[slot] ?? []
+        let changedAt = await adminStore.menuChangedAt[day]
+        guard !items.isEmpty else {
+            return StudentMealMenu(day: day, slot: slot, status: .noMeal, servedFrom: window?.from, servedUntil: window?.until,
+                                   highlight: nil, mains: [], curries: [], slimRows: [], sides: [], special: nil, changedAt: changedAt,
+                                   isAnswerable: slot != .snacks)
+        }
+        let dishes = items.map(Self.dish)
+        let isWednesday = day == DemoSeed.date(14, 0, 0)
+        let mainNames = isWednesday ? DemoSeed.wednesdayMains[slot] ?? [] : []
+        let curryNames = isWednesday ? DemoSeed.wednesdayCurries[slot] ?? [] : []
+        let slim = dishes.filter { $0.diet == .nonVeg && !DemoSeed.nonVegTiles.contains($0.name) }
+        let highlight = dishes.first { $0.isHighlight && $0.diet == .veg }
+        var mains: [Dish]
+        var curries: [Dish] = []
+        if isWednesday {
+            mains = mainNames.compactMap { name in dishes.first { $0.name == name } }
+            curries = curryNames.compactMap { name in dishes.first { $0.name == name } }
+        } else {
+            // No frame for this day: the board's own tiers. Highlighted dishes are tiles, the rest come with it.
+            mains = dishes.filter { $0.isHighlight && $0.diet == .veg && $0 != highlight }
+        }
+        let placed = Set(([highlight].compactMap { $0 } + mains + curries + slim).map(\.id))
+        let sides = dishes.filter { !placed.contains($0.id) }
+        let special = (day == DemoSeed.specialMealDay && slot == DemoSeed.specialMealSlot) ? DemoSeed.specialMeal : nil
+        return StudentMealMenu(day: day, slot: slot, status: .published, servedFrom: window?.from, servedUntil: window?.until,
+                               highlight: highlight, mains: mains, curries: curries, slimRows: slim, sides: sides,
+                               special: special, changedAt: changedAt, isAnswerable: slot != .snacks)
+    }
+
+    func dishDetail(_ dish: DishID, on day: Date, slot: MealSlot, mess: MessID) async throws -> StudentDishDetail {
+        let menu = try await mealMenu(on: day, slot: slot, mess: mess)
+        guard let found = menu.allDishes.first(where: { $0.id == dish }) else { throw RepositoryError.notFound }
+        let facts = DemoSeed.dishFacts[found.name]
+        return StudentDishDetail(dish: found, slot: slot, day: day, servedFrom: menu.servedFrom, servedUntil: menu.servedUntil,
+                                 portion: facts?.portion, allergens: facts?.allergens ?? [], verifiedOn: facts?.verifiedOn)
+    }
+
+    func findDishes(_ text: String, mess: MessID) async throws -> [StudentDishMatch] {
+        try failIfOffline()
+        let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return [] }
+        let week = await adminStore.weekMenu
+        return week.days.flatMap { day in
+            Self.slotOrder.flatMap { slot in
+                (day.meals[slot] ?? []).filter { $0.name.range(of: query, options: [.caseInsensitive, .diacriticInsensitive]) != nil }
+                    .map { StudentDishMatch(dish: Self.dish($0), day: day.day, slot: slot) }
+            }
+        }
+    }
+
+    func passStanding(of student: StudentID, at mess: MessID) async throws -> StudentPassStanding {
+        try failIfOffline()
+        guard let slot = DemoSeed.samplePasses[student], let status = dayMeals.first(where: { $0.meal.slot == slot }),
+              let sample = DemoSeed.sampleStudents.first(where: { $0.ref.id == student }) else { return .notEligible }
+        guard mess == DemoSeed.mess.id else { return .wrongMess(passMess: DemoSeed.passMessName) }
+        let ticket = StudentPassTicket(meal: status.meal, dishes: DemoSeed.specialMeal.dishes, holderName: sample.name,
+                                       maskedID: sample.ref.maskedID, messName: DemoSeed.mess.name)
+        if let entry = state.specialEntries[student] {
+            return .used(ticket, at: entry.recordedAt, wasShowingCode: state.passStarts[student] != nil)
+        }
+        if status.state == .closed {
+            return .expired(ticket, endedAt: status.closedAt ?? status.meal.endsAt)
+        }
+        if let started = state.passStarts[student] {
+            return .live(ticket, startedAt: started)
+        }
+        return .available(ticket)
+    }
+
+    func startPass(of student: StudentID, key: IdempotencyKey) async throws -> StudentPassStanding {
+        try failIfOffline()
+        if let first = state.passStartResults[key] { return first }
+        guard case .available(let ticket) = try await passStanding(of: student, at: DemoSeed.mess.id) else {
+            throw RepositoryError.notAllowed(reason: "This pass can't be used now.")
+        }
+        let now = clock.now()
+        state.passStarts[student] = now
+        let result = StudentPassStanding.live(ticket, startedAt: now)
+        state.passStartResults[key] = result
+        return result
+    }
+
+    /// SAMPLE: the level and its time are Home's estimate; the bars are the drawn pattern of lunch.
+    func crowd(at mess: MessID) async throws -> StudentCrowd {
+        try failIfOffline()
+        let now = clock.now()
+        let meal = state.mealStatus.meal
+        let reading = crowd(isClosed: now < DemoSeed.messOpensForTheDay)
+        let busiest = DemoSeed.lunchCrowdHeights.max() ?? 1
+        let slots = DemoSeed.lunchCrowdHeights.enumerated().map { index, height in
+            StudentCrowdSlot(startsAt: meal.startsAt.addingTimeInterval(Double(index) * DemoSeed.crowdSlotLength), activity: height / busiest)
+        }
+        let serving = state.mealStatus.state == .inService
+        let current = serving ? slots.lastIndex { $0.startsAt <= now } : nil
+        return StudentCrowd(meal: meal, observedAt: now, level: reading.level, detailTime: reading.detailTime, slots: slots,
+                            currentSlot: current, bestSlot: DemoSeed.crowdBestSlot,
+                            waitNowMinutes: serving ? DemoSeed.crowdWaitNowMinutes : nil,
+                            busiestWaitMinutes: DemoSeed.crowdBusiestWaitMinutes, busiestAt: DemoSeed.crowdBusiestAt)
     }
 }
 #endif

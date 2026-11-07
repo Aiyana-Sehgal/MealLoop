@@ -4,6 +4,8 @@ import SwiftUI
 enum StudentHomeRoute: Hashable {
     case answer(MealID)
     case entryQR
+    case pass
+    case crowd
     /// A page another Student part builds. Until then it says Coming soon.
     case comingSoon(String)
 }
@@ -15,7 +17,7 @@ struct StudentHomeScreen: View {
 
     var body: some View {
         if let model = StudentHomeViewModel(session: session, repositories: environment.repositories, clock: environment.clock) {
-            StudentHomeView(model: model)
+            StudentHomeView(model: model, session: session)
         } else {
             NotImplementedView(title: MLFormat.roleName(session.account.role))
         }
@@ -28,9 +30,12 @@ struct StudentHomeView: View {
     @State private var model: StudentHomeViewModel
     @State private var path: [StudentHomeRoute] = []
     @State private var skipping: MealID?
+    /// For the pages that build their own view models: Special pass and Crowd.
+    private let session: Session?
 
-    init(model: StudentHomeViewModel) {
+    init(model: StudentHomeViewModel, session: Session? = nil) {
         _model = State(initialValue: model)
+        self.session = session
     }
 
     var body: some View {
@@ -80,6 +85,18 @@ struct StudentHomeView: View {
             StudentAnswerView(model: model, mealID: meal, onShowEntry: { path.append(.entryQR) }) { path.removeLast() }
         case .entryQR:
             EntryQRView(model: model) { path.removeLast() }
+        case .pass:
+            if let session {
+                StudentPassScreen(session: session, onOpenCrowd: { path.append(.crowd) }) { path.removeLast() }
+            } else {
+                StudentComingSoonView(title: StudentCopy.specialPass) { path.removeLast() }
+            }
+        case .crowd:
+            if let session {
+                StudentCrowdScreen(session: session) { path.removeLast() }
+            } else {
+                StudentComingSoonView(title: MealsCopy.crowd) { path.removeLast() }
+            }
         case .comingSoon(let title):
             StudentComingSoonView(title: title) { path.removeLast() }
         }
@@ -112,6 +129,8 @@ struct StudentHomeView: View {
                             },
                             onShowEntry: { path.append(.entryQR) },
                             onOpenAnswer: { path.append(.answer($0)) },
+                            onOpenPass: { path.append(.pass) },
+                            onOpenCrowd: { path.append(.crowd) },
                             onComingSoon: { path.append(.comingSoon($0)) })
         } else if model.isLoadingHome {
             StudentHomeLoading()
@@ -187,6 +206,8 @@ struct StudentHomeBody: View {
     let onAnswer: (MealIntention) -> Void
     let onShowEntry: () -> Void
     let onOpenAnswer: (MealID) -> Void
+    var onOpenPass: () -> Void = {}
+    var onOpenCrowd: () -> Void = {}
     let onComingSoon: (String) -> Void
 
     private var extras: StudentHomeExtras? { content.extras }
@@ -206,12 +227,17 @@ struct StudentHomeBody: View {
                     StudentAnswerRow(card: row, now: content.today, timeZone: timeZone) { onOpenAnswer(row.id) }
                 }
                 if let pass = extras?.pass {
-                    StudentTicketRow(pass: pass, timeZone: timeZone) { onComingSoon(StudentCopy.specialPass) }
+                    StudentTicketRow(pass: pass, timeZone: timeZone, onOpen: onOpenPass)
                 }
             }
             .opacity(isOffline ? 0.5 : 1)
             .disabled(isOffline)
-            StudentCrowdRow(crowd: isOffline ? nil : extras?.crowd, mess: mess, timeZone: timeZone)
+            Button(action: onOpenCrowd) {
+                StudentCrowdRow(crowd: isOffline ? nil : extras?.crowd, mess: mess, timeZone: timeZone)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityAddTraits(.isButton)
             if let recheck = extras?.recheck {
                 Rectangle().fill(MLColor.border).frame(height: 1)
                 StudentRecheckRow(recheck: recheck) { onComingSoon(StudentCopy.reportIssue) }

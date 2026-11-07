@@ -22,21 +22,25 @@ enum StudentTab: String, CaseIterable, Hashable {
     }
 }
 
-/// The Student root. Home is built; Meals, Community, You and Search belong to later parts and stay Coming soon.
+/// The Student root. Home, Meals and Search are built; Community and You belong to a later part and stay Coming soon.
 struct StudentRootView: View {
     @Environment(AppRouter.self) private var router
     @Environment(SessionStore.self) private var sessionStore
     let session: Session
     @State private var tab: StudentTab = .home
+    /// Where Back on Search returns to.
+    @State private var lastTab: StudentTab = .home
 
     var body: some View {
         ZStack(alignment: .bottom) {
             switch tab {
             case .home:
                 StudentHomeScreen(session: session)
+            case .meals:
+                StudentMealsScreen(session: session)
             case .search:
-                SearchPlaceholderView(prompt: RoleRoot.student.searchPrompt)
-            case .meals, .community, .you:
+                StudentSearchScreen(session: session) { tab = lastTab }
+            case .community, .you:
                 NotImplementedView(title: tab.rawValue, actionTitle: "Sign out") {
                     router.reset()
                     sessionStore.signOut()
@@ -44,6 +48,9 @@ struct StudentRootView: View {
             }
             GlassTabBar(items: StudentTab.pillTabs.map { GlassTabItem(tab: $0, title: $0.rawValue, symbol: $0.symbol) },
                         selection: $tab, searchTab: .search)
+                .onChange(of: tab) { old, _ in
+                    if old != .search { lastTab = old }
+                }
                 .padding(.horizontal, MLSpacing.s16)
                 .padding(.bottom, MLSpacing.s8)
         }
