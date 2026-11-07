@@ -70,8 +70,8 @@ actor InMemoryOutingCaseRepository: OutingCaseRepository {
          links: [GuardianLink] = [OutingSeed.guardianLink],
          wardens: [AccountID: WardenProfile] = [OutingSeed.wardenAccount: OutingSeed.wardenProfile],
          simulation: any OutingCaptureSimulation = MatchingCaptureSimulation(),
-         makeDigits: @escaping @Sendable (Int) -> String = InMemoryOutingCaseRepository.randomDigits,
-         makePassCode: @escaping @Sendable () -> String = InMemoryOutingCaseRepository.randomPassCode) {
+         makeDigits: @escaping @Sendable (Int) -> String = { InMemoryOutingCaseRepository.randomDigits($0) },
+         makePassCode: @escaping @Sendable () -> String = { InMemoryOutingCaseRepository.randomPassCode() }) {
         self.clock = clock
         self.simulation = simulation
         self.makeDigits = makeDigits
