@@ -60,6 +60,9 @@ protocol ShortageRepository: Sendable {
     func reportShortage(_ report: ShortageReport) async throws -> Shortage
     func shortages(for meal: MealID) async throws -> [Shortage]
     func markResolved(_ shortage: ShortageID, by role: Role) async throws -> Shortage
+    /// The Supervisor has read the report, so the kitchen may show "Ravi saw it". Supervisor only.
+    /// A repeat keeps the first sighting.
+    func markSeen(_ shortage: ShortageID, by role: Role) async throws -> Shortage
 }
 
 /// Leftovers per dish and one plate-waste total, recorded after the meal only.
@@ -150,4 +153,7 @@ struct Repositories: Sendable {
     var specialPasses: any SpecialPassRepository = UnavailableSpecialPasses()
     /// Defaulted for the same reason.
     var studentExtras: any StudentExtrasRepository = UnavailableStudentExtras()
+    var adminResults: any AdminResultsRepository = AdminDataNotBuilt()
+    var adminStudents: any AdminStudentsRepository = AdminDataNotBuilt()
+    var adminMore: any AdminMoreRepository = AdminDataNotBuilt()
 }

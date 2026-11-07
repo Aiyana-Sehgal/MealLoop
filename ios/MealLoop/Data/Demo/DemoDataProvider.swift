@@ -156,6 +156,7 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
     nonisolated let clock: any StoryClock
     private(set) var scenario: DemoScenario
     private var state: DemoState
+    private nonisolated let adminStore = DemoAdminStore()
 
     /// A new provider is a relaunch: in-memory state and the clock go back to the scenario's start.
     init(scenario: DemoScenario = .duringMeal, clock: (any StoryClock)? = nil) {
@@ -173,8 +174,15 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
     }
 
     nonisolated func makeRepositories() -> Repositories {
-        Repositories(meals: self, mealState: self, headcount: self, entries: self, intentions: self,
-                     shortages: self, wasteReports: self, sos: self, auth: self, specialPasses: self, studentExtras: self)
+        let admin = DemoAdminRepositories(core: self, store: adminStore)
+        return Repositories(meals: self, mealState: self, headcount: self, entries: self, intentions: self,
+                            shortages: self, wasteReports: self, sos: self, auth: self, specialPasses: self,
+                            studentExtras: self, adminResults: admin, adminStudents: admin, adminMore: admin)
+    }
+
+    /// For repositories that live outside this actor: throws exactly as the others do with no connection.
+    func requireConnection() throws {
+        try failIfOffline()
     }
 
     private func failIfOffline() throws {
@@ -539,6 +547,16 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
         guard role == .supervisor else { throw RepositoryError.notAllowed(reason: "Only the Supervisor resolves a shortage.") }
         guard let index = state.shortages.firstIndex(where: { $0.id == shortage }) else { throw RepositoryError.notFound }
         state.shortages[index].status = .resolved(at: clock.now())
+        return state.shortages[index]
+    }
+
+    func markSeen(_ shortage: ShortageID, by role: Role) async throws -> Shortage {
+        try failIfOffline()
+        guard role == .supervisor else { throw RepositoryError.notAllowed(reason: "Only the Supervisor sees a shortage report.") }
+        guard let index = state.shortages.firstIndex(where: { $0.id == shortage }) else { throw RepositoryError.notFound }
+        if case .sent = state.shortages[index].delivery {
+            state.shortages[index].delivery = .seen(at: clock.now(), by: DemoSeed.supervisorName)
+        }
         return state.shortages[index]
     }
 

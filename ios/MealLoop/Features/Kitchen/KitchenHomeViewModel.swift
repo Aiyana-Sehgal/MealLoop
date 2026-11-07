@@ -9,6 +9,10 @@ final class KitchenHomeViewModel {
     static let staleAfter: TimeInterval = 2 * 60
 
     private(set) var state: LoadState<KitchenHomeContent> = .idle
+    /// Reports that did not reach the Supervisor. They stay on Home with Retry and are never shown as sent.
+    private(set) var failedReports: [KitchenFailedReport] = []
+    private(set) var dishes: [Dish] = []
+    private(set) var isSending = false
     let session: StaffSession
 
     private let mealState: any MealStateRepository
@@ -16,6 +20,7 @@ final class KitchenHomeViewModel {
     private let entries: any EntryRepository
     private let shortages: any ShortageRepository
     private let wasteReports: any WasteReportRepository
+    private let meals: any MealRepository
     private let clock: any AppClock
 
     init(session: StaffSession, repositories: Repositories, clock: any AppClock) {
@@ -25,6 +30,7 @@ final class KitchenHomeViewModel {
         self.entries = repositories.entries
         self.shortages = repositories.shortages
         self.wasteReports = repositories.wasteReports
+        self.meals = repositories.meals
         self.clock = clock
     }
 
@@ -79,6 +85,55 @@ final class KitchenHomeViewModel {
             let waste = try await wasteSummary
             return .afterMeal(finalEntries: finalEntries, closedAt: status.closedAt, waste: waste)
         }
+    }
+
+    /// The day's dishes for the report sheet. A failed read leaves the list empty, and the sheet cannot send.
+    func loadDishes() async {
+        guard let meal = state.value?.meal else { return }
+        dishes = (try? await meals.menu(for: meal.id)) ?? []
+    }
+
+    /// Sends a report. A dish is required. A repeat for the same dish within ten minutes asks first (kitchen_spec.md).
+    /// If the meal has ended, or the send fails, nothing is claimed as delivered.
+    func reportShortage(dish: String?, level: ShortageLevel, note: String?, confirmed: Bool = false) async -> KitchenReportOutcome {
+        guard let dish, !isSending, let meal = state.value?.meal else { return .needsDish }
+        isSending = true
+        defer { isSending = false }
+        let text = note?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let report = ShortageReport(mealID: meal.id, dishName: dish, level: level, note: text.isEmpty ? nil : text,
+                                    reportedBy: session.role, idempotencyKey: .make())
+        do {
+            if let status = try await mealState.currentMeal(for: session.mess.id), status.state == .closed {
+                await load()
+                return .mealEnded(at: status.closedAt)
+            }
+            if !confirmed, let earlier = try await recentReport(of: dish, for: meal.id) {
+                return .alreadyReported(earlier)
+            }
+            _ = try await shortages.reportShortage(report)
+            await load()
+            return .sent
+        } catch {
+            failedReports.append(KitchenFailedReport(report: report))
+            return .couldNotSend
+        }
+    }
+
+    private func recentReport(of dish: String, for meal: MealID) async throws -> Shortage? {
+        let now = clock.now()
+        return try await shortages.shortages(for: meal).last { shortage in
+            shortage.dishName == dish && now.timeIntervalSince(shortage.reportedAt) < KitchenHomeContent.repeatWindow
+        }
+    }
+
+    /// Sends the same report again. Its key is unchanged, so it can never be recorded twice.
+    func retry(_ failed: KitchenFailedReport) async {
+        guard !isSending else { return }
+        isSending = true
+        defer { isSending = false }
+        guard (try? await shortages.reportShortage(failed.report)) != nil else { return }
+        failedReports.removeAll { $0.id == failed.id }
+        await load()
     }
 
     /// "You can edit until 8:40 PM." for a recorded report.
