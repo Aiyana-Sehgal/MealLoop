@@ -544,7 +544,7 @@ struct AdminEditDayView: View {
                 }
             }
             .padding(.horizontal, MLSpacing.margin)
-            .padding(.bottom, AdminLayout.tabBarClearance)
+            .padding(.bottom, MLSpacing.s16)
         }
         .toolbar(.hidden, for: .navigationBar)
         .task { await model.load() }
@@ -912,7 +912,13 @@ struct AdminDinnerChangeSheet: View {
         VStack(alignment: .leading, spacing: MLSpacing.s12) {
             SheetHeader(title: AdminScreenCopy.sendToStudents, subtitle: AdminScreenCopy.studentsSee, onClose: onClose)
             AdminCard {
-                HStack(alignment: .top) {
+                HStack(alignment: .top, spacing: MLSpacing.s12) {
+                    Image(systemName: "fork.knife")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(MLColor.onHero)
+                        .frame(width: 36, height: 36)
+                        .background(Circle().fill(MLColor.ink))
+                        .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: MLSpacing.s4) {
                         Text(AdminScreenCopy.dinnerChanged)
                             .font(MLType.staffPrimary)

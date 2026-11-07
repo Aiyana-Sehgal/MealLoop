@@ -49,19 +49,27 @@ private struct AdminTabsView: View {
             } else {
                 tab($morePath) { AdminMoreScreen(nav: $0) }
             }
-            // Scroll edge fade (2262:22): rows dissolve before they reach the tab bar.
-            LinearGradient(colors: [MLColor.canvas.opacity(0), MLColor.canvas], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.6))
-                .frame(height: AdminLayout.scrollFadeHeight)
-                .ignoresSafeArea(edges: .bottom)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
-            GlassTabBar(items: root.placeholderTabs.map { title in
-                GlassTabItem(tab: title, title: title, symbol: symbol(for: title))
-            }, selection: $selectedTab, searchTab: RoleRoot.searchTab)
-            .padding(.horizontal, MLSpacing.s16)
-            .padding(.bottom, MLSpacing.s8)
+            if !isEditingDay {
+                // Scroll edge fade (2262:22): rows dissolve before they reach the tab bar.
+                LinearGradient(colors: [MLColor.canvas.opacity(0), MLColor.canvas], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.6))
+                    .frame(height: AdminLayout.scrollFadeHeight)
+                    .ignoresSafeArea(edges: .bottom)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+                GlassTabBar(items: root.placeholderTabs.map { title in
+                    GlassTabItem(tab: title, title: title, symbol: symbol(for: title))
+                }, selection: $selectedTab, searchTab: RoleRoot.searchTab)
+                .padding(.horizontal, MLSpacing.s16)
+                .padding(.bottom, MLSpacing.s8)
+            }
         }
         .mlToast(message: $toast, bottomInset: AdminLayout.tabBarClearance)
+    }
+
+    /// The Edit day frames (2313:6 and family) have no tab bar: the page holds its own Save.
+    private var isEditingDay: Bool {
+        guard selectedTab == moreTab, case .editDay? = morePath.last else { return false }
+        return true
     }
 
     /// Today's pages share the other tabs' screens, so a meal or a case opens the same page from anywhere.
