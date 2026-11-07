@@ -79,8 +79,6 @@ struct StudentReportView: View {
     var body: some View {
         Group {
             switch step {
-            case .camera(let category):
-                camera(category)
             default:
                 ZStack {
                     OrbitBackground()
@@ -96,7 +94,16 @@ struct StudentReportView: View {
                 }
             }
         }
+        // The camera covers the whole screen, tab bar included, as SOS · Camera (221:63493) draws it.
+        .fullScreenCover(isPresented: Binding(get: { cameraCategory != nil }, set: { if !$0, cameraCategory != nil { step = .choose } })) {
+            if let category = cameraCategory { camera(category) }
+        }
         .task { await model.load() }
+    }
+
+    private var cameraCategory: StudentReportCategory? {
+        if case .camera(let category) = step { return category }
+        return nil
     }
 
     private func back() {
@@ -176,7 +183,7 @@ struct StudentReportView: View {
         case .sosSent(let category):
             sosSent(category)
         case .camera:
-            EmptyView()
+            MealsCompactHeader(title: ReportCopy.whatsWrong, onBack: back)
         }
     }
 
@@ -291,7 +298,6 @@ struct StudentReportView: View {
             .padding(.horizontal, MLSpacing.margin)
             .padding(.top, MLSpacing.s8)
         }
-        .toolbar(.hidden, for: .tabBar)
     }
 
     @ViewBuilder
