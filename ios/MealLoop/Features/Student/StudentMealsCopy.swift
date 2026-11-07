@@ -9,8 +9,9 @@ enum MealsCopy {
     static let changed = "The mess updated this menu."
     static func serviceEnded(_ slot: MealSlot) -> String { "\(MLFormat.mealSlot(slot)) service has ended for today." }
     static func opensAt(_ slot: MealSlot, time: String) -> String { "\(MLFormat.mealSlot(slot)) opens \(time)." }
-    static let notPublishedTitle = "This menu isn't up yet"
-    static let notPublishedDetail = "The mess usually posts it by 6 AM. Your entry QR works either way."
+    static let notPublishedTitle = "Menu not published yet"
+    /// Owner decision: no posting time is given, because no document sets one.
+    static let notPublishedDetail = "Your entry QR works either way."
     static func noMealTitle(_ slot: MealSlot) -> String { "No \(MLFormat.mealSlot(slot).lowercased()) this day" }
     static let noMealDetail = "The mess is not serving this meal. Check the other meals."
     static let gettingMenu = "Getting the menu…"
