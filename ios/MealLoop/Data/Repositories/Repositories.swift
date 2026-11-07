@@ -101,8 +101,34 @@ protocol AuthRepository: Sendable {
 protocol FeedbackRepository: Sendable {}
 /// Not implemented: Community issues and "Me too" support.
 protocol CommunityRepository: Sendable {}
-/// Not implemented: special-meal pass check, lookup and reissue requests (Pass Desk).
-protocol SpecialPassRepository: Sendable {}
+/// The special-meal pass: lookup, recording and reissue requests (Pass Desk). There is no camera and no scan.
+protocol SpecialPassRepository: Sendable {
+    /// Status only: it never records and never changes a count.
+    func lookUpPass(lastFour: String, for meal: MealID) async throws -> SpecialPassLookup
+    /// The next code and colour, once the current window has run out.
+    func refreshPassCode(for student: StudentID, meal: MealID) async throws -> LivePassCode
+    /// Pass Desk only. A student is recorded at most once per meal; the same idempotency key returns the first result.
+    func recordPassEntry(_ request: SpecialPassEntryRequest) async throws -> SpecialPassEntryResult
+    func specialMealCount(for meal: MealID) async throws -> SpecialMealCount
+    /// Readable by any role: the entries recorded for this meal, oldest first.
+    func specialMealEntries(for meal: MealID) async throws -> [SpecialPassEntry]
+    func reissueRequests(for mess: MessID) async throws -> [PassReissueRequest]
+    /// Pass Desk only. A new request is always Waiting; only the admin pass-exception flow moves it on.
+    func requestReissue(_ submission: PassReissueSubmission) async throws -> PassReissueRequest
+}
+
+/// The answer of any data source with no pass service yet. It never fakes a result.
+struct UnavailableSpecialPasses: SpecialPassRepository {
+    private var unavailable: RepositoryError { .notImplemented(feature: "Special-meal passes") }
+
+    func lookUpPass(lastFour: String, for meal: MealID) async throws -> SpecialPassLookup { throw unavailable }
+    func refreshPassCode(for student: StudentID, meal: MealID) async throws -> LivePassCode { throw unavailable }
+    func recordPassEntry(_ request: SpecialPassEntryRequest) async throws -> SpecialPassEntryResult { throw unavailable }
+    func specialMealCount(for meal: MealID) async throws -> SpecialMealCount { throw unavailable }
+    func specialMealEntries(for meal: MealID) async throws -> [SpecialPassEntry] { throw unavailable }
+    func reissueRequests(for mess: MessID) async throws -> [PassReissueRequest] { throw unavailable }
+    func requestReissue(_ submission: PassReissueSubmission) async throws -> PassReissueRequest { throw unavailable }
+}
 /// Not implemented: digital outings (student, guardian, warden, gate).
 protocol OutingRepository: Sendable {}
 
@@ -120,4 +146,6 @@ struct Repositories: Sendable {
     let wasteReports: any WasteReportRepository
     let sos: any SOSRepository
     let auth: any AuthRepository
+    /// Defaulted, so every existing caller stays as it was and a source without a pass service says so.
+    var specialPasses: any SpecialPassRepository = UnavailableSpecialPasses()
 }
