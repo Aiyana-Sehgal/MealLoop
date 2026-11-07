@@ -21,6 +21,8 @@ enum AdminChipStyle: Equatable {
     case outline
     case dashed
     case black
+    /// White on black, for the selected chip of a pair.
+    case ink
     case filled
     case quiet
 }
@@ -59,7 +61,7 @@ struct AdminChip: View {
     private var foreground: Color {
         switch style {
         case .black: return MLColor.lime
-        case .filled: return MLColor.onHero
+        case .filled, .ink: return MLColor.onHero
         case .lime: return MLColor.onLime
         default: return MLColor.ink
         }
@@ -87,12 +89,13 @@ struct AdminChip: View {
     private var background: some View {
         switch style {
         case .lime:
-            Capsule().fill(MLColor.lime).overlay(Capsule().stroke(MLColor.ink, lineWidth: 1.5))
+            // The small chips on the restyled pages have no outline.
+            Capsule().fill(MLColor.lime).overlay(Capsule().stroke(isSmall ? Color.clear : MLColor.ink, lineWidth: 1.5))
         case .outline:
             Capsule().stroke(MLColor.ink, lineWidth: 1.5)
         case .dashed:
             Capsule().stroke(MLColor.ink, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
-        case .black:
+        case .black, .ink:
             Capsule().fill(MLColor.ink)
         case .filled:
             Capsule().fill(MLColor.inkSecondary)
@@ -223,18 +226,19 @@ struct AdminSwitchStyle: ToggleStyle {
     }
 }
 
-/// The Veg mark on Edit day: a lime-filled square with a green edge. Non-veg stays an outline triangle.
+/// The Veg mark on Edit day: a lime-filled square with a green edge. Non-veg is the red triangle, as drawn.
 struct AdminVegMark: View {
     let isNonVeg: Bool
 
     private let green = Color(red: 0.13, green: 0.55, blue: 0.27)
+    private let red = Color(red: 0.80, green: 0.20, blue: 0.16)
 
     var body: some View {
         Group {
             if isNonVeg {
-                Image(systemName: "arrowtriangle.up.square")
+                Image(systemName: "arrowtriangle.up.square.fill")
                     .font(.system(size: 20))
-                    .foregroundStyle(MLColor.ink)
+                    .foregroundStyle(red)
             } else {
                 RoundedRectangle(cornerRadius: 4, style: .continuous)
                     .fill(MLColor.lime)

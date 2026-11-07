@@ -218,6 +218,7 @@ struct AdminPassesScreen: View {
         AdminPageScaffold(title: AdminScreenCopy.passes, onBack: nav.pop) {
             AdminLoadedPage(model: AdminPageModel { try await more.passes() }, timeZone: nav.timeZone) { page, _ in
                 VStack(alignment: .leading, spacing: MLSpacing.s16) {
+                    Color.clear.frame(height: MLSpacing.s4)
                     HStack(spacing: MLSpacing.s8) {
                         AdminChip(text: page.mess, symbol: "fork.knife", isSmall: true)
                         AdminChip(text: AdminScreenCopy.rules, symbol: "info.circle", isSmall: true)
@@ -282,6 +283,7 @@ struct AdminVotesScreen: View {
         AdminPageScaffold(title: AdminScreenCopy.menuVotes, onBack: nav.pop) {
             AdminLoadedPage(model: AdminPageModel { try await more.votes() }, timeZone: nav.timeZone) { page, _ in
                 VStack(alignment: .leading, spacing: MLSpacing.s12) {
+                    Color.clear.frame(height: MLSpacing.s4)
                     AdminChip(text: AdminScreenCopy.rules, symbol: "info.circle", isSmall: true)
                     HeroCard {
                         VStack(alignment: .leading, spacing: MLSpacing.s12) {
@@ -369,9 +371,10 @@ struct AdminRewardsScreen: View {
         AdminPageScaffold(title: AdminScreenCopy.rewards, onBack: nav.pop) {
             AdminLoadedPage(model: AdminPageModel { try await more.rewards() }, timeZone: nav.timeZone) { page, _ in
                 VStack(alignment: .leading, spacing: MLSpacing.s12) {
+                    Color.clear.frame(height: MLSpacing.s4)
                     AdminChip(text: AdminScreenCopy.rules, symbol: "info.circle", isSmall: true)
                     HStack(spacing: MLSpacing.s8) {
-                        AdminChip(text: AdminScreenCopy.catalogue, style: .black, isSmall: true)
+                        AdminChip(text: AdminScreenCopy.catalogue, style: .ink, isSmall: true)
                         AdminChip(text: AdminScreenCopy.redemptions, isSmall: true)
                     }
                     HeroCard {
@@ -421,6 +424,7 @@ struct AdminSpareFoodScreen: View {
         AdminPageScaffold(title: AdminScreenCopy.spareFood, onBack: nav.pop) {
             AdminLoadedPage(model: AdminPageModel { try await more.spareFood() }, timeZone: nav.timeZone) { page, _ in
                 VStack(alignment: .leading, spacing: MLSpacing.s12) {
+                    Color.clear.frame(height: MLSpacing.s4)
                     AdminChip(text: page.mess, symbol: "fork.knife", isSmall: true)
                     HeroCard {
                         VStack(alignment: .leading, spacing: MLSpacing.s8) {
@@ -489,6 +493,7 @@ struct AdminHistoryScreen: View {
         AdminPageScaffold(title: AdminScreenCopy.history, onBack: nav.pop) {
             AdminLoadedPage(model: AdminPageModel { try await more.history() }, timeZone: nav.timeZone) { page, _ in
                 VStack(alignment: .leading, spacing: MLSpacing.s12) {
+                    Color.clear.frame(height: MLSpacing.s4)
                     AdminChip(text: AdminScreenCopy.allTypes, symbol: "flag", isSmall: true)
                     HeroCard {
                         VStack(alignment: .leading, spacing: MLSpacing.s12) {

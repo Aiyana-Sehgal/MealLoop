@@ -388,6 +388,7 @@ enum AdminScreenCopy {
     static func removeBody(_ dish: String) -> String { "\(dish) will not be served at dinner today. The rest of the week stays the same." }
     static let keepIt = "Keep it"
     static let remove = "Remove"
+    static let delete = "Delete"
     static let sendToStudents = "Send to students?"
     static let studentsSee = "Students see"
     static let dinnerChanged = "Dinner changed"

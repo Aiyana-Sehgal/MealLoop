@@ -597,10 +597,13 @@ struct AdminEditDayView: View {
                         .listRowInsets(EdgeInsets())
                         .listRowSeparatorTint(MLColor.border)
                         .swipeActions(edge: .trailing) {
-                            Button(AdminScreenCopy.remove, role: .destructive) {
+                            Button(role: .destructive) {
                                 model.delete(dish.id)
                                 nav.toast(AdminScreenCopy.deleted(dish.name))
+                            } label: {
+                                Label(AdminScreenCopy.delete, systemImage: "trash")
                             }
+                            .tint(MLColor.ink)
                         }
                 }
                 .onMove { model.move(from: $0, to: $1) }
@@ -659,13 +662,13 @@ struct AdminEditDayView: View {
     private func iconButton(_ symbol: String, label: String, isOn: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: 18))
+                .font(.system(size: 15))
                 .foregroundStyle(isOn ? MLColor.onHero : MLColor.ink)
                 .frame(width: MLSize.hit, height: MLSize.hit)
-                .background(Circle().fill(isOn ? MLColor.ink : Color.clear))
+                .background(Circle().fill(isOn ? MLColor.ink : Color.clear).padding(5))
                 .overlay {
                     if !isOn, symbol == "star" {
-                        Circle().stroke(MLColor.ink, lineWidth: 1).padding(4)
+                        Circle().stroke(MLColor.inkSecondary, lineWidth: 1).padding(7)
                     }
                 }
         }
