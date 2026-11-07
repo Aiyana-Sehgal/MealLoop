@@ -21,7 +21,8 @@ struct StudentHomeScreen: View {
 
     var body: some View {
         if let model = StudentHomeViewModel(session: session, repositories: environment.repositories, clock: environment.clock) {
-            StudentHomeView(model: model, session: session)
+            StudentHomeView(model: model, session: session,
+                            you: StudentYouViewModel(session: session, repositories: environment.repositories, clock: environment.clock))
         } else {
             NotImplementedView(title: MLFormat.roleName(session.account.role))
         }
@@ -36,10 +37,20 @@ struct StudentHomeView: View {
     @State private var skipping: MealID?
     /// For the pages that build their own view models: Special pass and Crowd.
     private let session: Session?
+    /// The credits chip reads the Student You balance, so Home, You and Credits show one number (owner ruling,
+    /// 7 November). Without it (previews, older tests) the chip keeps the Home extras value.
+    @State private var you: StudentYouViewModel?
 
-    init(model: StudentHomeViewModel, session: Session? = nil) {
+    init(model: StudentHomeViewModel, session: Session? = nil, you: StudentYouViewModel? = nil) {
         _model = State(initialValue: model)
         self.session = session
+        _you = State(initialValue: you)
+    }
+
+    /// Nil while the balance is unknown: a missing balance is never shown as zero.
+    private var credits: Int? {
+        guard let you else { return model.state.value?.extras?.credits }
+        return you.credits.value?.balance
     }
 
     var body: some View {
@@ -48,7 +59,7 @@ struct StudentHomeView: View {
                 OrbitBackground()
                 ScrollView {
                     VStack(alignment: .leading, spacing: MLSpacing.s16) {
-                        StudentHomeHeader(credits: model.state.value?.extras?.credits,
+                        StudentHomeHeader(credits: credits,
                                           onRewards: { path.append(.credits) },
                                           onReport: { path.append(.report) },
                                           onNotifications: { path.append(.notifications) })
@@ -71,6 +82,7 @@ struct StudentHomeView: View {
         }
         .task(id: environment.dataRevision) {
             await model.load()
+            await you?.loadCredits()
         }
         .mlSheet(isPresented: Binding(get: { skipping != nil }, set: { if !$0 { skipping = nil } })) {
             if let meal = skipping, let card = model.card(id: meal) {

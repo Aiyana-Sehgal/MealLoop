@@ -6,6 +6,12 @@ enum StudentYouRoute: Hashable {
     case credits
     case creditsHistory
     case attendance
+    case spending
+    case myFeedback
+    case myReports
+    case report(StudentFiledReportID)
+    case help
+    case privacy
     case comingSoon(String)
 }
 
@@ -76,8 +82,30 @@ struct StudentYouView: View {
             StudentCreditsHistoryView(model: model) { path.removeLast() }
         case .attendance:
             StudentAttendanceView(model: model) { path.removeLast() }
+        case .spending:
+            records { StudentSpendingView(model: $0) { path.removeLast() } }
+        case .myFeedback:
+            records { StudentMyFeedbackView(model: $0, onReports: { path.append(.myReports) }) { path.removeLast() } }
+        case .myReports:
+            records { StudentMyReportsView(model: $0, onOpen: { path.append(.report($0)) }) { path.removeLast() } }
+        case .report(let id):
+            records { StudentFiledReportView(model: $0, id: id) { path.removeLast() } }
+        case .help:
+            records { StudentHelpView(model: $0) { path.removeLast() } }
+        case .privacy:
+            StudentPrivacyView(onRequest: { path.append(.comingSoon($0)) }) { path.removeLast() }
         case .comingSoon(let title):
             StudentComingSoonView(title: title) { path.removeLast() }
+        }
+    }
+
+    /// A page backed by `StudentRecordsRepository`, with its own view model.
+    @ViewBuilder
+    private func records<Page: View>(@ViewBuilder _ page: (StudentRecordsViewModel) -> Page) -> some View {
+        if let records = StudentRecordsViewModel(session: session, repositories: environment.repositories, clock: environment.clock) {
+            page(records)
+        } else {
+            NotImplementedView(title: MLFormat.roleName(session.account.role))
         }
     }
 
@@ -134,17 +162,17 @@ struct StudentYouView: View {
             YouDivider()
             YouRow(symbol: "calendar", title: YouCopy.attendance) { path.append(.attendance) }
             YouDivider()
-            YouRow(symbol: "indianrupeesign", title: YouCopy.spending) { path.append(.comingSoon(YouCopy.spending)) }
+            YouRow(symbol: "indianrupeesign", title: YouCopy.spending) { path.append(.spending) }
             YouDivider()
-            YouRow(symbol: "text.bubble", title: YouCopy.myFeedback) { path.append(.comingSoon(YouCopy.myFeedback)) }
+            YouRow(symbol: "text.bubble", title: YouCopy.myFeedback) { path.append(.myFeedback) }
         }
     }
 
     private var settingsCard: some View {
         YouCard {
-            YouRow(symbol: "questionmark.circle", title: YouCopy.help) { path.append(.comingSoon(YouCopy.help)) }
+            YouRow(symbol: "questionmark.circle", title: YouCopy.help) { path.append(.help) }
             YouDivider()
-            YouRow(symbol: "lock.shield", title: YouCopy.terms) { path.append(.comingSoon(YouCopy.terms)) }
+            YouRow(symbol: "lock.shield", title: YouCopy.terms) { path.append(.privacy) }
             YouDivider()
             YouRow(symbol: "rectangle.portrait.and.arrow.right", title: YouCopy.signOut, showsChevron: false, action: onSignOut)
         }

@@ -119,7 +119,9 @@ struct StudentCommunityView: View {
     private func destination(_ route: StudentCommunityRoute) -> some View {
         switch route {
         case .issue(let id):
-            StudentIssueView(model: model, id: id) { path.removeLast() }
+            StudentIssueView(model: model, id: id,
+                             records: StudentRecordsViewModel(session: session, repositories: environment.repositories,
+                                                              clock: environment.clock)) { path.removeLast() }
         case .report:
             StudentReportScreen(session: session, onShowIssue: { path.append(.issue($0)) }) { path.removeLast() }
         case .comingSoon(let title):
@@ -328,6 +330,8 @@ struct MeTooButton: View {
 struct StudentIssueView: View {
     @State var model: StudentCommunityViewModel
     let id: CommunityIssueID
+    /// The updates under the backing card. Nil where no records source is wired.
+    var records: StudentRecordsViewModel?
     let onBack: () -> Void
 
     var body: some View {
@@ -347,7 +351,10 @@ struct StudentIssueView: View {
                 .padding(.bottom, StudentMetric.scrollBottom)
             }
         }
-        .task { await model.loadCrowd() }
+        .task {
+            await model.loadCrowd()
+            await records?.loadUpdates(for: id)
+        }
     }
 
     @ViewBuilder
@@ -409,6 +416,42 @@ struct StudentIssueView: View {
         if issue.isAboutWaiting, let crowd = model.crowd, !crowd.slots.isEmpty {
             waitCard(crowd)
         }
+        if let updates = records?.updates, !updates.isEmpty {
+            issueUpdates(updates)
+        }
+        if issue.hiddenReason == nil && issue.stage != .fixed {
+            Text(RecordsCopy.meTooFootnote)
+                .font(StudentType.footnote)
+                .foregroundStyle(MLColor.inkSecondary)
+                .frame(maxWidth: .infinity)
+        }
+    }
+
+    /// Timeline (221:63643): what the mess team did, then the next step, hollow. It names no person. The "4 comments"
+    /// row under it is not built: student comments are not an owner decision.
+    private func issueUpdates(_ updates: [StudentIssueUpdate]) -> some View {
+        VStack(alignment: .leading, spacing: MLSpacing.s12) {
+            ForEach(Array(updates.enumerated()), id: \.offset) { _, update in
+                HStack(alignment: .top, spacing: MLSpacing.s12) {
+                    Circle()
+                        .fill(update.isNext ? Color.clear : MLColor.ink)
+                        .overlay(Circle().strokeBorder(update.isNext ? MLColor.inkSecondary : MLColor.ink, lineWidth: 1.5))
+                        .frame(width: 12, height: 12)
+                        .padding(.top, 5)
+                        .accessibilityHidden(true)
+                    Text(update.isNext ? RecordsCopy.next(update.title)
+                         : RecordsCopy.withWhen(update.title, update.at.map {
+                             "\(StudentFormat.mediumDay($0, in: model.timeZone)), \(MLFormat.time($0, in: model.timeZone))" }))
+                        .font(StudentType.secondary)
+                        .foregroundStyle(update.isNext ? MLColor.inkSecondary : MLColor.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .accessibilityElement(children: .combine)
+            }
+        }
+        .padding(MLSpacing.s20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: StudentMetric.heroRadius, style: .continuous).fill(MLColor.surface))
     }
 
     /// "When the wait is longest": the Crowd estimate's pattern, with its busiest slot drawn lime.
