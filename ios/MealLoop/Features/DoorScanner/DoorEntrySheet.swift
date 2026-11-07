@@ -42,7 +42,7 @@ struct DoorEntrySheet: View {
             }
         }
         .fullScreenCover(item: $flow.outcome) { outcome in
-            DoorResultView(outcome: outcome, session: session, meal: meal,
+            DoorResultView(outcome: outcome, session: session, meal: meal, names: flow.names,
                            onDone: onClose,
                            onRetry: { Task { await flow.retry() } },
                            onTypeDigits: {
@@ -57,11 +57,13 @@ struct DoorEntrySheet: View {
     private var statusArea: some View {
         switch flow.lookup {
         case .typing:
-            EmptyView()
+            DoorStatusCard(title: nil, detail: DoorScannerCopy.matchesShowHere)
+            InkActionButton(title: DoorScannerCopy.recordEntry) {}
+                .disabled(true)
         case .checking:
             LoadingStateView().frame(maxHeight: MLSize.staffButton)
         case .match(let student):
-            DoorStatusCard(title: student.maskedID, detail: session.mess.name)
+            DoorMatchCard(student: student, name: flow.names[student.id], detail: session.mess.name)
             InkActionButton(title: DoorScannerCopy.recordEntry, isLoading: flow.isRecording) {
                 Task { await flow.recordMatch() }
             }
@@ -73,22 +75,22 @@ struct DoorEntrySheet: View {
             DoorStatusCard(title: DoorScannerCopy.cantCheck(flow.entry.text), detail: DoorScannerCopy.cantCheckDetail)
             InkActionButton(title: DoorScannerCopy.recordEntry) {}
                 .disabled(true)
-            TextLinkButton(title: DoorScannerCopy.tryAgain) { flow.clear() }
-                .frame(maxWidth: .infinity)
         }
     }
 }
 
 /// The quiet card between the boxes and the keypad.
 struct DoorStatusCard: View {
-    let title: String
+    let title: String?
     let detail: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: MLSpacing.s4) {
-            Text(title)
-                .font(MLType.staffPrimary)
-                .foregroundStyle(MLColor.ink)
+            if let title {
+                Text(title)
+                    .font(MLType.staffPrimary)
+                    .foregroundStyle(MLColor.ink)
+            }
             Text(detail)
                 .font(MLType.body)
                 .foregroundStyle(MLColor.inkSecondary)
@@ -100,11 +102,45 @@ struct DoorStatusCard: View {
     }
 }
 
+/// Who matched (D06 One match): initials, name and masked ID. With no name known it shows the masked ID alone.
+struct DoorMatchCard: View {
+    let student: StudentRef
+    let name: String?
+    let detail: String
+
+    var body: some View {
+        HStack(spacing: MLSpacing.s12) {
+            if let name {
+                Text(String(name.prefix(2)).uppercased())
+                    .font(MLType.bodyEmphasis)
+                    .foregroundStyle(MLColor.ink)
+                    .frame(width: MLSize.hit, height: MLSize.hit)
+                    .background(Circle().fill(MLColor.surface))
+                    .accessibilityHidden(true)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(DoorScannerCopy.studentLine(student, name: name))
+                    .font(MLType.staffPrimary)
+                    .foregroundStyle(MLColor.ink)
+                Text(detail)
+                    .font(MLType.body)
+                    .foregroundStyle(MLColor.inkSecondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(MLSpacing.s12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).fill(MLColor.fillQuiet))
+        .accessibilityElement(children: .combine)
+    }
+}
+
 /// Every result of a scan (D07 to D10, D12 during a scan). Only `.recorded` can show the lime screen.
 struct DoorResultView: View {
     let outcome: DoorScanOutcome
     let session: StaffSession
     let meal: Meal?
+    var names: [StudentID: String] = [:]
     let onDone: () -> Void
     let onRetry: () -> Void
     let onTypeDigits: () -> Void
@@ -113,38 +149,42 @@ struct DoorResultView: View {
     private var timeZone: TimeZone { session.mess.timeZone }
     private var mealName: String { meal.map { MLFormat.mealSlot($0.slot) } ?? "" }
 
+    private func line(_ student: StudentRef) -> String { DoorScannerCopy.studentLine(student, name: names[student.id]) }
+
     var body: some View {
         switch outcome {
         case .recorded(let student, let count, let withoutVoting):
             LimeResultScreen(
                 context: DoorScannerCopy.context(mealName),
                 title: DoorScannerCopy.entryRecorded,
-                subject: student.maskedID,
-                lines: withoutVoting ? [.init(text: DoorScannerCopy.addedWithoutVoting(student.maskedID))] : [],
+                subject: line(student),
+                lines: withoutVoting ? [.init(text: DoorScannerCopy.addedWithoutVoting(names[student.id] ?? student.maskedID))] : [],
                 count: .init(label: DoorScannerCopy.recordedSoFar, value: count, change: DoorScannerCopy.plusOne),
                 autoReturn: .init(seconds: 1) { DoorScannerCopy.backHome(in: $0) },
                 actionTitle: DoorScannerCopy.scanNext,
                 onDone: onDone
             )
         case .alreadyScanned(let student, let firstAt, let count):
-            OutcomeScreen(
+            StaffOutcomeScreen(
                 onBack: onDone, symbol: "person.fill.checkmark", title: DoorScannerCopy.alreadyScanned,
-                message: DoorScannerCopy.wasRecorded(student.maskedID, meal: mealName),
+                message: DoorScannerCopy.wasRecorded(line(student), meal: mealName),
                 facts: [FactRow(label: DoorScannerCopy.firstScanned, value: MLFormat.time(firstAt, in: timeZone)),
                         FactRow(label: DoorScannerCopy.countStays, value: String(count))],
                 note: DoorScannerCopy.nothingAdded,
                 primary: .init(title: DoorScannerCopy.scanNext, handler: onDone)
             )
         case .notRecognised:
-            OutcomeScreen(
+            StaffOutcomeScreen(
                 onBack: onDone, badge: .outlined, symbol: "qrcode", title: DoorScannerCopy.qrNotRecognised,
-                message: DoorScannerCopy.notEntryCode, note: DoorScannerCopy.notRecognisedNote,
+                message: DoorScannerCopy.notEntryCode, reasonsTitle: DoorScannerCopy.itMayBe,
+                reasons: [.init(title: DoorScannerCopy.anotherMealQR, detail: DoorScannerCopy.anotherMealDetail),
+                          .init(title: DoorScannerCopy.oldScreenshot, detail: DoorScannerCopy.oldScreenshotDetail)],
                 primary: .init(title: DoorScannerCopy.scanAgain, handler: onDone),
                 secondary: .init(title: DoorScannerCopy.typeLastFour, handler: onTypeDigits),
                 link: .init(title: DoorScannerCopy.reportProblem, handler: onReport)
             )
         case .wrongMeal(let servingNow):
-            OutcomeScreen(
+            StaffOutcomeScreen(
                 onBack: onDone, badge: .outlined, symbol: "qrcode", title: DoorScannerCopy.wrongMeal,
                 message: DoorScannerCopy.wrongMealDetail,
                 facts: [FactRow(label: DoorScannerCopy.scanningNow, value: MLFormat.mealSlot(servingNow), isMono: false)],
@@ -154,7 +194,7 @@ struct DoorResultView: View {
                 link: .init(title: DoorScannerCopy.reportProblem, handler: onReport)
             )
         case .offline(let lastUpdate):
-            OutcomeScreen(
+            StaffOutcomeScreen(
                 onBack: onDone, badge: .outlined, symbol: "wifi.slash", title: DoorScannerCopy.cantCheckNow,
                 message: DoorScannerCopy.notRecorded, isMessageEmphasized: true,
                 facts: [FactRow(label: DoorScannerCopy.lastUpdate, value: lastUpdate.map { MLFormat.time($0, in: timeZone) }),
@@ -165,7 +205,7 @@ struct DoorResultView: View {
                 footnote: DoorScannerCopy.neverShownRecorded
             )
         case .mealEnded(let closedAt, let finalEntries):
-            OutcomeScreen(
+            StaffOutcomeScreen(
                 symbol: "clock", title: DoorScannerCopy.hasEnded(mealName),
                 message: closedAt.map { DoorScannerCopy.endedWhileScanning(by: session.supervisorName, at: MLFormat.time($0, in: timeZone)) }
                     ?? DoorScannerCopy.endedWhileScanningNoTime,

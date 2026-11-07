@@ -45,16 +45,20 @@ enum DoorScannerAccess {
 @Observable
 final class DoorHomeViewModel {
     private(set) var state: LoadState<DoorHomeContent> = .idle
+    /// When this shift began, once it has. Nil means the chip says only "On shift".
+    private(set) var shiftStartedAt: Date?
     let session: StaffSession
 
     private let mealState: any MealStateRepository
     private let entries: any EntryRepository
+    private let directory: any StaffDirectoryRepository
     private let clock: any AppClock
 
     init(session: StaffSession, repositories: Repositories, clock: any AppClock) {
         self.session = session
         self.mealState = repositories.mealState
         self.entries = repositories.entries
+        self.directory = repositories.staffDirectory
         self.clock = clock
     }
 
@@ -73,6 +77,8 @@ final class DoorHomeViewModel {
                 return
             }
             state = .loaded(DoorHomeContent(status: status, phase: try await phase(for: status)))
+            let started = try? await directory.shiftStartedAt(for: session.role, mess: session.mess.id)
+            shiftStartedAt = started.flatMap { $0 <= clock.now() ? $0 : nil }
         } catch RepositoryError.offline(let savedAt) {
             // Keep what was on screen; nothing new is claimed.
             state = .offline(state.value, savedAt: savedAt)
@@ -103,11 +109,14 @@ final class DoorHomeViewModel {
 @Observable
 final class DoorWithoutVotingViewModel {
     private(set) var state: LoadState<[EnteredWithoutVoting]> = .idle
+    private(set) var names: [StudentID: String] = [:]
     private let entries: any EntryRepository
+    private let directory: any StaffDirectoryRepository
     private let meal: MealID
 
-    init(entries: any EntryRepository, meal: MealID) {
+    init(entries: any EntryRepository, meal: MealID, directory: any StaffDirectoryRepository = UnavailableStaffDirectory()) {
         self.entries = entries
+        self.directory = directory
         self.meal = meal
     }
 
@@ -115,6 +124,9 @@ final class DoorWithoutVotingViewModel {
         state = .loading
         do {
             let list = try await entries.enteredWithoutVoting(for: meal)
+            for entry in list {
+                names[entry.student.id] = try? await directory.studentName(entry.student.id)
+            }
             state = list.isEmpty ? .empty : .loaded(list)
         } catch RepositoryError.offline(let savedAt) {
             state = .offline(nil, savedAt: savedAt)
