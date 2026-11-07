@@ -87,8 +87,11 @@ struct VendorStatusRow<Trailing: View>: View {
             Text(title)
                 .font(MLType.staffBody)
                 .foregroundStyle(MLColor.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
             Spacer(minLength: MLSpacing.s8)
             trailing
+                .layoutPriority(1)
         }
         .padding(.horizontal, MLSpacing.s20)
         .frame(minHeight: MLSize.staffButton)
@@ -112,6 +115,8 @@ struct VendorReplyText: View {
             }
         }
         .foregroundStyle(MLColor.inkSecondary)
+        .lineLimit(1)
+        .fixedSize()
     }
 }
 
