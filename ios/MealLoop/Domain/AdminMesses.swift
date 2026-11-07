@@ -54,6 +54,8 @@ struct AdminMessDay: Codable, Sendable, Hashable {
     let slot: MealSlot
     let headcountDue: Date?
     let messes: [AdminMessHeadcount]
+    /// When the signed-in mess's forecast is ready, for a meal the story does not hold.
+    var ownForecastAt: Date?
 }
 
 /// What a live meal is compared against.

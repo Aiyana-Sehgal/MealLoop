@@ -31,7 +31,7 @@ enum AdminMessSeed {
             mess("North", slot: .dinner, forecastAt: DemoSeed.time(15, 30)),
             mess("South", slot: .dinner, forecastAt: DemoSeed.time(15, 30)),
             mess("Annexe", slot: .dinner),
-        ]),
+        ], ownForecastAt: DemoSeed.time(15, 30)),
     ]
 
     /// No frame draws these meals for the other messes, so every tile is missing data.
@@ -61,7 +61,8 @@ actor DemoAdminMessStore {
     private func update(_ changed: AdminMessHeadcount) {
         let current = day(changed.slot)
         days[changed.slot] = AdminMessDay(slot: current.slot, headcountDue: current.headcountDue,
-                                          messes: current.messes.map { $0.id == changed.id ? changed : $0 })
+                                          messes: current.messes.map { $0.id == changed.id ? changed : $0 },
+                                          ownForecastAt: current.ownForecastAt)
     }
 
     func send(_ id: String, slot: MealSlot, key: IdempotencyKey, at now: Date) throws -> AdminMessHeadcount {

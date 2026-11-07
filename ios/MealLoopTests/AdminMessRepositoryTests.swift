@@ -17,6 +17,14 @@ final class AdminMessRepositoryTests: XCTestCase {
         XCTAssertNil(day.messes[2].expected, "No data is nil, never zero")
     }
 
+    func testDinnerSaysWhenItsForecastIsReadyAndHoldsNoNumber() async throws {
+        let (_, messes) = await repository()
+        let day = try await messes.messDay(for: .dinner)
+        XCTAssertNotNil(day.ownForecastAt)
+        XCTAssertNotNil(day.headcountDue)
+        XCTAssertTrue(day.messes.allSatisfy { $0.expected == nil })
+    }
+
     func testAMealNoFrameDrawsIsMissingForEveryMess() async throws {
         let (_, messes) = await repository()
         let day = try await messes.messDay(for: .snacks)
