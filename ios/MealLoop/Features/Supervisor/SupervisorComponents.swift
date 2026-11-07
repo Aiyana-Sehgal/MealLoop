@@ -83,6 +83,67 @@ struct SupervisorTaskRow<Trailing: View>: View {
     }
 }
 
+/// A history row (S18): title and count on one line, the detail full width under them, no chevron.
+struct SupervisorHistoryRow<Trailing: View>: View {
+    let title: String
+    let detail: String
+    let action: () -> Void
+    @ViewBuilder let trailing: Trailing
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: MLSpacing.s8) {
+                    Text(title)
+                        .font(MLType.staffPrimary)
+                        .foregroundStyle(MLColor.ink)
+                    Spacer(minLength: MLSpacing.s8)
+                    trailing
+                }
+                Text(detail)
+                    .font(MLType.body)
+                    .foregroundStyle(MLColor.inkSecondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+            }
+            .padding(.vertical, MLSpacing.s4)
+            .frame(maxWidth: .infinity, minHeight: MLSize.staffButton, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(MLColor.border).frame(height: 1)
+        }
+    }
+}
+
+/// The emphasised row on Me ("Meal history", S16). `QuietRow` is regular weight.
+struct SupervisorStrongRow: View {
+    let title: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                Text(title)
+                    .font(MLType.staffPrimary)
+                    .foregroundStyle(MLColor.ink)
+                Spacer(minLength: MLSpacing.s8)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(MLColor.inkSecondary)
+                    .accessibilityHidden(true)
+            }
+            .frame(minHeight: MLSize.staffButton)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(MLColor.border).frame(height: 1)
+        }
+    }
+}
+
 /// A label and value row with a hairline under it ("Posted", "Status", "Final entries"), 56 pt.
 struct SupervisorFactRow<Value: View>: View {
     let label: String
@@ -127,8 +188,9 @@ struct SupervisorPageHeader: View {
     let onBack: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: MLSpacing.s12) {
+        VStack(alignment: .leading, spacing: MLSpacing.s4) {
             BackButton(action: onBack)
+                .padding(.leading, -MLSpacing.s4)
             VStack(alignment: .leading, spacing: MLSpacing.s4) {
                 Text(title)
                     .font(MLType.largeTitle)
@@ -143,6 +205,77 @@ struct SupervisorPageHeader: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// S09 All caught up: larger and lower than the shared `StateBlock`.
+struct SupervisorCaughtUp: View {
+    let title: String
+    let message: String
+
+    private let circleDiameter: CGFloat = 90
+
+    var body: some View {
+        VStack(spacing: MLSpacing.s16) {
+            Image(systemName: "checkmark")
+                .font(.system(size: 30))
+                .foregroundStyle(MLColor.ink)
+                .frame(width: circleDiameter, height: circleDiameter)
+                .overlay(Circle().stroke(MLColor.ink, lineWidth: 1.5))
+                .accessibilityHidden(true)
+            Text(title)
+                .font(MLType.title2)
+                .foregroundStyle(MLColor.ink)
+            Text(message)
+                .font(MLType.staffBody)
+                .foregroundStyle(MLColor.inkSecondary)
+        }
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, MLSpacing.s32)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// The placeholder rows while history loads (SV-7 Loading). Shows no numbers.
+struct SupervisorHistorySkeleton: View {
+    let text: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Rectangle().fill(MLColor.border).frame(height: 1)
+            ForEach(0..<5, id: \.self) { _ in
+                VStack(alignment: .leading, spacing: MLSpacing.s8) {
+                    RoundedRectangle(cornerRadius: 4).fill(MLColor.fillQuiet).frame(width: 150, height: 14)
+                    RoundedRectangle(cornerRadius: 4).fill(MLColor.fillQuiet).frame(width: 230, height: 12)
+                }
+                .frame(maxWidth: .infinity, minHeight: MLSize.staffButton, alignment: .leading)
+                .overlay(alignment: .bottom) {
+                    Rectangle().fill(MLColor.border).frame(height: 1)
+                }
+            }
+            Text(text)
+                .font(MLType.body)
+                .foregroundStyle(MLColor.inkSecondary)
+                .padding(.top, MLSpacing.s16)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(text)
+    }
+}
+
+/// The small "Offline" beside the avatar (SV-1 In service · Offline).
+struct SupervisorOfflineMark: View {
+    let text: String
+
+    var body: some View {
+        HStack(spacing: MLSpacing.s4) {
+            Circle().fill(MLColor.ink).frame(width: 6, height: 6)
+            Text(text)
+                .font(MLType.secondary)
+                .foregroundStyle(MLColor.inkSecondary)
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -177,7 +310,7 @@ struct SupervisorPage<Content: View>: View {
                     content
                 }
                 .padding(.horizontal, MLSpacing.margin)
-                .padding(.top, MLSpacing.s8)
+                .padding(.top, 2)
                 .padding(.bottom, bottomInset)
             }
         }

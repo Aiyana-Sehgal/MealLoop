@@ -37,11 +37,11 @@ struct SupervisorMeView: View {
                 .font(MLType.largeTitle)
                 .foregroundStyle(MLColor.ink)
                 .accessibilityAddTraits(.isHeader)
-                .padding(.top, MLSpacing.s32)
+                .padding(.top, MLSize.hit + MLSpacing.s4)
             profile
             VStack(alignment: .leading, spacing: 0) {
                 Rectangle().fill(MLColor.border).frame(height: 1)
-                QuietRow(title: SupervisorCopy.historyTitle) { open(.history) }
+                SupervisorStrongRow(title: SupervisorCopy.historyTitle) { open(.history) }
             }
             AsyncContentView(state: model.state, timeZone: model.session.mess.timeZone,
                              retry: { await model.load() }) { followUps in

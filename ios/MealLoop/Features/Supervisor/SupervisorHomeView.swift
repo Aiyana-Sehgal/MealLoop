@@ -28,21 +28,36 @@ struct SupervisorHomeView: View {
         self.onToast = onToast
     }
 
+    private func homeBody(_ content: SupervisorHomeContent) -> some View {
+        SupervisorHomeBody(content: content, actionError: model.actionError,
+                           onStart: { isConfirmingStart = true },
+                           onClose: { isConfirmingClose = true },
+                           onFollowUps: { router.selectedStaffTab = .alerts })
+    }
+
     var body: some View {
         ZStack(alignment: .topTrailing) {
             SupervisorPage {
                 StaffHeader(initials: model.session.staffInitials) {
                     router.selectedStaffTab = .me
                 }
-                AsyncContentView(state: model.state,
-                                 emptyTitle: SupervisorCopy.noMealToday,
-                                 emptyMessage: SupervisorCopy.noMealTodayDetail,
-                                 timeZone: model.session.mess.timeZone,
-                                 retry: { await model.load() }) { content in
-                    SupervisorHomeBody(content: content, actionError: model.actionError,
-                                       onStart: { isConfirmingStart = true },
-                                       onClose: { isConfirmingClose = true },
-                                       onFollowUps: { router.selectedStaffTab = .alerts })
+                .overlay(alignment: .trailing) {
+                    if case .offline = model.state {
+                        SupervisorOfflineMark(text: SupervisorCopy.offlineMark)
+                            .padding(.trailing, MLSize.hit + MLSpacing.s12)
+                    }
+                }
+                // SV-1 Offline marks it beside the avatar, so last values show without the shared banner.
+                if case .offline(let content?, _) = model.state {
+                    homeBody(content)
+                } else {
+                    AsyncContentView(state: model.state,
+                                     emptyTitle: SupervisorCopy.noMealToday,
+                                     emptyMessage: SupervisorCopy.noMealTodayDetail,
+                                     timeZone: model.session.mess.timeZone,
+                                     retry: { await model.load() }) { content in
+                        homeBody(content)
+                    }
                 }
             }
             .refreshable { await model.load() }
