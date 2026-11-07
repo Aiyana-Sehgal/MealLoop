@@ -86,30 +86,30 @@ enum AdminSeed {
                                                timeline: [ReasonTimelineLine], timelineNote: String?) {
         switch kind {
         case .fewerCame:
-            return ("Final entries were well below the headcount sent.", "Foods left over",
+            return ("Final entries were well below the headcount sent (draft, SRM approval required).", "Foods left over",
                     [ReasonFood(dish: "Sambar", meals: 3, at: nil, mess: nil), ReasonFood(dish: "Rice", meals: 2, at: nil, mess: nil),
                      ReasonFood(dish: "Dal", meals: 2, at: nil, mess: nil)],
                     [], [], [DemoSeed.lunch.id, tueDinnerNorth, monLunchMain], 2, nil, [], nil)
         case .didntLikeDish:
-            return ("The dish left over also had at least 3 \"not good\" answers for that meal.", nil, [],
+            return ("The dish left over also had at least 3 \"not good\" answers for that meal (draft, SRM approval required).", nil, [],
                     [DishFeedbackLine(dish: "Sambar", problem: "Too salty", students: 6)], [], [DemoSeed.lunch.id], 2, nil, [], nil)
         case .raisedLate:
-            return ("Raised after the forecast froze, and fewer came than the raised number.", nil, [], [], [],
+            return ("Raised after the forecast froze, and fewer came than the raised number (draft, SRM approval required).", nil, [], [], [],
                     [DemoSeed.lunch.id], 1, nil, [], nil)
         case .cantTellLeftOver:
             return ("Key data is missing for these meals, so MealLoop does not guess.", nil, [], [], [.amountCooked, .wasteRecord],
                     [DemoSeed.lunch.id], 3, nil, [], nil)
         case .moreCame:
-            return ("Final entries were well above the headcount sent.", "Foods that ran out",
+            return ("Final entries were well above the headcount sent (draft, SRM approval required).", "Foods that ran out",
                     [ReasonFood(dish: "Rice", meals: nil, at: d(12, 20, 40), mess: "South")], [], [], [monDinnerSouth], 0, nil, [], nil)
         case .lastThirtyMinutes:
             // Bar heights measured from A09_reason_last_30_minutes; the pack gives no counts for them.
-            return ("Tue 13 · lunch · North. Most entries came in the last 30 minutes.", nil, [], [], [], [], 0,
+            return ("Tue 13 · lunch · North. Most entries came in the last 30 minutes (draft, SRM approval required).", nil, [], [], [], [], 0,
                     ArrivalShape(barHeights: [45, 54, 64, 72, 80, 100, 145, 150], markerAfterBar: 7,
                                  markerText: "Dashed line: Rice ran out at 1:50 PM.", axisLabels: ["12:00", "1:00", "2:00"]),
                     [], nil)
         case .reportedLate:
-            return ("Low stock was reported more than 15 minutes after the first sign.", nil, [], [], [], [tueLunchNorth], 0, nil,
+            return ("Low stock was reported more than 15 minutes after the first sign (draft, SRM approval required).", nil, [], [], [], [tueLunchNorth], 0, nil,
                     [ReasonTimelineLine(at: d(13, 13, 20), text: "Entries above the usual pace (first sign)"),
                      ReasonTimelineLine(at: d(13, 13, 41), text: "Staff reported Rice running low"),
                      ReasonTimelineLine(at: d(13, 13, 50), text: "Rice ran out")],
@@ -564,7 +564,7 @@ struct DemoAdminRepositories: AdminResultsRepository, AdminStudentsRepository, A
         try requireFoodHead(role)
         let current = try await resolved(try await store.check(check))
         guard CheckNextTimePolicy.canCloseAsWorked(current) else {
-            throw RepositoryError.notAllowed(reason: "A change needs 2 comparable meals, and none that ran out, before it can be called worked.")
+            throw RepositoryError.notAllowed(reason: "A change needs 2 comparable meals that did not run out before it can be called worked.")
         }
         return try await resolved(try await store.update(check) { $0.stage = .result; $0.closedAsWorked = true })
     }

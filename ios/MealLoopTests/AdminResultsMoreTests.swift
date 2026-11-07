@@ -97,6 +97,42 @@ final class AdminResultsMoreTests: XCTestCase {
         XCTAssertFalse(CheckNextTimePolicy.canCloseAsWorked(try check([comparable(day: 14), comparable(day: 21, ranOut: true)])))
     }
 
+    /// Owner-proposed rule (integration item 5): a comparable meal that ran out does not count as comparable.
+    func testAMealThatRanOutIsNotCountedAsComparable() throws {
+        let withRanOut = [comparable(day: 14), comparable(day: 21, ranOut: true)]
+        XCTAssertEqual(CheckNextTimePolicy.countedMeals(try check(withRanOut)), 1)
+        let twoOthers = withRanOut + [comparable(day: 28)]
+        XCTAssertEqual(CheckNextTimePolicy.countedMeals(try check(twoOthers)), 2)
+        XCTAssertTrue(CheckNextTimePolicy.canCloseAsWorked(try check(twoOthers)))
+    }
+
+    /// Integration item 5: simulated sends say what happened in this prototype, never that anyone received them.
+    func testSimulatedSendsNeverClaimDelivery() async throws {
+        let audiences = try await repositories().adminMore.announcementDraft().audiences
+        var lines = [AdminScreenCopy.reminderSent("9:05 AM"), AdminScreenCopy.remindNote, AdminScreenCopy.reminderToast,
+                     AdminScreenCopy.savedTold, AdminScreenCopy.everyoneGets("3,500"), AdminScreenCopy.sentDinner,
+                     AdminScreenCopy.inviteSent, AdminScreenCopy.announcementSent,
+                     AdminScreenCopy.notePlaceholderStudents, AdminScreenCopy.menuSubtitle, AdminScreenCopy.studentsSee]
+        lines += audiences.map(AdminScreenCopy.audienceReach)
+        XCTAssertFalse(audiences.isEmpty)
+        for line in lines {
+            for claim in ["see it now", "get this now", "notification now", "students see", "sent."] {
+                XCTAssertFalse(line.lowercased().contains(claim), "\(line) claims delivery (\(claim))")
+            }
+            XCTAssertFalse(line.lowercased().hasSuffix(" sent"), line)
+            XCTAssertFalse(line.lowercased().contains(" sent ·"), line)
+        }
+    }
+
+    /// Integration item 5: the reason rules come from the pack as drafts, so each stated rule says so.
+    func testEveryReasonRuleIsLabelledDraft() async throws {
+        let repositories = repositories()
+        for kind in [ReasonKind.fewerCame, .didntLikeDish, .raisedLate, .moreCame, .lastThirtyMinutes, .reportedLate] {
+            let detail = try await repositories.adminResults.reason(kind)
+            XCTAssertTrue(detail.explanation.contains("(draft, SRM approval required)"), "\(kind)")
+        }
+    }
+
     func testACompletedActionIsNotAVerifiedImprovement() throws {
         let done = try check([comparable(day: 14)], actionDone: true)
         XCTAssertTrue(done.isActionCompleted)
@@ -108,7 +144,11 @@ final class AdminResultsMoreTests: XCTestCase {
         let repositories = repositories()
         let model = AdminCheckViewModel(id: AdminSeed.wednesdayPlan, role: .admin, results: repositories.adminResults)
         await model.load()
-        XCTAssertEqual(model.counted, 1)
+        // The one recorded meal (Wed 14 lunch) ran out of rice, so under the owner-proposed rule it is not comparable
+        // and counts for nothing (integration item 5). It counted 1 before that rule.
+        XCTAssertEqual(model.state.value?.comparable.first?.isRecorded, true)
+        XCTAssertEqual(model.state.value?.comparable.first?.ranOut, true)
+        XCTAssertEqual(model.counted, 0)
         XCTAssertFalse(model.canCloseAsWorked)
 
         await model.closeAsWorked()

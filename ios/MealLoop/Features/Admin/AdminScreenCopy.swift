@@ -253,7 +253,7 @@ enum AdminScreenCopy {
     static let no = "No"
     static let notSure = "Not sure"
     static func remind(_ count: String) -> String { "Remind \(count) students" }
-    static func reminderSent(_ time: String) -> String { "Reminder sent · \(time)" }
+    static func reminderSent(_ time: String) -> String { "Reminder recorded · \(time)" }
     static let feedbackToActOn = "Feedback to act on"
     static let community = "Community"
     static let new = "New"
@@ -268,9 +268,9 @@ enum AdminScreenCopy {
     static let who = "Who"
     static let messageLabel = "Message"
     static func remindWho(_ count: String, meal: String) -> String { "\(count) students who haven't answered for \(meal), all messes." }
-    static let remindNote = "Sends one notification. Students who already answered get nothing."
+    static let remindNote = "One notification, only to students who haven't answered. This prototype records it and sends nothing."
     static func sendTo(_ count: String) -> String { "Send to \(count) students" }
-    static let reminderToast = "Reminder sent"
+    static let reminderToast = "Reminder recorded"
 
     static func feedbackSubtitle(_ item: FeedbackItem, day: String) -> String {
         "\(item.mess) · \(day) \(MLFormat.mealSlot(item.slot).lowercased()) · \(item.students) \(students(item.students))"
@@ -291,7 +291,7 @@ enum AdminScreenCopy {
     static let nobodyOwns = "Nobody owns this yet"
     static func ownedBy(_ name: String) -> String { "Owned by \(name)" }
     static let noteToStudents = "Note to students"
-    static let notePlaceholderStudents = "Add a note students will see on this issue"
+    static let notePlaceholderStudents = "Add a note on this issue"
     static let postNote = "Post note"
     static let notePosted = "Note posted"
     static let ownerAssigned = "Owner assigned"
@@ -321,7 +321,7 @@ enum AdminScreenCopy {
     static func invited(_ count: Int) -> String { "\(count) invited" }
 
     // Weekly menu
-    static let menuSubtitle = "The menu students see in Meals"
+    static let menuSubtitle = "The menu for the students' Meals page"
     static func published(_ moment: String) -> String { "Published · \(moment)" }
     static func uploading(_ moment: String) -> String { "Uploading · \(moment)" }
     static func readingBoard(_ moment: String) -> String { "Reading the board · \(moment)" }
@@ -356,7 +356,7 @@ enum AdminScreenCopy {
     static let addADish = "Add a dish"
     static let tellStudentsChange = "Tell students about this change"
     static let saveChanges = "Save changes"
-    static let savedTold = "Saved. Students see it now."
+    static let savedTold = "Saved. This prototype sends nothing to students."
     static let saved = "Saved."
     static func deleted(_ dish: String) -> String { "\(dish) removed" }
     static let checkThisWord = "Check this word"
@@ -389,13 +389,13 @@ enum AdminScreenCopy {
     static let keepIt = "Keep it"
     static let remove = "Remove"
     static let sendToStudents = "Send to students?"
-    static let studentsSee = "Students see"
+    static let studentsSee = "Students would see"
     static let dinnerChanged = "Dinner changed"
     static let now = "now"
     static let nowTitle = "Now"
-    static func everyoneGets(_ total: String) -> String { "All \(total) students get this now, in Notifications and on Home." }
+    static func everyoneGets(_ total: String) -> String { "All \(total) students would get this in Notifications and on Home. This prototype sends nothing." }
     static let send = "Send"
-    static let sentDinner = "Sent. Students see the new dinner."
+    static let sentDinner = "Dinner change saved. This prototype sends nothing to students."
     static let dinnerChangedSaved = "Dinner changed."
     static func changeLine(_ change: QuickChange) -> String {
         switch change {
@@ -424,7 +424,7 @@ enum AdminScreenCopy {
     static let phonePrefix = "+91"
     static let role = "Role"
     static let sendInvite = "Send invite"
-    static let inviteSent = "Invite sent"
+    static let inviteSent = "Invite recorded"
     static let vendorSheetDetail = "Headcounts and messages go to this number from your phone."
     static let sendHeadcountsBy = "Send headcounts by"
     static let vendorSaved = "Vendor contact saved"
@@ -435,11 +435,11 @@ enum AdminScreenCopy {
     static let reviewAndSend = "Review and send"
     static func sendToAudience(_ name: String) -> String { "Send to \(name)?" }
     static func audienceReach(_ audience: AnnouncementAudience) -> String {
-        guard let count = audience.students else { return "Students at \(audience.confirmName) get a notification now." }
-        return "About \(AdminFormat.count(count)) students at \(audience.confirmName) get a notification now."
+        guard let count = audience.students else { return "Students at \(audience.confirmName) would get a notification. This prototype sends nothing." }
+        return "About \(AdminFormat.count(count)) students at \(audience.confirmName) would get a notification. This prototype sends nothing."
     }
     static let sendNow = "Send now"
-    static let announcementSent = "Announcement sent"
+    static let announcementSent = "Announcement recorded"
     static func characters(_ used: Int, _ limit: Int) -> String { "\(used) / \(limit)" }
 
     // Secondary pages
