@@ -36,8 +36,15 @@ enum RecordsCopy {
     static let yesBetter = "Yes, better"
     static let stillBad = "Still bad"
     static let didntTry = "Didn't try it"
-    /// Fixed is read only in the prototype: no operation records this answer.
-    static let checkNotRecorded = "Answers here aren't recorded in this prototype."
+    static func youSaidFix(_ answer: StudentFixCheckAnswer) -> String {
+        switch answer {
+        case .better: return "You said: better."
+        case .stillBad: return "You said: still bad."
+        case .didntTry: return "You said: didn't try it."
+        }
+    }
+    /// Ruling on P-FINAL2-9: a data request is recorded only; it never says it reached a person or promises a time.
+    static let requestRecorded = "Request recorded. This prototype sends nothing."
     static func eventTitle(_ kind: StudentReportEvent.Kind) -> String {
         switch kind {
         case .sent: return "Sent"

@@ -16,6 +16,9 @@ final class StudentRecordsViewModel {
     private(set) var updates: [StudentIssueUpdate] = []
     private(set) var replySend: Send = .idle
     private(set) var recheckSend: Send = .idle
+    private(set) var fixSend: Send = .idle
+    private(set) var dataRequestSend: Send = .idle
+    private(set) var dataRequests: [StudentDataRequestReceipt] = []
 
     let context: StudentContext
     private let records: any StudentRecordsRepository
@@ -55,6 +58,35 @@ final class StudentRecordsViewModel {
         } catch {
             replySend = .failed(LoadFailure(error).message)
             return false
+        }
+    }
+
+    /// "Is it better now?" A student signal only; the report stays Fixed.
+    func answerFixCheck(_ answer: StudentFixCheckAnswer, for id: StudentFiledReportID) async {
+        guard fixSend != .sending else { return }
+        fixSend = .sending
+        do {
+            report = .loaded(try await records.answerFixCheck(id, answer, by: student))
+            fixSend = .idle
+        } catch {
+            fixSend = .failed(LoadFailure(error).message)
+        }
+    }
+
+    func loadDataRequests() async {
+        dataRequests = (try? await records.dataRequests(for: student)) ?? dataRequests
+    }
+
+    /// Shown as recorded only after the repository records it.
+    func recordDataRequest(_ kind: StudentDataRequestKind) async {
+        guard dataRequestSend != .sending else { return }
+        dataRequestSend = .sending
+        do {
+            let receipt = try await records.recordDataRequest(kind, by: student)
+            if !dataRequests.contains(receipt) { dataRequests.append(receipt) }
+            dataRequestSend = .idle
+        } catch {
+            dataRequestSend = .failed(LoadFailure(error).message)
         }
     }
 

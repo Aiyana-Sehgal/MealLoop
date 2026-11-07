@@ -3,6 +3,9 @@ import SwiftUI
 /// Pushed screens on the You tab.
 enum StudentYouRoute: Hashable {
     case outings
+    case newOuting
+    case outingSent(OutingCase)
+    case outing(OutingRequestID)
     case credits
     case creditsHistory
     case attendance
@@ -35,6 +38,8 @@ struct StudentYouView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var model: StudentYouViewModel
     @State private var path: [StudentYouRoute] = []
+    /// Shared by Outings, New outing and a request page, so a sent request shows on the list at once.
+    @State private var outingsModel: StudentOutingsViewModel?
     let session: Session
     let onSignOut: () -> Void
 
@@ -67,14 +72,37 @@ struct StudentYouView: View {
                     .navigationBarBackButtonHidden(true)
             }
         }
-        .task(id: environment.dataRevision) { await model.loadProfile() }
+        .task(id: environment.dataRevision) {
+            await model.loadProfile()
+            if outingsModel == nil {
+                outingsModel = StudentOutingsViewModel(session: session, repository: OutingCaseRepositories.studentSource(for: environment))
+            }
+            await outingsModel?.load()
+        }
     }
 
     @ViewBuilder
     private func destination(_ route: StudentYouRoute) -> some View {
         switch route {
         case .outings:
-            StudentComingSoonView(title: YouCopy.outings) { path.removeLast() }
+            if let outingsModel {
+                StudentOutingsView(model: outingsModel, onNew: { path.append(.newOuting) },
+                                   onOpen: { path.append(.outing($0)) }) { path.removeLast() }
+            } else {
+                NotImplementedView(title: YouCopy.outings)
+            }
+        case .newOuting:
+            if let outingsModel {
+                StudentNewOutingView(model: outingsModel, onSent: { path.append(.outingSent($0)) },
+                                     onOpen: { path.append(.outing($0)) }) { path.removeLast() }
+            }
+        case .outingSent(let outing):
+            StudentOutingSentView(outing: outing, now: outingsModel?.now ?? .distantPast,
+                                  onSee: { path = [.outings, .outing(outing.id)] }) { path = [.outings] }
+        case .outing(let id):
+            if let outingsModel {
+                StudentOutingDetailView(model: outingsModel, id: id) { path.removeLast() }
+            }
         case .credits:
             StudentCreditsView(model: model, onHistory: { path.append(.creditsHistory) },
                                onGet: { path.append(.comingSoon($0)) }) { path.removeLast() }
@@ -93,7 +121,7 @@ struct StudentYouView: View {
         case .help:
             records { StudentHelpView(model: $0) { path.removeLast() } }
         case .privacy:
-            StudentPrivacyView(onRequest: { path.append(.comingSoon($0)) }) { path.removeLast() }
+            records { StudentPrivacyView(model: $0) { path.removeLast() } }
         case .comingSoon(let title):
             StudentComingSoonView(title: title) { path.removeLast() }
         }
@@ -156,7 +184,8 @@ struct StudentYouView: View {
 
     private func mainCard(_ profile: StudentProfileSummary) -> some View {
         YouCard {
-            YouRow(symbol: "arrow.right", title: YouCopy.outings) { path.append(.outings) }
+            YouRow(symbol: "arrow.right", title: YouCopy.outings,
+                   status: outingsModel?.outings.value?.current.first.map { OutingStudentCopy.chip($0.stage) }) { path.append(.outings) }
             YouDivider()
             YouRow(symbol: "gift", title: YouCopy.credits, value: profile.credits.map(YouCopy.points)) { path.append(.credits) }
             YouDivider()

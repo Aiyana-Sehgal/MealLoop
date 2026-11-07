@@ -324,7 +324,7 @@ struct StudentFiledReportView: View {
             questionCard(question, reply: report.reply, offline: offline)
         }
         if report.stage == .fixed {
-            checkCard
+            checkCard(report, offline: offline)
         }
         Text(RecordsCopy.timeline).font(StudentType.eyebrow).tracking(0.9).foregroundStyle(MLColor.inkSecondary)
             .accessibilityAddTraits(.isHeader)
@@ -393,30 +393,46 @@ struct StudentFiledReportView: View {
         .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(RecordsTint.warningFill))
     }
 
-    /// "Is it better now?" Fixed is read only in the prototype, so the answers are shown dimmed and say so.
-    private var checkCard: some View {
+    /// "Is it better now?" The answer is recorded as the student's signal only (ruling on P-FINAL2-7); it never marks
+    /// the fix as verified.
+    private func checkCard(_ report: StudentFiledReport, offline: Bool) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(RecordsCopy.isItBetter).font(.system(size: 18, weight: .semibold)).foregroundStyle(MLColor.ink)
-            HStack(spacing: MLSpacing.s8) {
-                Text(RecordsCopy.yesBetter)
-                    .font(StudentType.bodySemibold).foregroundStyle(MLColor.onHero)
-                    .padding(.horizontal, MLSpacing.s24).frame(height: 56)
-                    .background(Capsule().fill(MLColor.ink))
-                Text(RecordsCopy.stillBad)
-                    .font(StudentType.bodySemibold).foregroundStyle(MLColor.ink)
-                    .padding(.horizontal, MLSpacing.s24).frame(height: 48)
-                    .overlay(Capsule().strokeBorder(MLColor.ink, lineWidth: 1.5))
+            if let answer = report.fixCheck {
+                Text(RecordsCopy.youSaidFix(answer)).font(StudentType.bodySemibold).foregroundStyle(MLColor.ink)
+            } else {
+                HStack(spacing: MLSpacing.s8) {
+                    Button { answer(.better, report) } label: {
+                        Text(RecordsCopy.yesBetter)
+                            .font(StudentType.bodySemibold).foregroundStyle(MLColor.onHero)
+                            .padding(.horizontal, MLSpacing.s24).frame(height: 56)
+                            .background(Capsule().fill(MLColor.ink))
+                    }
+                    .accessibilityIdentifier("student.report.better")
+                    Button { answer(.stillBad, report) } label: {
+                        Text(RecordsCopy.stillBad)
+                            .font(StudentType.bodySemibold).foregroundStyle(MLColor.ink)
+                            .padding(.horizontal, MLSpacing.s24).frame(height: 48)
+                            .overlay(Capsule().strokeBorder(MLColor.ink, lineWidth: 1.5))
+                    }
+                }
+                Button { answer(.didntTry, report) } label: {
+                    Text(RecordsCopy.didntTry)
+                        .font(StudentType.bodySemibold).foregroundStyle(MLColor.ink)
+                        .frame(maxWidth: .infinity).frame(height: 44)
+                }
+                if case .failed(let message) = model.fixSend {
+                    Text(message).font(StudentType.footnote).foregroundStyle(MLColor.danger)
+                }
             }
-            .opacity(0.4)
-            Text(RecordsCopy.didntTry)
-                .font(StudentType.bodySemibold).foregroundStyle(MLColor.ink)
-                .frame(maxWidth: .infinity).frame(height: 44)
-                .opacity(0.4)
-            Text(RecordsCopy.checkNotRecorded).font(StudentType.footnote).foregroundStyle(MLColor.inkSecondary)
         }
+        .buttonStyle(.plain)
+        .disabled(offline || model.fixSend == .sending)
         .recordsCard()
-        .accessibilityElement(children: .combine)
-        .accessibilityHint(RecordsCopy.checkNotRecorded)
+    }
+
+    private func answer(_ value: StudentFixCheckAnswer, _ report: StudentFiledReport) {
+        Task { await model.answerFixCheck(value, for: report.id) }
     }
 }
 
@@ -826,14 +842,14 @@ struct StudentHelpView: View {
 
 // MARK: - Terms and privacy
 
-/// Terms and privacy (221:64669): the frame's own words, titled "Privacy & data". The two data requests have no
-/// operation, so they open a page that says so.
+/// Terms and privacy (221:64669): the frame's own words, titled "Privacy & data". The two data requests are recorded
+/// in the prototype only (ruling on P-FINAL2-9): nothing is sent, and no person or time is promised.
 struct StudentPrivacyView: View {
-    let onRequest: (String) -> Void
+    @State var model: StudentRecordsViewModel
     let onBack: () -> Void
 
     var body: some View {
-        RecordsPage {
+        RecordsPage(content: {
             MealsCompactHeader(title: RecordsCopy.privacyTitle, onBack: onBack)
             listCard(RecordsCopy.sharedWithMess, RecordsCopy.shared)
             listCard(RecordsCopy.onlyYou, RecordsCopy.onlyYouItems)
@@ -841,11 +857,24 @@ struct StudentPrivacyView: View {
             Text(RecordsCopy.yourData).font(StudentType.eyebrow).tracking(0.9).foregroundStyle(MLColor.inkSecondary)
                 .accessibilityAddTraits(.isHeader)
             YouCard {
-                YouRow(symbol: "square.and.arrow.up", title: RecordsCopy.requestCopy) { onRequest(RecordsCopy.requestCopy) }
+                requestRow(.copy, symbol: "square.and.arrow.up", title: RecordsCopy.requestCopy)
                 YouDivider()
-                YouRow(symbol: "trash", title: RecordsCopy.requestDeletion) { onRequest(RecordsCopy.requestDeletion) }
+                requestRow(.deletion, symbol: "trash", title: RecordsCopy.requestDeletion)
             }
+            if case .failed(let message) = model.dataRequestSend {
+                Text(message).font(StudentType.footnote).foregroundStyle(MLColor.danger)
+            }
+        }, onRefresh: { await model.loadDataRequests() })
+        .task { await model.loadDataRequests() }
+    }
+
+    private func requestRow(_ kind: StudentDataRequestKind, symbol: String, title: String) -> some View {
+        let recorded = model.dataRequests.contains { $0.kind == kind }
+        return YouRow(symbol: symbol, title: title, status: recorded ? RecordsCopy.requestRecorded : nil,
+                      showsChevron: !recorded) {
+            if !recorded { Task { await model.recordDataRequest(kind) } }
         }
+        .disabled(model.dataRequestSend == .sending)
     }
 
     private func listCard(_ title: String, _ items: [String]) -> some View {
