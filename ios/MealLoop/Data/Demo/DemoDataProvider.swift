@@ -167,6 +167,7 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
     private nonisolated let adminStore = DemoAdminStore()
     private nonisolated let adminMessStore = DemoAdminMessStore()
     private nonisolated let studentYouStore = DemoStudentYouStore()
+    private nonisolated let studentRecordsStore = DemoStudentRecordsStore()
 
     /// A new provider is a relaunch: in-memory state and the clock go back to the scenario's start.
     init(scenario: DemoScenario = .duringMeal, clock: (any StoryClock)? = nil) {
@@ -189,7 +190,8 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
                             shortages: self, wasteReports: self, sos: self, auth: self, specialPasses: self,
                             studentExtras: self, studentMeals: self, studentCommunity: self, adminResults: admin, adminStudents: admin, adminMore: admin,
                             adminMesses: DemoAdminMesses(core: self, store: adminMessStore), staffDirectory: self,
-                            studentYou: DemoStudentYou(core: self, store: studentYouStore))
+                            studentYou: DemoStudentYou(core: self, store: studentYouStore),
+                            studentRecords: DemoStudentRecords(core: self, store: studentRecordsStore))
     }
 
     /// For repositories that live outside this actor: throws exactly as the others do with no connection.

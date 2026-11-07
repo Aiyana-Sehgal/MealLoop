@@ -163,4 +163,6 @@ struct Repositories: Sendable {
     var staffDirectory: any StaffDirectoryRepository = UnavailableStaffDirectory()
     /// Defaulted, so every existing caller stays as it was. Student Notifications, You, Credits and Attendance.
     var studentYou: any StudentYouRepository = UnavailableStudentYou()
+    /// Defaulted, so every existing caller stays as it was. My reports, My feedback, Spending, Help, Community updates.
+    var studentRecords: any StudentRecordsRepository = UnavailableStudentRecords()
 }
