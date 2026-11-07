@@ -159,6 +159,8 @@ final class StudentMealsScreensTests: XCTestCase {
         for _ in 0..<Int(DemoSeed.passCodeWindow) - 1 { await model.tick() }
         XCTAssertEqual(model.secondsLeft, 1)
         XCTAssertEqual(model.liveCode, first, "The code holds for its whole window.")
+        // The code follows the clock (P-PASS-9 a): it changes when time crosses the window, not because of a tick.
+        clock.set(first.changesAt)
         await model.tick()
         let second = try XCTUnwrap(model.liveCode)
         XCTAssertNotEqual(second.code, first.code)

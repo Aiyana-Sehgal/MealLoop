@@ -18,7 +18,8 @@ final class PassDeskHomeViewModel {
         self.session = session
         self.repositories = repositories
         self.clock = clock
-        self.flow = PassDeskCheckFlow(session: session, passes: repositories.specialPasses, clock: clock)
+        self.flow = PassDeskCheckFlow(session: session, passes: repositories.specialPasses, live: repositories.livePassCodes,
+                                      clock: clock)
     }
 
     func load() async {
@@ -83,11 +84,16 @@ final class PassDeskCheckFlow {
     private var ticksSinceChange = 0
     private let session: StaffSession
     private let passes: any SpecialPassRepository
+    /// The code and colour on the sheet, and the record, follow the clock-derived window (P-PASS-9 a): the same
+    /// operation and instant as the student's phone. The desk never calls `refreshPassCode`.
+    private let live: any LivePassCodeRepository
     private let clock: any AppClock
 
-    init(session: StaffSession, passes: any SpecialPassRepository, clock: any AppClock) {
+    init(session: StaffSession, passes: any SpecialPassRepository,
+         live: any LivePassCodeRepository = UnavailableLivePassCodes(), clock: any AppClock) {
         self.session = session
         self.passes = passes
+        self.live = live
         self.clock = clock
     }
 
@@ -135,10 +141,12 @@ final class PassDeskCheckFlow {
                 outcome = .wrongMeal(holder, passFor: slot)
             case .used(let holder, let at, let count):
                 outcome = .alreadyRecorded(holder, firstRecordedAt: at, count: count)
-            case .valid(let holder, let live):
+            case .valid(let holder, _):
+                let current = try await live.currentPassCode(for: holder.student.id, meal: meal.id,
+                                                             at: await live.passCodeInstant())
                 recordKey = .make()
                 ticksSinceChange = 0
-                compare = PassDeskCompare(holder: holder, live: live, secondsLeft: secondsLeft(live))
+                compare = PassDeskCompare(holder: holder, live: current.live, secondsLeft: current.secondsLeft)
             }
         } catch RepositoryError.offline(let savedAt) {
             outcome = .cantCheck(lastUpdate: savedAt)
@@ -163,7 +171,7 @@ final class PassDeskCheckFlow {
         let request = SpecialPassEntryRequest(mealID: meal.id, student: compare.holder.student, comparedCode: compare.live.code,
                                               recordedBy: session.role, idempotencyKey: recordKey)
         do {
-            switch try await passes.recordPassEntry(request) {
+            switch try await live.recordPassEntryForCurrentCode(request) {
             case .recorded(_, let count):
                 finish(.verified(compare.holder, count: count, passes: passTotal))
             case .alreadyRecorded(let at, let count):
@@ -189,11 +197,17 @@ final class PassDeskCheckFlow {
         compare = current
         guard current.secondsLeft <= 0, let meal else { return }
         do {
-            let live = try await passes.refreshPassCode(for: current.holder.student.id, meal: meal.id)
+            let next = try await live.currentPassCode(for: current.holder.student.id, meal: meal.id,
+                                                      at: await live.passCodeInstant())
             guard compare != nil else { return }
+            guard next.live != current.live else {
+                // The same window is still current (the countdown ran ahead of the instant): keep it, never expire it early.
+                compare?.secondsLeft = next.secondsLeft
+                return
+            }
             recordKey = .make()
             ticksSinceChange = 0
-            compare = PassDeskCompare(holder: current.holder, live: live, secondsLeft: secondsLeft(live), justChanged: true)
+            compare = PassDeskCompare(holder: current.holder, live: next.live, secondsLeft: next.secondsLeft, justChanged: true)
         } catch {
             compare?.isExpired = true
         }
@@ -204,7 +218,4 @@ final class PassDeskCheckFlow {
         outcome = result
     }
 
-    private func secondsLeft(_ live: LivePassCode) -> Int {
-        max(0, Int(live.changesAt.timeIntervalSince(clock.now()).rounded(.up)))
-    }
 }

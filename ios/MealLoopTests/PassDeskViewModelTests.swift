@@ -161,12 +161,18 @@ final class PassDeskViewModelTests: XCTestCase {
     // MARK: The live code
 
     func testTheCodeChangesWhenTheWindowRunsOut() async throws {
-        let flow = await home(world()).flow
+        let world = world()
+        let flow = await home(world).flow
         await typed("0238", flow)
         let first = try XCTUnwrap(flow.compare?.live.code)
-        for _ in 0..<Int(DemoSeed.passCodeWindow) {
+        let changesAt = try XCTUnwrap(flow.compare?.live.changesAt)
+        for _ in 0..<Int(DemoSeed.passCodeWindow) - 1 {
             await flow.tick()
         }
+        XCTAssertEqual(flow.compare?.live.code, first, "The code holds for its whole window")
+        // The code follows the clock (P-PASS-9 a): it changes when time crosses the window, not because of a tick.
+        world.clock.set(changesAt)
+        await flow.tick()
         XCTAssertNotEqual(flow.compare?.live.code, first)
         XCTAssertEqual(flow.compare?.justChanged, true)
         XCTAssertEqual(flow.compare?.secondsLeft, Int(DemoSeed.passCodeWindow))
@@ -409,7 +415,8 @@ final class PassDeskViewModelTests: XCTestCase {
 
     func testAnotherRoleCannotRecordThroughTheFlow() async throws {
         let world = world()
-        let flow = PassDeskCheckFlow(session: staff(.supervisor), passes: world.repositories.specialPasses, clock: world.clock)
+        let flow = PassDeskCheckFlow(session: staff(.supervisor), passes: world.repositories.specialPasses,
+                                     live: world.repositories.livePassCodes, clock: world.clock)
         flow.meal = DemoSeed.lunch
         await typed("0238", flow)
         await flow.matches()

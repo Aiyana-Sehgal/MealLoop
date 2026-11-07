@@ -9,7 +9,8 @@ enum PassConfirmPhase: Equatable {
 }
 
 /// The Special pass and its live code. Where the pass stands comes from `StudentMealsRepository`; the live code and
-/// colour from `SpecialPassRepository.refreshPassCode`, the same service the Pass Desk compares against.
+/// colour from `LivePassCodeRepository.currentPassCode` at the backend's pass-code instant, the same operation and
+/// instant the Pass Desk reads (P-PASS-9 a), so both show the same code, colour and countdown.
 @MainActor
 @Observable
 final class StudentPassViewModel {
@@ -26,6 +27,7 @@ final class StudentPassViewModel {
     let name: String
     private let meals: any StudentMealsRepository
     private let passes: any SpecialPassRepository
+    private let live: any LivePassCodeRepository
     private let extras: any StudentExtrasRepository
     private let clock: any AppClock
     private var startKey = IdempotencyKey(UUID().uuidString)
@@ -36,6 +38,7 @@ final class StudentPassViewModel {
         self.name = session.account.displayName
         self.meals = repositories.studentMeals
         self.passes = repositories.specialPasses
+        self.live = repositories.livePassCodes
         self.extras = repositories.studentExtras
         self.clock = clock
     }
@@ -97,11 +100,10 @@ final class StudentPassViewModel {
     func refreshCode() async {
         guard let meal = state.value?.ticket?.meal else { return }
         do {
-            let code = try await passes.refreshPassCode(for: context.student.id, meal: meal.id)
-            liveCode = code
-            let window = max(1, Int(code.changesAt.timeIntervalSince(clock.now()).rounded()))
-            codeWindow = window
-            secondsLeft = window
+            let current = try await live.currentPassCode(for: context.student.id, meal: meal.id, at: await live.passCodeInstant())
+            liveCode = current.live
+            codeWindow = current.windowSeconds
+            secondsLeft = current.secondsLeft
         } catch {
             // The code stays as it was; the standing check below says whether the pass is still live.
             secondsLeft = codeWindow
