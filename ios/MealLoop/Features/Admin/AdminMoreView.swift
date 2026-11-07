@@ -18,13 +18,13 @@ struct AdminMoreScreen: View {
                         AdminHubRow(title: AdminScreenCopy.outings, value: AdminScreenCopy.outCount(hub.outNow)) { nav.push(.outings) }
                         AdminHubRow(title: AdminScreenCopy.votes, value: AdminScreenCopy.openCount(hub.openVotes)) { nav.push(.votes) }
                         AdminHubRow(title: AdminScreenCopy.rewards, value: AdminScreenCopy.liveCount(hub.liveRewards)) { nav.push(.rewards) }
-                        AdminHubRow(title: AdminScreenCopy.spareFood, value: AdminScreenCopy.pickups(hub.pickups)) { nav.push(.spareFood) }
+                        AdminHubRow(title: AdminScreenCopy.spareFood, value: AdminScreenCopy.pickups(hub.pickups), isLast: true) { nav.push(.spareFood) }
                     }
                     group {
                         AdminHubRow(title: AdminScreenCopy.peopleAndAccess, value: AdminScreenCopy.invited(hub.invited)) { nav.push(.people) }
                         AdminHubRow(title: AdminScreenCopy.announceToStudents) { nav.push(.announce) }
                         AdminHubRow(title: AdminScreenCopy.history) { nav.push(.history) }
-                        AdminHubRow(title: AdminScreenCopy.signOut) {
+                        AdminHubRow(title: AdminScreenCopy.signOut, isLast: true) {
                             router.reset()
                             sessionStore.signOut()
                         }
@@ -47,6 +47,7 @@ struct AdminMoreScreen: View {
 private struct AdminHubRow: View {
     let title: String
     var value: String?
+    var isLast = false
     let action: () -> Void
 
     var body: some View {
@@ -66,12 +67,14 @@ private struct AdminHubRow: View {
                     .foregroundStyle(MLColor.inkSecondary)
                     .accessibilityHidden(true)
             }
-            .frame(minHeight: MLSize.staffButton)
+            .frame(minHeight: 59)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .overlay(alignment: .bottom) {
-            Rectangle().fill(MLColor.border).frame(height: 1)
+            if !isLast {
+                Rectangle().fill(MLColor.border).frame(height: 1)
+            }
         }
     }
 }
@@ -164,11 +167,15 @@ struct AdminAnnounceView: View {
                     }
                     AdminLabel(text: AdminScreenCopy.messageLabel)
                     AdminTextField(placeholder: AdminScreenCopy.messageLabel, text: $model.message, lines: 3)
-                    Text(AdminScreenCopy.characters(model.message.count, draft.maxCharacters))
-                        .font(MLType.monoSecondary)
-                        .foregroundStyle(MLColor.inkSecondary)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                    AdminRow(title: AdminScreenCopy.when, detail: AdminScreenCopy.nowTitle, action: nil) { EmptyView() }
+                        .overlay(alignment: .bottomTrailing) {
+                            Text(AdminScreenCopy.characters(model.message.count, draft.maxCharacters))
+                                .font(MLType.monoSecondary)
+                                .foregroundStyle(MLColor.inkSecondary)
+                                .padding(MLSpacing.s12)
+                        }
+                    AdminRow(title: AdminScreenCopy.when, detail: AdminScreenCopy.nowTitle, action: nil) {
+                        AdminChip(text: AdminScreenCopy.nowTitle, style: .outline)
+                    }
                     InkActionButton(title: AdminScreenCopy.reviewAndSend) { isConfirming = true }
                         .disabled(!model.canSend)
                 }
@@ -211,14 +218,18 @@ struct AdminPassesScreen: View {
         AdminPageScaffold(title: AdminScreenCopy.passes, onBack: nav.pop) {
             AdminLoadedPage(model: AdminPageModel { try await more.passes() }, timeZone: nav.timeZone) { page, _ in
                 VStack(alignment: .leading, spacing: MLSpacing.s16) {
-                    AdminFactChip(text: page.mess)
+                    Color.clear.frame(height: MLSpacing.s4)
+                    HStack(spacing: MLSpacing.s8) {
+                        AdminChip(text: page.mess, symbol: "fork.knife", isSmall: true)
+                        AdminChip(text: AdminScreenCopy.rules, symbol: "info.circle", isSmall: true)
+                    }
                     HeroCard {
                         VStack(spacing: MLSpacing.s12) {
                             HeroEyebrow(label: page.title)
                             ZStack {
-                                Circle().stroke(MLColor.onHero.opacity(0.2), lineWidth: 12)
+                                Circle().stroke(MLColor.onHero.opacity(0.2), lineWidth: 14)
                                 Circle().trim(from: 0, to: CGFloat(page.used) / CGFloat(max(page.total, 1)))
-                                    .stroke(MLColor.lime, style: StrokeStyle(lineWidth: 12, lineCap: .round))
+                                    .stroke(MLColor.lime, style: StrokeStyle(lineWidth: 14, lineCap: .round))
                                     .rotationEffect(.degrees(-90))
                                 VStack(spacing: 0) {
                                     Text("\(page.used)")
@@ -229,7 +240,7 @@ struct AdminPassesScreen: View {
                                         .foregroundStyle(MLColor.onHeroSecondary)
                                 }
                             }
-                            .frame(width: 180, height: 180)
+                            .frame(width: 176, height: 176)
                             Text(AdminScreenCopy.expiredUnused(page.expiredUnused))
                                 .font(MLType.body)
                                 .foregroundStyle(MLColor.onHeroSecondary)
@@ -237,9 +248,25 @@ struct AdminPassesScreen: View {
                         .frame(maxWidth: .infinity)
                     }
                     AdminCard {
-                        AdminRow(title: page.requestName, detail: page.requestDetail, action: nil) {
-                            StatusText(text: page.requestStatus, dot: .empty)
+                        Button {
+                            nav.toast(AdminScreenCopy.notInPrototype)
+                        } label: {
+                            HStack(spacing: MLSpacing.s8) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(page.requestName)
+                                        .font(MLType.staffPrimary)
+                                        .foregroundStyle(MLColor.ink)
+                                    Text(page.requestDetail)
+                                        .font(MLType.body)
+                                        .foregroundStyle(MLColor.inkSecondary)
+                                }
+                                Spacer(minLength: MLSpacing.s8)
+                                AdminChip(text: page.requestStatus, style: .filled, isSmall: true)
+                                AdminChevron()
+                            }
+                            .contentShape(Rectangle())
                         }
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -256,9 +283,11 @@ struct AdminVotesScreen: View {
         AdminPageScaffold(title: AdminScreenCopy.menuVotes, onBack: nav.pop) {
             AdminLoadedPage(model: AdminPageModel { try await more.votes() }, timeZone: nav.timeZone) { page, _ in
                 VStack(alignment: .leading, spacing: MLSpacing.s12) {
+                    Color.clear.frame(height: MLSpacing.s4)
+                    AdminChip(text: AdminScreenCopy.rules, symbol: "info.circle", isSmall: true)
                     HeroCard {
                         VStack(alignment: .leading, spacing: MLSpacing.s12) {
-                            HeroEyebrow(label: AdminScreenCopy.voteClosed)
+                            AdminChip(text: AdminScreenCopy.voteClosed, style: .filled, isSmall: true)
                             HStack(alignment: .firstTextBaseline, spacing: MLSpacing.s8) {
                                 Text("\(page.forPercent)%")
                                     .font(MLType.heroNumber)
@@ -267,6 +296,14 @@ struct AdminVotesScreen: View {
                                     .font(MLType.staffBody)
                                     .foregroundStyle(MLColor.onHeroSecondary)
                             }
+                            GeometryReader { proxy in
+                                ZStack(alignment: .leading) {
+                                    Capsule().fill(MLColor.onHeroSecondary)
+                                    Capsule().fill(MLColor.lime).frame(width: proxy.size.width * CGFloat(page.forPercent) / 100)
+                                }
+                            }
+                            .frame(height: 8)
+                            .accessibilityHidden(true)
                             Text(AdminScreenCopy.forAgainst(AdminFormat.count(page.forCount), AdminFormat.count(page.againstCount)))
                                 .font(MLType.monoSecondary)
                                 .foregroundStyle(MLColor.onHeroSecondary)
@@ -276,15 +313,48 @@ struct AdminVotesScreen: View {
                             Text(page.advice)
                                 .font(MLType.body)
                                 .foregroundStyle(MLColor.onHeroSecondary)
+                            Button {
+                                nav.toast(AdminScreenCopy.notInPrototype)
+                            } label: {
+                                Text(AdminScreenCopy.decide)
+                                    .font(MLType.staffPrimary)
+                                    .foregroundStyle(MLColor.ink)
+                                    .frame(maxWidth: .infinity, minHeight: 44)
+                                    .background(Capsule().fill(MLColor.surface))
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                     AdminCard {
-                        AdminRow(title: page.inProgressDetail, detail: page.inProgressTitle, action: nil) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(page.inProgressDetail)
+                                    .font(MLType.staffPrimary)
+                                    .foregroundStyle(MLColor.ink)
+                                Text(page.inProgressTitle)
+                                    .font(MLType.body)
+                                    .foregroundStyle(MLColor.inkSecondary)
+                            }
+                            Spacer()
                             Text(page.timeLeft)
                                 .font(MLType.monoBody)
                                 .foregroundStyle(MLColor.ink)
                         }
-                        AdminRow(title: AdminScreenCopy.newProposals(page.newProposals), action: nil) { EmptyView() }
+                    }
+                    AdminCard {
+                        Button {
+                            nav.toast(AdminScreenCopy.notInPrototype)
+                        } label: {
+                            HStack {
+                                Text(AdminScreenCopy.newProposals(page.newProposals))
+                                    .font(MLType.staffPrimary)
+                                    .foregroundStyle(MLColor.ink)
+                                Spacer()
+                                AdminChevron()
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -301,33 +371,43 @@ struct AdminRewardsScreen: View {
         AdminPageScaffold(title: AdminScreenCopy.rewards, onBack: nav.pop) {
             AdminLoadedPage(model: AdminPageModel { try await more.rewards() }, timeZone: nav.timeZone) { page, _ in
                 VStack(alignment: .leading, spacing: MLSpacing.s12) {
+                    Color.clear.frame(height: MLSpacing.s4)
+                    AdminChip(text: AdminScreenCopy.rules, symbol: "info.circle", isSmall: true)
+                    HStack(spacing: MLSpacing.s8) {
+                        AdminChip(text: AdminScreenCopy.catalogue, style: .ink, isSmall: true)
+                        AdminChip(text: AdminScreenCopy.redemptions, isSmall: true)
+                    }
                     HeroCard {
-                        VStack(alignment: .leading, spacing: MLSpacing.s8) {
-                            HeroEyebrow(label: page.budgetTitle)
-                            HStack(alignment: .firstTextBaseline, spacing: MLSpacing.s8) {
-                                Text(page.spent)
-                                    .font(.system(size: 28, weight: .bold, design: .monospaced))
-                                    .foregroundStyle(MLColor.onHero)
-                                Text(AdminScreenCopy.ofBudget(page.budget))
+                        HStack(spacing: MLSpacing.s16) {
+                            ZStack {
+                                Circle().stroke(MLColor.onHero.opacity(0.2), lineWidth: 6)
+                                Circle().trim(from: 0, to: CGFloat(page.spentShare))
+                                    .stroke(MLColor.onHero, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                                    .rotationEffect(.degrees(-90))
+                            }
+                            .frame(width: 64, height: 64)
+                            .accessibilityHidden(true)
+                            VStack(alignment: .leading, spacing: MLSpacing.s4) {
+                                HeroEyebrow(label: page.budgetTitle)
+                                HStack(alignment: .firstTextBaseline, spacing: MLSpacing.s8) {
+                                    Text(page.spent)
+                                        .font(AdminType.count)
+                                        .foregroundStyle(MLColor.onHero)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.7)
+                                    Text(AdminScreenCopy.ofBudget(page.budget))
+                                        .font(MLType.body)
+                                        .foregroundStyle(MLColor.onHeroSecondary)
+                                        .fixedSize()
+                                }
+                                Text(page.detail)
                                     .font(MLType.body)
                                     .foregroundStyle(MLColor.onHeroSecondary)
                             }
-                            Text(page.detail)
-                                .font(MLType.body)
-                                .foregroundStyle(MLColor.onHeroSecondary)
                         }
                     }
                     ForEach(page.rewards) { reward in
-                        AdminCard {
-                            AdminRow(title: reward.title, detail: reward.detail, action: nil) {
-                                VStack(alignment: .trailing, spacing: MLSpacing.s4) {
-                                    StatusText(text: reward.status, dot: reward.isLive ? .filled : .dashed)
-                                    Text("\(reward.points) \(AdminScreenCopy.pts)")
-                                        .font(MLType.monoBody)
-                                        .foregroundStyle(MLColor.ink)
-                                }
-                            }
-                        }
+                        AdminRewardTicket(reward: reward)
                     }
                 }
             }
@@ -344,10 +424,19 @@ struct AdminSpareFoodScreen: View {
         AdminPageScaffold(title: AdminScreenCopy.spareFood, onBack: nav.pop) {
             AdminLoadedPage(model: AdminPageModel { try await more.spareFood() }, timeZone: nav.timeZone) { page, _ in
                 VStack(alignment: .leading, spacing: MLSpacing.s12) {
-                    AdminFactChip(text: page.mess)
+                    Color.clear.frame(height: MLSpacing.s4)
+                    AdminChip(text: page.mess, symbol: "fork.knife", isSmall: true)
                     HeroCard {
                         VStack(alignment: .leading, spacing: MLSpacing.s8) {
-                            HeroEyebrow(label: page.status, showsDot: true)
+                            HStack(spacing: MLSpacing.s12) {
+                                Image(systemName: "clock")
+                                    .font(.system(size: 20))
+                                    .foregroundStyle(MLColor.onHero)
+                                    .frame(width: 44, height: 44)
+                                    .overlay(Circle().stroke(MLColor.onHero, lineWidth: 1.5))
+                                    .accessibilityHidden(true)
+                                AdminChip(text: page.status, style: .filled, isSmall: true)
+                            }
                             Text(page.title)
                                 .font(MLType.title2)
                                 .foregroundStyle(MLColor.onHero)
@@ -362,22 +451,33 @@ struct AdminSpareFoodScreen: View {
                                     .font(MLType.staffBody)
                                     .foregroundStyle(MLColor.onHeroSecondary)
                             }
+                            AdminStageLine(stages: page.steps.map(\.title), current: page.steps.lastIndex(where: \.isDone) ?? 0, onHero: true)
                             HStack(alignment: .top) {
                                 ForEach(page.steps) { step in
-                                    VStack(alignment: .leading, spacing: MLSpacing.s4) {
-                                        Text(step.title)
-                                            .font(MLType.body)
-                                            .foregroundStyle(MLColor.onHero)
-                                        Text(step.time)
-                                            .font(MLType.monoSecondary)
-                                            .foregroundStyle(MLColor.onHeroSecondary)
-                                    }
-                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    Text(step.time)
+                                        .font(MLType.monoSecondary)
+                                        .foregroundStyle(MLColor.onHeroSecondary)
+                                        .frame(maxWidth: .infinity, alignment: step.id == page.steps.first?.id ? .leading : (step.id == page.steps.last?.id ? .trailing : .center))
                                 }
                             }
                         }
                     }
                     AdminNote(text: page.note)
+                    AdminCard {
+                        Button {
+                            nav.toast(AdminScreenCopy.notInPrototype)
+                        } label: {
+                            HStack {
+                                Text(AdminScreenCopy.seeDishesAndSteps)
+                                    .font(MLType.staffPrimary)
+                                    .foregroundStyle(MLColor.ink)
+                                Spacer()
+                                AdminChevron()
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
             }
         }
@@ -393,37 +493,144 @@ struct AdminHistoryScreen: View {
         AdminPageScaffold(title: AdminScreenCopy.history, onBack: nav.pop) {
             AdminLoadedPage(model: AdminPageModel { try await more.history() }, timeZone: nav.timeZone) { page, _ in
                 VStack(alignment: .leading, spacing: MLSpacing.s12) {
+                    Color.clear.frame(height: MLSpacing.s4)
+                    AdminChip(text: AdminScreenCopy.allTypes, symbol: "flag", isSmall: true)
                     HeroCard {
-                        HStack(alignment: .firstTextBaseline, spacing: MLSpacing.s8) {
-                            Text("\(page.entriesToday)")
-                                .font(MLType.heroNumber)
-                                .foregroundStyle(MLColor.onHero)
-                            Text(AdminScreenCopy.entriesToday)
-                                .font(MLType.staffBody)
-                                .foregroundStyle(MLColor.onHeroSecondary)
+                        VStack(alignment: .leading, spacing: MLSpacing.s12) {
+                            HStack(alignment: .firstTextBaseline, spacing: MLSpacing.s8) {
+                                Text("\(page.entriesToday)")
+                                    .font(MLType.heroNumber)
+                                    .foregroundStyle(MLColor.onHero)
+                                Text(AdminScreenCopy.entriesToday)
+                                    .font(MLType.staffBody)
+                                    .foregroundStyle(MLColor.onHeroSecondary)
+                            }
+                            AdminHistoryStrip()
                         }
                     }
                     AdminCard {
-                        ForEach(page.lines) { line in
-                            HStack(alignment: .firstTextBaseline, spacing: MLSpacing.s12) {
-                                Text(line.time)
-                                    .font(MLType.monoSecondary)
-                                    .foregroundStyle(MLColor.inkSecondary)
-                                    .frame(width: 72, alignment: .leading)
-                                VStack(alignment: .leading, spacing: MLSpacing.s4) {
-                                    Text(line.title)
-                                        .font(MLType.staffBody)
-                                        .foregroundStyle(MLColor.ink)
-                                    if let tag = line.tag {
-                                        StatusText(text: tag, dot: .empty)
-                                    }
-                                }
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(page.lines) { line in
+                                historyRow(line, isLast: line.id == page.lines.last?.id)
                             }
-                            .accessibilityElement(children: .combine)
                         }
+                    }
+                    AdminCard {
+                        Button {
+                            nav.toast(AdminScreenCopy.notInPrototype)
+                        } label: {
+                            HStack {
+                                Text(AdminScreenCopy.seeAllCount(page.entriesToday))
+                                    .font(MLType.staffBody)
+                                    .foregroundStyle(MLColor.ink)
+                                Spacer()
+                                AdminChevron()
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
+        }
+    }
+}
+
+private extension AdminHistoryScreen {
+    func historyRow(_ line: HistoryLine, isLast: Bool) -> some View {
+        HStack(alignment: .top, spacing: MLSpacing.s12) {
+            Text(line.time)
+                .font(MLType.monoSecondary)
+                .foregroundStyle(MLColor.inkSecondary)
+                .frame(width: 68, alignment: .leading)
+            VStack(spacing: 0) {
+                Circle().fill(line.tag == nil ? MLColor.lime : MLColor.ink)
+                    .overlay(Circle().stroke(MLColor.ink, lineWidth: 1.5))
+                    .frame(width: 10, height: 10)
+                    .padding(.top, 5)
+                if !isLast {
+                    Rectangle().fill(MLColor.ink).frame(width: 1.5)
+                }
+            }
+            VStack(alignment: .leading, spacing: MLSpacing.s8) {
+                Text(line.title)
+                    .font(MLType.staffBody)
+                    .foregroundStyle(MLColor.ink)
+                if let tag = line.tag {
+                    AdminChip(text: tag, style: .black, isSmall: true)
+                }
+            }
+            .padding(.bottom, isLast ? 0 : 56)
+            Spacer(minLength: 0)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// The small mark under "entries today". It decorates; the entries are in the card below.
+struct AdminHistoryStrip: View {
+    var body: some View {
+        HStack(spacing: 0) {
+            Circle().stroke(MLColor.onHero, lineWidth: 1.5).frame(width: 18, height: 18)
+            Rectangle().fill(MLColor.onHero).frame(width: 12, height: 1.5)
+            Circle().fill(MLColor.onHero).frame(width: 10, height: 10)
+            Rectangle().fill(MLColor.onHero).frame(width: 12, height: 1.5)
+            Color.clear.frame(width: 12, height: 1)
+            Rectangle().fill(MLColor.onHero).frame(width: 12, height: 1.5)
+            Circle().fill(MLColor.onHero).frame(width: 10, height: 10)
+            Rectangle().fill(MLColor.onHero).frame(width: 12, height: 1.5)
+            Circle().stroke(MLColor.onHero, lineWidth: 1.5).frame(width: 12, height: 12)
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+/// A reward as a ticket: name and status, then a torn stub with the points.
+struct AdminRewardTicket: View {
+    let reward: RewardLine
+
+    private var isAwaiting: Bool { reward.status == AdminScreenCopy.awaitingSRM }
+    private let shape = RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous)
+
+    var body: some View {
+        HStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: MLSpacing.s4) {
+                HStack(spacing: MLSpacing.s8) {
+                    Text(reward.title)
+                        .font(MLType.staffPrimary)
+                        .foregroundStyle(isAwaiting ? MLColor.inkSecondary : MLColor.ink)
+                    AdminChip(text: reward.status, style: isAwaiting ? .filled : .lime, isSmall: true)
+                }
+                Text(reward.detail)
+                    .font(MLType.body)
+                    .foregroundStyle(MLColor.inkSecondary)
+            }
+            .padding(MLSpacing.s16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Rectangle()
+                .stroke(style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                .foregroundStyle(MLColor.inkSecondary)
+                .frame(width: 1)
+            VStack(spacing: 0) {
+                Text("\(reward.points)")
+                    .font(AdminType.count)
+                    .foregroundStyle(isAwaiting ? MLColor.inkSecondary : MLColor.ink)
+                Text(AdminScreenCopy.pts)
+                    .font(MLType.secondary)
+                    .foregroundStyle(MLColor.inkSecondary)
+            }
+            .frame(width: 72)
+        }
+        .background { background }
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private var background: some View {
+        if isAwaiting {
+            shape.stroke(MLColor.inkSecondary, style: StrokeStyle(lineWidth: 1.5, dash: [6, 5]))
+        } else {
+            shape.fill(MLColor.surface)
         }
     }
 }
@@ -441,7 +648,7 @@ struct AdminOutingsScreen: View {
                         VStack(alignment: .leading, spacing: MLSpacing.s4) {
                             HeroEyebrow(label: AdminScreenCopy.outNow)
                             Text("\(page.outNow)")
-                                .font(MLType.heroNumber)
+                                .font(AdminType.heroMetric)
                                 .foregroundStyle(MLColor.onHero)
                         }
                         VStack(alignment: .leading, spacing: MLSpacing.s4) {
@@ -462,14 +669,14 @@ struct AdminOutingsScreen: View {
                 }
                 VStack(spacing: 0) {
                     ForEach(page.lines) { line in
-                        AdminRow(title: line.title, detail: line.detail, action: nil) {
+                        AdminRow(title: line.title, detail: line.detail, action: { nav.toast(AdminScreenCopy.notInPrototype) }) {
                             if let count = line.count {
                                 Text("\(count)")
                                     .font(MLType.monoBody)
                                     .foregroundStyle(MLColor.ink)
                             }
                             if let status = line.status {
-                                StatusText(text: status, dot: .dashed)
+                                AdminChip(text: status, style: .dashed)
                             }
                         }
                     }

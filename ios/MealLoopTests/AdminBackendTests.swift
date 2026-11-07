@@ -75,6 +75,36 @@ final class AdminBackendTests: XCTestCase {
         XCTAssertFalse(meal.missing.contains(.wasteRecord))
     }
 
+    /// Integration item 4: one record per meal, read by both roles. 598 is the Supervisor's figure (supervisor_spec.md:19).
+    func testAdminAndSupervisorAgreeOnTuesdayDinner() async throws {
+        let (demo, repositories) = admin()
+        let history = try await demo.mealHistory(for: DemoSeed.mess.id)
+        let record = try XCTUnwrap(history.first { $0.mealID == AdminSeed.tueDinnerMain })
+        let meal = try await repositories.adminResults.meal(AdminSeed.tueDinnerMain)
+        XCTAssertEqual(record.finalEntries.value, 598)
+        XCTAssertEqual(meal.finalEntries, record.finalEntries.value)
+        XCTAssertEqual(record.waste, .notRecorded)
+        XCTAssertNil(meal.plateWasteKg, "Waste is not recorded, so Admin shows no plate waste")
+        XCTAssertNil(meal.headcountSent, "No spec document gives this meal's headcount")
+        XCTAssertNil(meal.dataCompletePercent)
+        XCTAssertTrue(meal.missing.contains(.wasteRecord))
+        let found = try await repositories.adminResults.findMeals(mess: "Main", slot: .dinner)
+        XCTAssertEqual(found.first { $0.id == AdminSeed.tueDinnerMain }?.finalEntries, 598)
+    }
+
+    /// The story lunch's final entries come from `finalCount(for:)` for Admin, Supervisor and Kitchen alike (774,
+    /// kitchen_spec.md:3 and supervisor_spec.md:3).
+    func testAdminAndSupervisorAgreeOnTheClosedStoryLunch() async throws {
+        let (demo, repositories) = admin(.afterMeal)
+        let history = try await demo.mealHistory(for: DemoSeed.mess.id)
+        let record = try XCTUnwrap(history.first { $0.mealID == DemoSeed.lunch.id })
+        let meal = try await repositories.adminResults.meal(DemoSeed.lunch.id)
+        XCTAssertEqual(meal.finalEntries, record.finalEntries.value)
+        let final = try await demo.finalCount(for: DemoSeed.lunch.id)
+        XCTAssertNotNil(final.value)
+        XCTAssertEqual(meal.finalEntries, final.value)
+    }
+
     func testAChangeForAMealIsNotOpenedTwice() async throws {
         let (_, repositories) = admin()
         let draft = ChangeDraft(meal: AdminSeed.tueDinnerMain, change: "Keep more rice ready", owner: "Devi")

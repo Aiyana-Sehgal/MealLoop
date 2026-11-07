@@ -19,7 +19,7 @@ struct AdminTellVendorSheet: View {
                 .foregroundStyle(MLColor.ink)
                 .padding(MLSpacing.s16)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: MLRadius.compact, style: .continuous).fill(MLColor.fillQuiet))
+                .background(RoundedRectangle(cornerRadius: MLRadius.compact, style: .continuous).fill(MLColor.surface))
             if let note {
                 AdminNote(text: note)
             }

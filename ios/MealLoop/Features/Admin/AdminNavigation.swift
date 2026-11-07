@@ -24,6 +24,8 @@ enum AdminPage: Hashable {
     case spareFood
     case history
     case outings
+    case messHeadcount(String, MealSlot)
+    case notAnswered
 }
 
 /// What a page needs from its tab: who is signed in, how to move, and how to show a toast.

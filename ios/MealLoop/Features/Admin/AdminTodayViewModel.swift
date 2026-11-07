@@ -26,6 +26,8 @@ final class AdminTodayViewModel {
     private let intentions: any IntentionRepository
     private let shortages: any ShortageRepository
     private let sos: any SOSRepository
+    private let messes: any AdminMessRepository
+    private let results: any AdminResultsRepository
     private let clock: any AppClock
 
     var isApproving: Bool { activeWrite == .approve }
@@ -38,6 +40,8 @@ final class AdminTodayViewModel {
         self.intentions = repositories.intentions
         self.shortages = repositories.shortages
         self.sos = repositories.sos
+        self.messes = repositories.adminMesses
+        self.results = repositories.adminResults
         self.clock = clock
     }
 
@@ -58,11 +62,16 @@ final class AdminTodayViewModel {
             let safetyCases = try await sos.activeCases(for: messID)
             let selected = chosenSlot ?? current?.meal.slot ?? day[0].meal.slot
             let meal = try await loadMeal(day.first { $0.meal.slot == selected })
+            // Neither may stop Today: a source without them still shows the Food Head's own mess.
+            let others = try? await messes.messDay(for: selected)
+            // A meal still to come has nothing to review.
+            let reviews = ((try? await results.overview())?.toReview ?? []).filter(\.meal.isClosed)
             guard thisLoad == latestLoad else { return }
             let now = clock.now()
             let content = AdminTodayContent(mess: context.mess, now: now,
                                             nodes: Self.nodes(day: day, current: current),
-                                            selectedSlot: selected, meal: meal, safetyCases: safetyCases)
+                                            selectedSlot: selected, meal: meal, safetyCases: safetyCases,
+                                            otherMesses: others, reviewMeals: reviews)
             if let asOf = meal?.headcount.actualEntries.asOf,
                now.timeIntervalSince(asOf) > KitchenHomeViewModel.staleAfter {
                 state = .stale(content, asOf: asOf)
@@ -75,6 +84,12 @@ final class AdminTodayViewModel {
         } catch {
             if thisLoad == latestLoad { state = .failed(LoadFailure(error)) }
         }
+    }
+
+    /// The Results page for an open case: the same case if Results holds it, otherwise the list.
+    func safetyPage(for safetyCase: SOSCase) async -> AdminPage {
+        let cases = (try? await results.safetyCases()) ?? []
+        return cases.first { $0.closedAt == nil && $0.title == safetyCase.title }.map { .safetyCase($0.id) } ?? .safetyCases
     }
 
     func select(_ slot: MealSlot) async {

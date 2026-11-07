@@ -101,38 +101,63 @@ struct AdminDayLine: View {
     }
 }
 
-/// One mess tile (A01): black when it needs action, white once it doesn't, dashed with no data.
-/// The big number always carries its own name, so one headcount value can never pass for another.
-struct AdminMessTile: View {
+/// The mess tiles (2257:158261): the Food Head's own mess, then the others, two to a row.
+struct AdminMessGrid: View {
     let content: AdminTodayContent
-    let openHeadcount: () -> Void
+    let open: (AdminRoute) -> Void
 
-    private var meal: AdminMealContent? { content.meal }
-    private var timeZone: TimeZone { content.mess.timeZone }
-    private var isHero: Bool { content.tileIsUrgent }
-    private var hasData: Bool { meal?.filledSteps != nil }
+    private var others: [AdminMessHeadcount] { content.otherMesses?.messes ?? [] }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: MLSpacing.s12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(content.mess.name)
-                    .font(MLType.staffPrimary)
-                    .foregroundStyle(isHero ? MLColor.onHero : MLColor.ink)
-                if hasData, let lead = meal?.leadValue {
-                    Text(lead.name)
-                        .font(MLType.secondary)
-                        .foregroundStyle(isHero ? MLColor.onHeroSecondary : MLColor.inkSecondary)
+        Grid(horizontalSpacing: MLSpacing.s12, verticalSpacing: MLSpacing.s12) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                GridRow {
+                    ForEach(row, id: \.self) { item in
+                        tile(item)
+                    }
+                    if row.count == 1 {
+                        Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])
+                    }
                 }
             }
-            Text((hasData ? meal?.leadValue.count : nil).map { String($0) } ?? "—")
-                .font(MLType.heroNumber)
-                .foregroundStyle(isHero ? MLColor.onHero : (hasData ? MLColor.ink : MLColor.inkSecondary))
-            SegmentedProgress(current: meal?.filledSteps, total: 4, surface: isHero ? .hero : .light,
-                              missingText: AdminCopy.noData)
-            bottomLine
         }
-        .padding(MLSpacing.s20)
-        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private enum Item: Hashable {
+        case own
+        case other(AdminMessHeadcount)
+    }
+
+    private var rows: [[Item]] {
+        let items: [Item] = [.own] + others.map(Item.other)
+        return stride(from: 0, to: items.count, by: 2).map { Array(items[$0..<min($0 + 2, items.count)]) }
+    }
+
+    @ViewBuilder
+    private func tile(_ item: Item) -> some View {
+        switch item {
+        case .own:
+            AdminMessTile(content: content, openHeadcount: { open(.headcount) }, openLive: { open(.live) })
+        case .other(let mess):
+            AdminOtherMessTile(mess: mess, isUrgent: content.urgentOtherMess == mess.id, timeZone: content.mess.timeZone) {
+                open(.page(.messHeadcount(mess.id, mess.slot)))
+            }
+        }
+    }
+}
+
+/// The card every tile shares: black when it needs action, white once it doesn't, dashed with no data.
+struct AdminTileCard<Content: View>: View {
+    let isHero: Bool
+    let hasData: Bool
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: MLSpacing.s8) {
+            content
+        }
+        .padding(MLSpacing.s16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background { background }
     }
 
@@ -147,13 +172,60 @@ struct AdminMessTile: View {
             shape.stroke(MLColor.inkSecondary, style: StrokeStyle(lineWidth: 1.5, dash: [6, 5]))
         }
     }
+}
+
+/// The Food Head's own mess. The big number always carries its own name, so one headcount value can never pass for another.
+struct AdminMessTile: View {
+    let content: AdminTodayContent
+    let openHeadcount: () -> Void
+    let openLive: () -> Void
+
+    private var meal: AdminMealContent? { content.meal }
+    private var timeZone: TimeZone { content.mess.timeZone }
+    private var isHero: Bool { content.tileIsUrgent }
+    private var hasData: Bool { meal?.filledSteps != nil }
+    /// A meal the story doesn't hold yet, with a time its forecast is due.
+    private var forecastDue: Date? { hasData ? nil : content.otherMesses?.ownForecastAt }
+    private var isServing: Bool { meal?.status.state == .inService }
+
+    var body: some View {
+        AdminTileCard(isHero: isHero, hasData: hasData || forecastDue != nil) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(AdminCopy.tileName(content.mess.name))
+                    .font(MLType.staffBody)
+                    .foregroundStyle(isHero ? MLColor.onHero : MLColor.ink)
+                if hasData, let lead = meal?.leadValue {
+                    Text(lead.name)
+                        .font(MLType.secondary)
+                        .foregroundStyle(isHero ? MLColor.onHeroSecondary : MLColor.inkSecondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                }
+            }
+            Text((hasData ? meal?.leadValue.count : nil).map { String($0) } ?? "—")
+                .font(AdminType.tileMetric)
+                .foregroundStyle(isHero ? MLColor.onHero : (hasData ? MLColor.ink : MLColor.inkSecondary))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            SegmentedProgress(current: meal?.filledSteps ?? (forecastDue == nil ? nil : 0), total: 4, surface: isHero ? .hero : .light,
+                              missingText: AdminCopy.noData)
+            bottomLine
+        }
+    }
 
     @ViewBuilder
     private var bottomLine: some View {
-        if let meal, hasData {
+        if let forecastDue {
+            Text(AdminCopy.forecastAt(AdminCopy.clock(MLFormat.time(forecastDue, in: timeZone))))
+                .font(MLType.body)
+                .foregroundStyle(MLColor.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+        } else if let meal, hasData {
             Text(statusLine(meal))
                 .font(MLType.body)
                 .foregroundStyle(isHero ? MLColor.onHeroSecondary : MLColor.ink)
+                .fixedSize(horizontal: false, vertical: true)
             action(meal)
         } else {
             Text(AdminCopy.noData)
@@ -165,14 +237,18 @@ struct AdminMessTile: View {
     @ViewBuilder
     private func action(_ meal: AdminMealContent) -> some View {
         if let next = meal.nextAction {
-            let title = if case .approve = next { AdminCopy.reviewAndApprove } else { AdminCopy.reviewAndSend }
+            // One word fits the tile, as "Send" does on the frame. Both open the page: nothing happens from here.
+            let title = if case .approve = next { AdminCopy.stepApprove } else { AdminCopy.stepSend }
             if isHero {
                 LimeActionButton(title: title, action: openHeadcount)
             } else {
                 // A safety case holds the black place, so the action steps back to an outline.
                 CompactPillButton(title: title, action: openHeadcount)
             }
-        } else {
+        }
+        if isServing {
+            TextLinkButton(title: AdminCopy.liveMeal, action: openLive)
+        } else if meal.nextAction == nil {
             TextLinkButton(title: AdminCopy.seeHeadcount, action: openHeadcount)
         }
     }
@@ -212,6 +288,71 @@ struct AdminMessTile: View {
     }
 }
 
+/// Another mess. Sending happens on its page, never from the tile.
+struct AdminOtherMessTile: View {
+    let mess: AdminMessHeadcount
+    let isUrgent: Bool
+    let timeZone: TimeZone
+    let open: () -> Void
+
+    private var hasData: Bool { mess.expected != nil || mess.forecastAt != nil }
+    private var steps: Int? {
+        guard mess.expected != nil else { return mess.forecastAt == nil ? nil : 0 }
+        switch mess.reply {
+        case .notSent: return 1
+        case .waiting, .noReply: return 2
+        case .replied: return 3
+        }
+    }
+
+    var body: some View {
+        Button(action: open) {
+            AdminTileCard(isHero: isUrgent, hasData: hasData) {
+                Text(mess.name)
+                    .font(MLType.staffBody)
+                    .foregroundStyle(isUrgent ? MLColor.onHero : MLColor.ink)
+                Text(mess.expected.map { String($0) } ?? "—")
+                    .font(AdminType.tileMetric)
+                    .foregroundStyle(isUrgent ? MLColor.onHero : (mess.expected != nil ? MLColor.ink : MLColor.inkSecondary))
+                SegmentedProgress(current: steps, total: 4, surface: isUrgent ? .hero : .light, missingText: AdminCopy.noData)
+                bottomLine
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(mess.name)
+        .accessibilityValue(line)
+    }
+
+    private var line: String {
+        if let forecastAt = mess.forecastAt, mess.expected == nil { return AdminCopy.forecastAt(AdminCopy.clock(MLFormat.time(forecastAt, in: timeZone))) }
+        guard mess.expected != nil else { return AdminCopy.noData }
+        return mess.canSend ? AdminCopy.sendAction : AdminCopy.replyWord(mess.reply, in: timeZone)
+    }
+
+    @ViewBuilder
+    private var bottomLine: some View {
+        if mess.canSend {
+            Text(AdminCopy.sendAction)
+                .font(MLType.staffPrimary)
+                .foregroundStyle(isUrgent ? MLColor.onLime : MLColor.ink)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .background {
+                    if isUrgent {
+                        Capsule().fill(MLColor.lime)
+                    } else {
+                        Capsule().stroke(MLColor.ink, lineWidth: 1.5)
+                    }
+                }
+        } else {
+            Text(line)
+                .font(MLType.body)
+                .foregroundStyle(hasData ? MLColor.ink : MLColor.inkSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+        }
+    }
+}
+
 /// The six named values. A missing one says so in words, and is never drawn as zero.
 struct AdminHeadcountValuesCard: View {
     let values: [AdminHeadcountValue]
@@ -224,7 +365,7 @@ struct AdminHeadcountValuesCard: View {
     }
 }
 
-/// Approval and vendor status: a dot and plain text. Pending never reads as replied or agreed.
+/// Approval and vendor status, as chips. Pending never reads as replied or agreed.
 struct AdminHeadcountStatusRows: View {
     let headcount: Headcount?
     let timeZone: TimeZone
@@ -252,9 +393,9 @@ struct AdminHeadcountStatusRows: View {
     @ViewBuilder
     private var approval: some View {
         if case .approved(let approved)? = headcount?.approved {
-            StatusText(text: AdminCopy.approved, dot: .filled, time: MLFormat.time(approved.approvedAt, in: timeZone))
+            AdminChip(text: AdminCopy.statusAt(AdminCopy.approved, MLFormat.time(approved.approvedAt, in: timeZone)), style: .outline)
         } else {
-            StatusText(text: AdminCopy.notApproved, dot: .empty)
+            AdminChip(text: AdminCopy.notApproved, style: .dashed)
         }
     }
 
@@ -262,11 +403,11 @@ struct AdminHeadcountStatusRows: View {
     private var vendor: some View {
         switch headcount?.vendorAcknowledgmentStatus {
         case .acknowledged(let record)?:
-            StatusText(text: AdminCopy.acknowledged, dot: .filled, time: MLFormat.time(record.acknowledgedAt, in: timeZone))
+            AdminChip(text: AdminCopy.statusAt(AdminCopy.acknowledged, MLFormat.time(record.acknowledgedAt, in: timeZone)), style: .outline)
         case .pending?:
-            StatusText(text: AdminCopy.pending, dot: .dashed)
+            AdminChip(text: AdminCopy.pending, style: .quiet)
         case .notPublished?, nil:
-            StatusText(text: AdminCopy.notSent, dot: .empty)
+            AdminChip(text: AdminCopy.notSent, style: .dashed)
         }
     }
 }

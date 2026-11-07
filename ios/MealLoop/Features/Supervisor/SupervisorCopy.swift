@@ -10,6 +10,11 @@ enum SupervisorCopy {
     static let shortageTitle = "Shortage details"
     static let wasteReportTitle = "Waste report"
     static let historyTitle = "Meal history"
+    static let loadingHistory = "Loading meal history…"
+    static let couldntLoadHistory = "Couldn't load meal history"
+    static let checkConnection = "Check the connection and try again."
+    static let retry = "Retry"
+    static let offlineMark = "Offline"
 
     // MARK: Home (S01, S02, S06)
     static let notStarted = "Not started"

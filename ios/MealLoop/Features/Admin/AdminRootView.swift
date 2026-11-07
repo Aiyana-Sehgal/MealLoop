@@ -16,6 +16,8 @@ struct AdminRootView: View {
 /// Pushed screens inside the Today tab.
 enum AdminRoute: Hashable {
     case headcount
+    case live
+    case page(AdminPage)
     case notImplemented(title: String)
 }
 
@@ -34,7 +36,7 @@ private struct AdminTabsView: View {
         ZStack(alignment: .bottom) {
             if selectedTab == todayTab {
                 NavigationStack(path: $todayPath) {
-                    AdminTodayScreen(context: context, path: $todayPath) {
+                    AdminTodayScreen(context: context, path: $todayPath, nav: todayNav) {
                         selectedTab = moreTab
                     }
                 }
@@ -47,13 +49,32 @@ private struct AdminTabsView: View {
             } else {
                 tab($morePath) { AdminMoreScreen(nav: $0) }
             }
-            GlassTabBar(items: root.placeholderTabs.map { title in
-                GlassTabItem(tab: title, title: title, symbol: symbol(for: title))
-            }, selection: $selectedTab, searchTab: RoleRoot.searchTab)
-            .padding(.horizontal, MLSpacing.s16)
-            .padding(.bottom, MLSpacing.s8)
+            if !isEditingDay {
+                // Scroll edge fade (2262:22): rows dissolve before they reach the tab bar.
+                LinearGradient(colors: [MLColor.canvas.opacity(0), MLColor.canvas], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.6))
+                    .frame(height: AdminLayout.scrollFadeHeight)
+                    .ignoresSafeArea(edges: .bottom)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+                GlassTabBar(items: root.placeholderTabs.map { title in
+                    GlassTabItem(tab: title, title: title, symbol: symbol(for: title))
+                }, selection: $selectedTab, searchTab: RoleRoot.searchTab)
+                .padding(.horizontal, MLSpacing.s16)
+                .padding(.bottom, MLSpacing.s8)
+            }
         }
         .mlToast(message: $toast, bottomInset: AdminLayout.tabBarClearance)
+    }
+
+    /// The Edit day frames (2313:6 and family) have no tab bar: the page holds its own Save.
+    private var isEditingDay: Bool {
+        guard selectedTab == moreTab, case .editDay? = morePath.last else { return false }
+        return true
+    }
+
+    /// Today's pages share the other tabs' screens, so a meal or a case opens the same page from anywhere.
+    private var todayNav: AdminNav {
+        AdminNav(context: context, push: { todayPath.append(.page($0)) }, pop: { _ = todayPath.popLast() }, toast: { toast = $0 })
     }
 
     private func tab<Root: View>(_ path: Binding<[AdminPage]>, @ViewBuilder root: @escaping (AdminNav) -> Root) -> some View {
@@ -73,14 +94,14 @@ private struct AdminTabsView: View {
     private func symbol(for title: String) -> String {
         switch title {
         case "Today": return "calendar"
-        case "Students": return "person.3"
+        case "Students": return "person.2"
         case "Results": return "chart.bar"
         default: return "ellipsis"
         }
     }
 }
 
-private struct AdminPageDestination: View {
+struct AdminPageDestination: View {
     let page: AdminPage
     let nav: AdminNav
 
@@ -109,6 +130,8 @@ private struct AdminPageDestination: View {
             case .spareFood: AdminSpareFoodScreen(nav: nav)
             case .history: AdminHistoryScreen(nav: nav)
             case .outings: AdminOutingsScreen(nav: nav)
+            case .messHeadcount(let id, let slot): AdminMessHeadcountScreen(id: id, slot: slot, nav: nav)
+            case .notAnswered: AdminNotAnsweredScreen(nav: nav)
             }
         }
         .toolbar(.hidden, for: .navigationBar)

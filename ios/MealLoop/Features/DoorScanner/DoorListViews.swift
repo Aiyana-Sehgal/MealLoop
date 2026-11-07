@@ -12,12 +12,14 @@ struct DoorPage<Content: View>: View {
             OrbitBackground()
             ScrollView {
                 VStack(alignment: .leading, spacing: MLSpacing.s16) {
-                    BackButton(action: onBack)
-                    ScreenTitleBlock(title: title, subtitle: subtitle)
+                    VStack(alignment: .leading, spacing: MLSpacing.s8) {
+                        BackButton(action: onBack)
+                            .padding(.leading, -MLSpacing.s4)
+                        ScreenTitleBlock(title: title, subtitle: subtitle)
+                    }
                     content
                 }
                 .padding(.horizontal, MLSpacing.margin)
-                .padding(.top, MLSpacing.s8)
                 .padding(.bottom, DoorLayout.scrollBottomInset)
             }
         }
@@ -27,7 +29,6 @@ struct DoorPage<Content: View>: View {
 /// Report a problem (D11). One tap sends. While offline it says nothing was sent.
 struct DoorReportProblemView: View {
     let log: DoorProblemLog
-    let supervisorName: String
     let onBack: () -> Void
     /// Runs after the toast has shown.
     let onSent: () -> Void
@@ -36,9 +37,9 @@ struct DoorReportProblemView: View {
     @State private var didFail = false
 
     var body: some View {
-        DoorPage(title: DoorScannerCopy.reportProblem, subtitle: DoorScannerCopy.pickOne(supervisorName), onBack: onBack) {
+        DoorPage(title: DoorScannerCopy.reportProblem, subtitle: DoorScannerCopy.pickOne, onBack: onBack) {
             ForEach(DoorProblemKind.allCases) { kind in
-                IconCardRow(symbol: kind.symbol, title: kind.title, detail: kind.detail) {
+                StaffReportRow(symbol: kind.symbol, title: kind.title, detail: kind.detail) {
                     Task { await send(kind) }
                 }
             }
@@ -60,13 +61,13 @@ struct DoorReportProblemView: View {
             didFail = true
             return
         }
-        toast = DoorScannerCopy.sentToast(supervisorName)
+        toast = DoorScannerCopy.savedToast
         try? await Task.sleep(for: .seconds(2))
         onSent()
     }
 }
 
-/// Open problems (D16). Status is a dot plus plain text. Nothing can mark a problem Seen or Fixed yet, so each stays Waiting.
+/// Open problems (D16). Status is the pill the frame draws. Nothing can mark a problem Seen or Fixed yet, so each stays Waiting.
 struct DoorOpenProblemsView: View {
     let log: DoorProblemLog
     let session: StaffSession
@@ -85,8 +86,14 @@ struct DoorOpenProblemsView: View {
                     ForEach(log.problems) { problem in
                         row(problem)
                     }
+                    Text(DoorScannerCopy.savedOnPhone)
+                        .font(MLType.body)
+                        .foregroundStyle(MLColor.inkSecondary)
+                        .padding(.top, MLSpacing.s16)
                 }
             }
+        }
+        .staffPinnedFooter(bottomInset: DoorLayout.footerAboveTabBar) {
             InkActionButton(title: DoorScannerCopy.reportProblem, action: onReport)
         }
     }
@@ -98,13 +105,13 @@ struct DoorOpenProblemsView: View {
                     .font(MLType.staffPrimary)
                     .foregroundStyle(MLColor.ink)
                 HStack(spacing: MLSpacing.s4) {
-                    Text(DoorScannerCopy.sentLine(to: session.supervisorName)).font(MLType.body)
+                    Text(DoorScannerCopy.savedLine).font(MLType.body)
                     Text(MLFormat.time(problem.sentAt, in: session.mess.timeZone)).font(MLType.monoSecondary)
                 }
                 .foregroundStyle(MLColor.inkSecondary)
             }
             Spacer(minLength: MLSpacing.s8)
-            StatusText(text: DoorScannerCopy.waiting, dot: .dashed)
+            StaffStatusPill(text: DoorScannerCopy.waiting, style: .dashed)
         }
         .padding(.vertical, MLSpacing.s12)
         .overlay(alignment: .bottom) {
@@ -158,8 +165,8 @@ struct DoorWithoutVotingView: View {
 
     private func row(_ entry: EnteredWithoutVoting) -> some View {
         HStack {
-            Text(entry.student.maskedID)
-                .font(MLType.monoBody)
+            Text(DoorScannerCopy.studentLine(entry.student, name: model.names[entry.student.id]))
+                .font(MLType.staffBody)
                 .foregroundStyle(MLColor.ink)
             Spacer(minLength: MLSpacing.s8)
             Text(MLFormat.time(entry.enteredAt, in: mess.timeZone))

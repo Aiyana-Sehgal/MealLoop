@@ -157,4 +157,7 @@ struct Repositories: Sendable {
     var adminResults: any AdminResultsRepository = AdminDataNotBuilt()
     var adminStudents: any AdminStudentsRepository = AdminDataNotBuilt()
     var adminMore: any AdminMoreRepository = AdminDataNotBuilt()
+    var adminMesses: any AdminMessRepository = AdminMessesNotBuilt()
+    /// Defaulted, so every existing caller stays as it was and a source without a directory says nothing.
+    var staffDirectory: any StaffDirectoryRepository = UnavailableStaffDirectory()
 }

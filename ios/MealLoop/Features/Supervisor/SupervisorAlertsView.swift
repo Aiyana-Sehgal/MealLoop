@@ -29,7 +29,7 @@ struct SupervisorAlertsView: View {
     var body: some View {
         SupervisorPage {
             ScreenTitleBlock(title: SupervisorCopy.alertsTitle, subtitle: model.session.mess.name)
-                .padding(.top, MLSpacing.s32)
+                .padding(.top, MLSize.hit + MLSpacing.s4)
             if let sos = model.sosModel.current, let stage = model.sosModel.stage {
                 SOSCard(incident: SupervisorSOSText.incident(sos, now: model.sosModel.now, timeZone: timeZone,
                                                              eyebrow: SupervisorCopy.sosWord),
@@ -50,8 +50,8 @@ struct SupervisorAlertsView: View {
     private func groups(_ followUps: SupervisorFollowUps) -> some View {
         if followUps.isEmpty {
             if model.sosModel.current == nil {
-                StateBlock(symbol: "checkmark", title: SupervisorCopy.caughtUp, message: SupervisorCopy.caughtUpDetail)
-                    .padding(.top, MLSpacing.s32)
+                SupervisorCaughtUp(title: SupervisorCopy.caughtUp, message: SupervisorCopy.caughtUpDetail)
+                    .padding(.top, 140)
             }
         } else {
             VStack(alignment: .leading, spacing: 0) {

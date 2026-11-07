@@ -351,6 +351,18 @@ final class AdminDayEditViewModel {
         }
     }
 
+    /// For a word on Check a day, which lists every meal at once.
+    func toggle(_ change: (String) -> Void, id: String, in slot: MealSlot) {
+        let previous = self.slot
+        self.slot = slot
+        change(id)
+        self.slot = previous
+    }
+
+    func dish(_ id: String, in slot: MealSlot) -> MenuDish? {
+        day?.meals[slot]?.first { $0.id == id }
+    }
+
     func useWord(_ word: String, for id: String, in slot: MealSlot) {
         let previous = self.slot
         self.slot = slot
@@ -437,6 +449,23 @@ struct AdminCheckDayView: View {
                         AdminCard {
                             AdminLabel(text: AdminScreenCopy.weRead(MLFormat.mealSlot(row.slot)))
                             AdminTextField(placeholder: row.dish.name, text: binding(row.dish))
+                                .overlay(alignment: .trailing) {
+                                    Text(AdminScreenCopy.unsureMark)
+                                        .font(MLType.monoSecondary)
+                                        .foregroundStyle(MLColor.ink)
+                                        .frame(width: 42, height: 32)
+                                        .overlay(Capsule().stroke(MLColor.ink, style: StrokeStyle(lineWidth: 1.5, dash: [3, 3])))
+                                        .padding(.trailing, MLSpacing.s12)
+                                        .accessibilityHidden(true)
+                                }
+                            Toggle(AdminScreenCopy.highlightOnBoard, isOn: flag(row.dish, row.slot, \.isHighlight, model.toggleHighlight))
+                                .toggleStyle(AdminSwitchStyle(isInk: true))
+                                .font(MLType.staffBody)
+                                .foregroundStyle(MLColor.ink)
+                            Toggle(AdminScreenCopy.nonVeg, isOn: flag(row.dish, row.slot, \.isNonVeg, model.toggleVeg))
+                                .toggleStyle(AdminSwitchStyle(isInk: true))
+                                .font(MLType.staffBody)
+                                .foregroundStyle(MLColor.ink)
                         }
                     }
                     if let error = model.errorText {
@@ -461,6 +490,11 @@ struct AdminCheckDayView: View {
 
     private func binding(_ dish: MenuDish) -> Binding<String> {
         Binding(get: { words[dish.id] ?? dish.name }, set: { words[dish.id] = $0 })
+    }
+
+    private func flag(_ dish: MenuDish, _ slot: MealSlot, _ path: KeyPath<MenuDish, Bool>, _ change: @escaping (String) -> Void) -> Binding<Bool> {
+        Binding(get: { model.dish(dish.id, in: slot)?[keyPath: path] ?? dish[keyPath: path] },
+                set: { _ in model.toggle(change, id: dish.id, in: slot) })
     }
 }
 
@@ -502,7 +536,7 @@ struct AdminEditDayView: View {
         ZStack {
             OrbitBackground()
             VStack(alignment: .leading, spacing: MLSpacing.s12) {
-                BackButton(action: nav.pop)
+                AdminBackButton(action: nav.pop)
                 ScreenTitleBlock(title: AdminFormat.day(date, in: timeZone),
                                  subtitle: AdminScreenCopy.editDaySubtitle(model.state.value?.range ?? AdminFormat.missing))
                 AsyncContentView(state: model.state, timeZone: timeZone, retry: { await model.load() }) { menu in
@@ -510,7 +544,7 @@ struct AdminEditDayView: View {
                 }
             }
             .padding(.horizontal, MLSpacing.margin)
-            .padding(.bottom, AdminLayout.tabBarClearance)
+            .padding(.bottom, MLSpacing.s16)
         }
         .toolbar(.hidden, for: .navigationBar)
         .task { await model.load() }
@@ -563,10 +597,13 @@ struct AdminEditDayView: View {
                         .listRowInsets(EdgeInsets())
                         .listRowSeparatorTint(MLColor.border)
                         .swipeActions(edge: .trailing) {
-                            Button(AdminScreenCopy.remove, role: .destructive) {
+                            Button(role: .destructive) {
                                 model.delete(dish.id)
                                 nav.toast(AdminScreenCopy.deleted(dish.name))
+                            } label: {
+                                Label(AdminScreenCopy.delete, systemImage: "trash")
                             }
+                            .tint(MLColor.ink)
                         }
                 }
                 .onMove { model.move(from: $0, to: $1) }
@@ -574,9 +611,9 @@ struct AdminEditDayView: View {
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
             Toggle(AdminScreenCopy.tellStudentsChange, isOn: $model.tellStudents)
+                .toggleStyle(AdminSwitchStyle())
                 .font(MLType.staffBody)
                 .foregroundStyle(MLColor.ink)
-                .tint(MLColor.lime)
             if let error = model.errorText {
                 FieldErrorText(text: error)
             }
@@ -607,9 +644,14 @@ struct AdminEditDayView: View {
             iconButton(dish.isHighlight ? "star.fill" : "star", label: AdminScreenCopy.highlightOnBoard, isOn: dish.isHighlight) {
                 model.toggleHighlight(dish.id)
             }
-            iconButton(dish.isNonVeg ? "arrowtriangle.up.square" : "dot.square", label: dish.isNonVeg ? AdminScreenCopy.nonVeg : AdminScreenCopy.veg, isOn: false) {
+            Button {
                 model.toggleVeg(dish.id)
+            } label: {
+                AdminVegMark(isNonVeg: dish.isNonVeg)
+                    .frame(width: MLSize.hit, height: MLSize.hit)
             }
+            .buttonStyle(.borderless)
+            .accessibilityLabel(dish.isNonVeg ? AdminScreenCopy.nonVeg : AdminScreenCopy.veg)
         }
         .frame(minHeight: MLSize.hit + MLSpacing.s8)
         .accessibilityActions {
@@ -620,10 +662,15 @@ struct AdminEditDayView: View {
     private func iconButton(_ symbol: String, label: String, isOn: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: 18))
+                .font(.system(size: 15))
                 .foregroundStyle(isOn ? MLColor.onHero : MLColor.ink)
                 .frame(width: MLSize.hit, height: MLSize.hit)
-                .background(Circle().fill(isOn ? MLColor.ink : Color.clear))
+                .background(Circle().fill(isOn ? MLColor.ink : Color.clear).padding(5))
+                .overlay {
+                    if !isOn, symbol == "star" {
+                        Circle().stroke(MLColor.inkSecondary, lineWidth: 1).padding(7)
+                    }
+                }
         }
         .buttonStyle(.borderless)
         .accessibilityLabel(label)
@@ -756,14 +803,42 @@ struct AdminDinnerChangeSheet: View {
     private var choose: some View {
         VStack(alignment: .leading, spacing: MLSpacing.s12) {
             SheetHeader(title: AdminScreenCopy.changeTodaysDinner, onClose: onClose)
-            IconCardRow(symbol: "arrow.left.arrow.right", title: AdminScreenCopy.swapADish, detail: AdminScreenCopy.swapDetail) { step = .swapPick }
-            IconCardRow(symbol: "plus", title: AdminScreenCopy.addASpecial, detail: AdminScreenCopy.specialDetail) { text = ""; step = .special }
-            IconCardRow(symbol: "minus", title: AdminScreenCopy.removeADish, detail: AdminScreenCopy.removeDetail) { step = .removePick }
+            optionCard("arrow.left.arrow.right", AdminScreenCopy.swapADish, AdminScreenCopy.swapDetail) { step = .swapPick }
+            optionCard("plus", AdminScreenCopy.addASpecial, AdminScreenCopy.specialDetail, isLime: true) { text = ""; step = .special }
+            optionCard("minus", AdminScreenCopy.removeADish, AdminScreenCopy.removeDetail) { step = .removePick }
             Toggle(AdminScreenCopy.tellStudents, isOn: $tellStudents)
+                .toggleStyle(AdminSwitchStyle())
                 .font(MLType.staffPrimary)
                 .foregroundStyle(MLColor.ink)
-                .tint(MLColor.lime)
         }
+    }
+
+    /// A quiet filled card, as drawn. The shared `IconCardRow` has no fill or lime mark.
+    private func optionCard(_ symbol: String, _ title: String, _ detail: String, isLime: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: MLSpacing.s12) {
+                Image(systemName: symbol)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(MLColor.ink)
+                    .frame(width: 40, height: 40)
+                    .background(Circle().fill(isLime ? MLColor.lime : MLColor.surface))
+                    .overlay(Circle().stroke(isLime ? MLColor.ink : Color.clear, lineWidth: 1.5))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(MLType.staffPrimary)
+                        .foregroundStyle(MLColor.ink)
+                    Text(detail)
+                        .font(MLType.body)
+                        .foregroundStyle(MLColor.inkSecondary)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(MLSpacing.s12)
+            .frame(maxWidth: .infinity)
+            .background(RoundedRectangle(cornerRadius: MLRadius.compact, style: .continuous).fill(MLColor.fillQuiet))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private func pick(_ title: String, onPick: @escaping (String) -> Void) -> some View {
@@ -798,9 +873,9 @@ struct AdminDinnerChangeSheet: View {
             SheetHeader(title: AdminScreenCopy.addASpecial, subtitle: AdminScreenCopy.name, onClose: onClose)
             AdminTextField(placeholder: AdminScreenCopy.dishName, text: $text)
             Toggle(AdminScreenCopy.limited, isOn: $isLimited)
+                .toggleStyle(AdminSwitchStyle())
                 .font(MLType.staffPrimary)
                 .foregroundStyle(MLColor.ink)
-                .tint(MLColor.lime)
             AdminNote(text: AdminScreenCopy.limitedNote)
             SegmentedChoice(options: [.init(value: false, title: AdminScreenCopy.veg), .init(value: true, title: AdminScreenCopy.nonVeg)], selection: $isNonVeg)
             InkActionButton(title: AdminScreenCopy.addSpecial) {
@@ -840,7 +915,13 @@ struct AdminDinnerChangeSheet: View {
         VStack(alignment: .leading, spacing: MLSpacing.s12) {
             SheetHeader(title: AdminScreenCopy.sendToStudents, subtitle: AdminScreenCopy.studentsSee, onClose: onClose)
             AdminCard {
-                HStack(alignment: .top) {
+                HStack(alignment: .top, spacing: MLSpacing.s12) {
+                    Image(systemName: "fork.knife")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(MLColor.onHero)
+                        .frame(width: 36, height: 36)
+                        .background(Circle().fill(MLColor.ink))
+                        .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: MLSpacing.s4) {
                         Text(AdminScreenCopy.dinnerChanged)
                             .font(MLType.staffPrimary)

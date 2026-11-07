@@ -173,7 +173,9 @@ enum DemoSeed {
     /// SAMPLE, NEVER A CREDENTIAL. pass_desk_spec.md calls these illustrations. 218 Lime: P04.
     /// K2M9 Blue: export P04_check_this_pass_code_changed. 7A3F Lime: design_intent.md, "Codes and colours are sample".
     static let samplePassCodes: [(code: String, colourName: String)] = [("218", "Lime"), ("K2M9", "Blue"), ("7A3F", "Lime")]
-    // Export P04_check_this_pass_code_changed: "Changes in 10 s". No document gives the real window.
+    // The student's Special pass is the screen that displays the code (BigTicket Live: the rotating code, colour pill and
+    // "Changes in N s", design/audit/PROJECT_CONTEXT.md line 187). Its window: "the live code changes every 10 s"
+    // (design/audit/final2_report.md line 26, decision 5). The Pass Desk sheet counts down the same window.
     static let passCodeWindow: TimeInterval = 10
 
     /// SAMPLE. Who holds a pass, so every outcome can be reached: Aarav is the spec's example, Kiran's pass is the
@@ -184,14 +186,15 @@ enum DemoSeed {
     ]
 
     /// P10_new_pass_requests, row by row. P10 gives Dev's row no time, so it has none.
+    /// Only the waiting row names a reason: Figma PD-4 (2538:5739) draws "Phone lost" on Aarav's row alone.
     static var sampleReissues: [PassReissueRequest] {
-        func request(_ lastFour: String, _ status: PassReissueStatus, _ at: Date?) -> PassReissueRequest? {
+        func request(_ lastFour: String, _ status: PassReissueStatus, _ at: Date?, reason: PassReissueReason? = nil) -> PassReissueRequest? {
             guard let sample = sampleStudents.first(where: { $0.ref.maskedID.hasSuffix(lastFour) }) else { return nil }
             return PassReissueRequest(id: PassReissueID("demo-reissue-\(lastFour)"),
                                       holder: SpecialPassHolder(student: sample.ref, name: sample.name),
-                                      reason: nil, status: status, updatedAt: at)
+                                      reason: reason, status: status, updatedAt: at)
         }
-        return [request("0238", .waiting, time(12, 20)), request("0412", .approved, time(12, 8)),
+        return [request("0238", .waiting, time(12, 20), reason: .phoneLost), request("0412", .approved, time(12, 8)),
                 request("0377", .done, time(11, 52)), request("0190", .rejected, nil)].compactMap { $0 }
     }
 
@@ -205,6 +208,9 @@ enum DemoSeed {
     /// simulated password page can be tried. Recorded in docs/OPEN_DECISIONS.md.
     static let simulatedRolePassword = "1234"
     #endif
+
+    /// SAMPLE, NOT MEASURED. Figma DS-8 Me (2512:173663) and PD-8 Me (2545:7144) draw "On shift · since 11:40 AM".
+    static let deskShiftStartedAt = time(11, 40)
 
     // MARK: - Accounts
 

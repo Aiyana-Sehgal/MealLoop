@@ -144,6 +144,10 @@ struct AdminTodayContent: Equatable {
     /// Nil when the selected slot has no meal, which is not the same as a meal with zero students.
     let meal: AdminMealContent?
     let safetyCases: [SOSCase]
+    /// The other messes for this meal. Nil when the source has none, which is not the same as no students.
+    var otherMesses: AdminMessDay?
+    /// Meals waiting for the Food Head's review, from Results.
+    var reviewMeals: [ReviewMeal] = []
 
     /// Up to two rows show on Today; the rest are behind "See all".
     static let needsYouLimit = 2
@@ -156,9 +160,17 @@ struct AdminTodayContent: Equatable {
 
     var visibleShortages: [Shortage] { Array((meal?.shortages ?? []).prefix(Self.needsYouLimit)) }
     var hasMoreShortages: Bool { (meal?.shortages.count ?? 0) > Self.needsYouLimit }
+    /// Review rows fill what the shortages leave, so Today never holds more than the limit.
+    var visibleReviews: [ReviewMeal] { Array(reviewMeals.prefix(max(Self.needsYouLimit - visibleShortages.count, 0))) }
 
     /// The tile that needs action is the black one, unless an open safety case takes that place.
     var tileIsUrgent: Bool { meal?.nextAction != nil && safetyCases.isEmpty }
+
+    /// Only one tile is black. When the Food Head's own mess needs nothing, the first mess waiting to send takes it.
+    var urgentOtherMess: String? {
+        guard !tileIsUrgent, safetyCases.isEmpty else { return nil }
+        return otherMesses?.messes.first(where: \.canSend)?.id
+    }
 
     /// True until the cutoff of the selected meal has passed.
     var answersAreOpen: Bool {

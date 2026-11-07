@@ -13,7 +13,7 @@ struct AdminPageScaffold<Content: View>: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: MLSpacing.s16) {
                     if let onBack {
-                        BackButton(action: onBack)
+                        AdminBackButton(action: onBack)
                     } else {
                         Color.clear.frame(height: MLSize.hit)
                     }
@@ -28,6 +28,7 @@ struct AdminPageScaffold<Content: View>: View {
                                 .foregroundStyle(MLColor.inkSecondary)
                         }
                     }
+                    .padding(.top, -MLSpacing.s8)
                     content
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -43,6 +44,7 @@ enum AdminLayout {
     /// Clears the floating tab bar (62 pt, 8 pt gap, a little air).
     static let scrollBottomInset: CGFloat = 120
     static let tabBarClearance: CGFloat = 86
+    static let scrollFadeHeight: CGFloat = 130
 }
 
 /// Wraps its children like text, for chips.
@@ -93,15 +95,15 @@ struct AdminFactChip: View {
 
     var body: some View {
         Text(text)
-            .font(MLType.body)
+            .font(AdminType.chip)
             .foregroundStyle(MLColor.ink)
-            .padding(.horizontal, MLSpacing.s12)
+            .padding(.horizontal, 14)
             .padding(.vertical, MLSpacing.s8)
             .background {
                 if isMissing {
-                    Capsule().stroke(MLColor.ink, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                    Capsule().stroke(MLColor.ink, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
                 } else {
-                    Capsule().stroke(MLColor.ink, lineWidth: 1)
+                    Capsule().stroke(MLColor.ink, lineWidth: 1.5)
                 }
             }
     }
@@ -133,8 +135,18 @@ struct AdminLabel: View {
     }
 }
 
-/// Status as a dot and plain words. Sure is filled, Probably is a ring and Can't tell is dashed.
+/// How sure a reason is, as a chip: Sure is lime, Probably an outline and Can't tell dashed.
+/// The frames draw a dot only in the header of a reason page, where `ReasonTagDot` is used.
 struct ReasonTagText: View {
+    let tag: ReasonTag
+
+    var body: some View {
+        AdminChip(text: AdminScreenCopy.tag(tag), style: AdminChipRules.reason(tag))
+    }
+}
+
+/// The same tag as a dot, as the header of a reason page draws it.
+struct ReasonTagDot: View {
     let tag: ReasonTag
 
     private var dot: StatusText.Dot {
@@ -170,15 +182,22 @@ struct AdminRow<Trailing: View>: View {
     let title: String
     var detail: String?
     var showsChevron: Bool = true
+    /// The dish whose pictogram leads the row.
+    var leadingDish: String?
     let action: (() -> Void)?
     @ViewBuilder let trailing: Trailing
 
     private var label: some View {
         HStack(spacing: MLSpacing.s12) {
-            VStack(alignment: .leading, spacing: MLSpacing.s4) {
+            if let leadingDish {
+                AdminDishPictogram(dish: leadingDish)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                // A row with a detail line leads with a semibold title; a one-line row is regular, as drawn.
                 Text(title)
-                    .font(MLType.staffPrimary)
+                    .font(detail == nil ? MLType.staffBody : MLType.staffPrimary)
                     .foregroundStyle(MLColor.ink)
+                    .multilineTextAlignment(.leading)
                 if let detail {
                     Text(detail)
                         .font(MLType.body)
@@ -195,7 +214,7 @@ struct AdminRow<Trailing: View>: View {
             }
         }
         .padding(.vertical, MLSpacing.s12)
-        .frame(minHeight: MLSize.staffButton)
+        .frame(minHeight: 56)
         .contentShape(Rectangle())
     }
 
@@ -208,39 +227,51 @@ struct AdminRow<Trailing: View>: View {
                 label.accessibilityElement(children: .combine)
             }
         }
-        .overlay(alignment: .bottom) {
+        .overlay(alignment: .top) {
             Rectangle().fill(MLColor.border).frame(height: 1)
         }
     }
 }
 
-/// Stops along a line, as on Check next time and the Community issue.
+/// Stops along a line, as on Check next time and the Community issue. The first and last sit at the ends.
 struct AdminStageLine: View {
     let stages: [String]
     /// Zero-based. Stops before it are done, it is lime, the rest are dashed.
     let current: Int
+    var onHero: Bool = false
+
+    private func alignment(_ index: Int) -> Alignment {
+        if index == 0 { return .leading }
+        return index == stages.count - 1 ? .trailing : .center
+    }
+
+    private func horizontal(_ index: Int) -> HorizontalAlignment {
+        if index == 0 { return .leading }
+        return index == stages.count - 1 ? .trailing : .center
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
             ForEach(Array(stages.enumerated()), id: \.offset) { index, stage in
-                VStack(spacing: MLSpacing.s8) {
+                VStack(alignment: horizontal(index), spacing: MLSpacing.s8) {
                     marker(index)
                         .frame(height: 28)
                     Text(stage)
                         .font(index == current ? MLType.bodyEmphasis : MLType.body)
-                        .foregroundStyle(index == current ? MLColor.ink : MLColor.inkSecondary)
+                        .foregroundStyle(index == current ? (onHero ? MLColor.onHero : MLColor.ink) : (onHero ? MLColor.onHeroSecondary : MLColor.inkSecondary))
+                        .lineLimit(1)
                 }
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, alignment: alignment(index))
             }
         }
         .background(alignment: .top) {
             GeometryReader { proxy in
-                let inset = proxy.size.width / CGFloat(max(stages.count, 1) * 2)
+                let inset: CGFloat = 12
                 let width = proxy.size.width - inset * 2
                 let reached = width * CGFloat(current) / CGFloat(max(stages.count - 1, 1))
                 ZStack(alignment: .leading) {
-                    Rectangle().fill(MLColor.track).frame(width: width, height: 3)
-                    Rectangle().fill(MLColor.ink).frame(width: reached, height: 3)
+                    Rectangle().fill(onHero ? MLColor.onHeroSecondary : MLColor.track).frame(width: width, height: 3)
+                    Rectangle().fill(onHero ? MLColor.onHero : MLColor.ink).frame(width: reached, height: 3)
                 }
                 .padding(.leading, inset)
                 .frame(height: 28)
@@ -253,12 +284,12 @@ struct AdminStageLine: View {
     @ViewBuilder
     private func marker(_ index: Int) -> some View {
         if index < current {
-            Circle().fill(MLColor.ink).frame(width: 14, height: 14)
+            Circle().fill(onHero ? MLColor.onHero : MLColor.ink).frame(width: 14, height: 14)
         } else if index == current {
-            Circle().fill(MLColor.lime).overlay(Circle().stroke(MLColor.ink, lineWidth: 1.5)).frame(width: 26, height: 26)
+            Circle().fill(MLColor.lime).overlay(Circle().stroke(onHero ? MLColor.onHero : MLColor.ink, lineWidth: 1.5)).frame(width: 26, height: 26)
         } else {
-            Circle().fill(MLColor.canvas)
-                .overlay(Circle().stroke(MLColor.ink, style: StrokeStyle(lineWidth: 1, dash: [3, 3])))
+            Circle().fill(onHero ? MLColor.heroBackground : MLColor.canvas)
+                .overlay(Circle().stroke(onHero ? MLColor.onHero : MLColor.ink, style: StrokeStyle(lineWidth: 1, dash: [3, 3])))
                 .frame(width: 22, height: 22)
         }
     }
@@ -270,7 +301,7 @@ struct AdminNote: View {
 
     var body: some View {
         Text(text)
-            .font(MLType.secondary)
+            .font(MLType.body)
             .foregroundStyle(MLColor.inkSecondary)
             .frame(maxWidth: .infinity, alignment: .leading)
     }

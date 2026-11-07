@@ -16,7 +16,8 @@ enum AdminSeed {
     private static func mealID(_ text: String) -> MealID { MealID("admin-sample-\(text)") }
     static let tueDinnerNorth = mealID("2024-08-13-dinner-north")
     static let monLunchMain = mealID("2024-08-12-lunch-main")
-    static let tueDinnerMain = mealID("2024-08-13-dinner-main")
+    /// The same meal the Supervisor lists as Tue 13 · Dinner (DemoSeed.pastMeals), so both roles read one record.
+    static let tueDinnerMain = MealID("demo-2024-08-13-dinner")
     static let monDinnerSouth = mealID("2024-08-12-dinner-south")
     static let tueLunchNorth = mealID("2024-08-13-lunch-north")
 
@@ -50,9 +51,11 @@ enum AdminSeed {
              leftovers: [FoodAmount(dish: "Rice", amount: 6, unit: .kilograms)]),
         meal(monLunchMain, mess: "Main", slot: .lunch, day: 12, sent: 820, came: 730,
              leftovers: [FoodAmount(dish: "Dal", amount: 3, unit: .litres), FoodAmount(dish: "Sambar", amount: 2, unit: .litres)]),
-        // F01_results_to_check_meal_report_tue_dinner. Differs from the Supervisor seed for the same meal (REPORT.md).
-        meal(tueDinnerMain, mess: "Main", slot: .dinner, day: 13, sent: 640, sentAt: d(13, 16, 30), came: 691, closedAt: d(13, 21, 30),
-             plate: 11, ranOut: [FoodRanOut(dish: "Rice", at: d(13, 20, 34))], late: true, data: 90, missing: [.amountCooked],
+        // F01_results_to_check_meal_report_tue_dinner. Final entries, closing time and waste come from the meal history the
+        // Supervisor reads (598, supervisor_spec.md line 19; waste not recorded). F01's 640 sent, 691 came and 11 kg are in
+        // no spec document (design/audit/prototype_gaps.md #425), so they are not seeded and show as missing.
+        meal(tueDinnerMain, mess: "Main", slot: .dinner, day: 13, sent: nil, came: nil,
+             ranOut: [FoodRanOut(dish: "Rice", at: d(13, 20, 34))], late: true, data: 90, missing: [.amountCooked],
              questions: ["Was there an event?"], review: true),
         // A09_reason_more_came.
         meal(monDinnerSouth, mess: "South", slot: .dinner, day: 12, sent: 580, came: 627,
@@ -83,30 +86,30 @@ enum AdminSeed {
                                                timeline: [ReasonTimelineLine], timelineNote: String?) {
         switch kind {
         case .fewerCame:
-            return ("Final entries were well below the headcount sent.", "Foods left over",
+            return ("Final entries were well below the headcount sent (draft, SRM approval required).", "Foods left over",
                     [ReasonFood(dish: "Sambar", meals: 3, at: nil, mess: nil), ReasonFood(dish: "Rice", meals: 2, at: nil, mess: nil),
                      ReasonFood(dish: "Dal", meals: 2, at: nil, mess: nil)],
                     [], [], [DemoSeed.lunch.id, tueDinnerNorth, monLunchMain], 2, nil, [], nil)
         case .didntLikeDish:
-            return ("The dish left over also had at least 3 \"not good\" answers for that meal.", nil, [],
+            return ("The dish left over also had at least 3 \"not good\" answers for that meal (draft, SRM approval required).", nil, [],
                     [DishFeedbackLine(dish: "Sambar", problem: "Too salty", students: 6)], [], [DemoSeed.lunch.id], 2, nil, [], nil)
         case .raisedLate:
-            return ("Raised after the forecast froze, and fewer came than the raised number.", nil, [], [], [],
+            return ("Raised after the forecast froze, and fewer came than the raised number (draft, SRM approval required).", nil, [], [], [],
                     [DemoSeed.lunch.id], 1, nil, [], nil)
         case .cantTellLeftOver:
             return ("Key data is missing for these meals, so MealLoop does not guess.", nil, [], [], [.amountCooked, .wasteRecord],
                     [DemoSeed.lunch.id], 3, nil, [], nil)
         case .moreCame:
-            return ("Final entries were well above the headcount sent.", "Foods that ran out",
+            return ("Final entries were well above the headcount sent (draft, SRM approval required).", "Foods that ran out",
                     [ReasonFood(dish: "Rice", meals: nil, at: d(12, 20, 40), mess: "South")], [], [], [monDinnerSouth], 0, nil, [], nil)
         case .lastThirtyMinutes:
             // Bar heights measured from A09_reason_last_30_minutes; the pack gives no counts for them.
-            return ("Tue 13 · lunch · North. Most entries came in the last 30 minutes.", nil, [], [], [], [], 0,
+            return ("Tue 13 · lunch · North. Most entries came in the last 30 minutes (draft, SRM approval required).", nil, [], [], [], [], 0,
                     ArrivalShape(barHeights: [45, 54, 64, 72, 80, 100, 145, 150], markerAfterBar: 7,
                                  markerText: "Dashed line: Rice ran out at 1:50 PM.", axisLabels: ["12:00", "1:00", "2:00"]),
                     [], nil)
         case .reportedLate:
-            return ("Low stock was reported more than 15 minutes after the first sign.", nil, [], [], [], [tueLunchNorth], 0, nil,
+            return ("Low stock was reported more than 15 minutes after the first sign (draft, SRM approval required).", nil, [], [], [], [tueLunchNorth], 0, nil,
                     [ReasonTimelineLine(at: d(13, 13, 20), text: "Entries above the usual pace (first sign)"),
                      ReasonTimelineLine(at: d(13, 13, 41), text: "Staff reported Rice running low"),
                      ReasonTimelineLine(at: d(13, 13, 50), text: "Rice ran out")],
@@ -394,7 +397,29 @@ struct DemoAdminRepositories: AdminResultsRepository, AdminStudentsRepository, A
     }
 
     private func allMeals() async throws -> [AdminMealFacts] {
-        [try await storyLunch()] + AdminSeed.pastMeals
+        let history = try await core.mealHistory(for: DemoSeed.mess.id)
+        return [try await storyLunch()] + AdminSeed.pastMeals.map { Self.agreeing($0, with: history) }
+    }
+
+    /// A past meal the Supervisor also lists takes its final entries, closing time and waste from that same meal
+    /// history, so Admin and Supervisor never show different figures for one meal. Missing stays missing, never zero.
+    private static func agreeing(_ meal: AdminMealFacts, with history: [MealRecord]) -> AdminMealFacts {
+        guard let record = history.first(where: { $0.mealID == meal.id }) else { return meal }
+        let isWasteRecorded = { if case .recorded = record.waste { return true } else { return false } }()
+        let rows = record.wasteReport
+        let leftovers = (rows?.leftovers ?? []).compactMap { row -> FoodAmount? in
+            guard case .entered(let amount) = row.measurement else { return nil }
+            return FoodAmount(dish: row.dishName, amount: amount, unit: row.unit)
+        }
+        var missing = meal.missing
+        if !isWasteRecorded, !missing.contains(.wasteRecord) { missing.append(.wasteRecord) }
+        return AdminMealFacts(
+            id: meal.id, mess: meal.mess, slot: meal.slot, day: meal.day, headcountSent: meal.headcountSent, sentAt: meal.sentAt,
+            finalEntries: record.finalEntries.value, closedAt: record.closedAt, isClosed: true, leftovers: leftovers,
+            plateWasteKg: rows?.plateWaste.measuredKilograms, ranOut: meal.ranOut, wasReportedLate: meal.wasReportedLate,
+            dataCompletePercent: isWasteRecorded ? meal.dataCompletePercent : nil, missing: missing,
+            headcountChange: meal.headcountChange, openQuestions: meal.openQuestions, needsReview: meal.needsReview,
+            linkedCheck: meal.linkedCheck, suggestedChange: meal.suggestedChange)
     }
 
     /// The story meal, read from the same repositories every other role uses. Until it closes there is no final count.
@@ -546,7 +571,7 @@ struct DemoAdminRepositories: AdminResultsRepository, AdminStudentsRepository, A
         try requireFoodHead(role)
         let current = try await resolved(try await store.check(check))
         guard CheckNextTimePolicy.canCloseAsWorked(current) else {
-            throw RepositoryError.notAllowed(reason: "A change needs 2 comparable meals, and none that ran out, before it can be called worked.")
+            throw RepositoryError.notAllowed(reason: "A change needs 2 comparable meals that did not run out before it can be called worked.")
         }
         return try await resolved(try await store.update(check) { $0.stage = .result; $0.closedAsWorked = true })
     }

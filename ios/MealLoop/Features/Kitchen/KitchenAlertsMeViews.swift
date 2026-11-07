@@ -43,7 +43,7 @@ struct KitchenAlert: Equatable, Identifiable {
             let meal = "\(KitchenFormat.shortDay(record.day, in: timeZone)) \(MLFormat.mealSlot(record.slot))"
             rows.append(KitchenAlert(kind: .wasteNotRecorded(record.mealID), title: KitchenCopy.wasteNotRecorded, at: nil,
                                      timeText: KitchenFormat.dayLine(record.day, in: timeZone).components(separatedBy: " ").first,
-                                     detail: KitchenCopy.addIt(meal), isUnread: false))
+                                     detail: KitchenCopy.notRecordedFor(meal), isUnread: false))
         }
         return rows
     }
