@@ -92,6 +92,10 @@ struct DemoState: Sendable {
     var passCodeIndex = 0
     var passCodeIssuedAt: Date?
     var reissueRequests = DemoSeed.sampleReissues
+    /// Meals where a student's code was presented again after the entry was recorded.
+    var repeatScans: Set<EntryKey> = []
+    var skipReasons: [IntentionKey: MealSkipReason] = [:]
+    var entryCorrections: [IdempotencyKey: EntryCorrection] = [:]
 
     init(scenario: DemoScenario) {
         let meal = DemoSeed.lunch
@@ -174,8 +178,8 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
         let admin = DemoAdminRepositories(core: self, store: adminStore)
         return Repositories(meals: self, mealState: self, headcount: self, entries: self, intentions: self,
                             shortages: self, wasteReports: self, sos: self, auth: self, specialPasses: self,
-                            adminResults: admin, adminStudents: admin, adminMore: admin,
-                            adminMesses: DemoAdminMesses(core: self, store: adminMessStore))
+                            studentExtras: self, adminResults: admin, adminStudents: admin, adminMore: admin,
+                            adminMesses: DemoAdminMesses(core: self, store: adminMessStore), staffDirectory: self)
     }
 
     /// For repositories that live outside this actor: throws exactly as the others do with no connection.
@@ -194,7 +198,9 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
 
     /// Any meal of the seeded day, for reads and answers.
     private func requireDayMeal(_ meal: MealID) throws {
-        guard meal == state.mealStatus.meal.id || meal == DemoSeed.breakfast.id else { throw RepositoryError.notFound }
+        guard meal == state.mealStatus.meal.id || meal == DemoSeed.breakfast.id || meal == DemoSeed.dinner.id else {
+            throw RepositoryError.notFound
+        }
     }
 
     /// Breakfast is not run by the Supervisor in the story, so its state follows the clock and its own times.
@@ -407,6 +413,7 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
         let key = DemoState.EntryKey(student: request.student.id, meal: request.mealID)
         let result: EntryResult
         if let existing = state.entries[key] {
+            state.repeatScans.insert(key)
             result = .alreadyRecorded(firstRecordedAt: existing.recordedAt, count: currentLiveCount)
         } else {
             let intentionKey = DemoState.IntentionKey(student: request.student.id, meal: request.mealID)
@@ -490,8 +497,10 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
     func setIntention(_ intention: MealIntention, of student: StudentID, for meal: MealID) async throws -> IntentionResponse {
         try failIfOffline()
         try requireDayMeal(meal)
-        guard let status = dayMeals.first(where: { $0.meal.id == meal }),
-              IntentionPolicy.canAnswer(status.meal, at: clock.now()) else {
+        // Dinner is answered like any meal, but no staff role runs it in the story, so it is not in `dayMeals`.
+        let answerable = dayMeals.map(\.meal) + [DemoSeed.dinner]
+        guard let target = answerable.first(where: { $0.id == meal }),
+              IntentionPolicy.canAnswer(target, at: clock.now()) else {
             throw RepositoryError.notAllowed(reason: "The cutoff has passed.")
         }
         let key = DemoState.IntentionKey(student: student, meal: meal)
@@ -835,4 +844,88 @@ extension DemoDataProvider: DemoControlling {
     }
 }
 #endif
+
+// MARK: - StudentExtrasRepository
+
+extension DemoDataProvider: StudentExtrasRepository {
+    private var serviceMeal: Meal? { dayMeals.first { $0.state == .inService }?.meal }
+
+    func homeExtras(for student: StudentID, mess: MessID) async throws -> StudentHomeExtras {
+        try failIfOffline()
+        let isClosed = clock.now() < DemoSeed.messOpensForTheDay
+        return StudentHomeExtras(credits: DemoSeed.sampleCredits, crowd: crowd(isClosed: isClosed), pass: passRow(for: student),
+                                 recheck: DemoSeed.sampleRecheck, isMessClosed: isClosed, laterMeal: DemoSeed.dinner)
+    }
+
+    /// SAMPLE: no hourly arrivals exist yet, so the level follows the meal state and the bars are the drawn ones.
+    private func crowd(isClosed: Bool) -> CrowdReading {
+        if isClosed {
+            return CrowdReading(level: .closed, bars: DemoSeed.crowdBars, currentBar: nil, detailTime: DemoSeed.breakfast.startsAt)
+        }
+        if let serving = serviceMeal {
+            let quieter = serving.slot == .breakfast ? DemoSeed.crowdQuieterAfterBreakfast : DemoSeed.crowdBestTime
+            return CrowdReading(level: .busy, bars: DemoSeed.crowdBars, currentBar: DemoSeed.crowdBusyBar, detailTime: quieter)
+        }
+        return CrowdReading(level: .quiet, bars: DemoSeed.crowdBars, currentBar: DemoSeed.crowdQuietBar, detailTime: DemoSeed.crowdBestTime)
+    }
+
+    private func passRow(for student: StudentID) -> StudentPassRow? {
+        guard let slot = DemoSeed.samplePasses[student], let meal = dayMeals.first(where: { $0.meal.slot == slot }) else { return nil }
+        if state.specialEntries[student] != nil { return StudentPassRow(meal: meal.meal, status: .used) }
+        return StudentPassRow(meal: meal.meal, status: meal.state == .closed ? .closed : .open)
+    }
+
+    func studentMenu(for meal: MealID) async throws -> [Dish] {
+        try failIfOffline()
+        try requireDayMeal(meal)
+        switch meal {
+        case DemoSeed.breakfast.id: return DemoSeed.breakfastAnswerMenu
+        case DemoSeed.dinner.id: return DemoSeed.dinnerAnswerMenu
+        default: return DemoSeed.lunchAnswerDishes.compactMap { id in DemoSeed.lunchMenu.first { $0.id.rawValue == id } }
+        }
+    }
+
+    func skipReason(of student: StudentID, for meal: MealID) async throws -> MealSkipReason? {
+        try failIfOffline()
+        return state.skipReasons[DemoState.IntentionKey(student: student, meal: meal)]
+    }
+
+    func setSkipReason(_ reason: MealSkipReason, of student: StudentID, for meal: MealID) async throws {
+        try failIfOffline()
+        let key = DemoState.IntentionKey(student: student, meal: meal)
+        guard case .answered(.skipping, _)? = state.intentions[key] else {
+            throw RepositoryError.notAllowed(reason: "Only a skip has a reason.")
+        }
+        state.skipReasons[key] = reason
+    }
+
+    func entryStanding(of student: StudentID, for meal: MealID, at mess: MessID) async throws -> StudentEntryStanding {
+        guard mess == DemoSeed.mess.id else { return .wrongMess(homeMess: DemoSeed.mess.name) }
+        let key = DemoState.EntryKey(student: student, meal: meal)
+        guard let entry = state.entries[key] else { return .notScanned }
+        return state.repeatScans.contains(key) ? .scannedAgain(firstAt: entry.recordedAt) : .scanned(at: entry.recordedAt)
+    }
+
+    func rotatingEntryCode(for student: StudentID, step: Int) async throws -> RotatingEntryCode {
+        // Deliberately no offline or cutoff check, like `entryCode`.
+        let code = try await entryCode(for: student)
+        // SIMULATED: a token that differs per window. Nothing checks it, because QR scanning is not built.
+        let token = String(UInt32(truncatingIfNeeded: (step + 1) &* 2_654_435_761), radix: 16)
+        return RotatingEntryCode(payload: "\(code.payload)-\(token)", lastFour: code.lastFour, step: step)
+    }
+
+    func correctableRecord(for student: StudentID) async throws -> AttendanceRecord? {
+        try failIfOffline()
+        return student == DemoSeed.sampleStudent.id ? DemoSeed.sampleCorrectableRecord : nil
+    }
+
+    func requestEntryCorrection(_ request: EntryCorrectionRequest) async throws -> EntryCorrection {
+        // Offline: nothing is stored and nothing is returned as sent.
+        try failIfOffline()
+        if let previous = state.entryCorrections[request.idempotencyKey] { return previous }
+        let correction = EntryCorrection(request: request, sentAt: clock.now())
+        state.entryCorrections[request.idempotencyKey] = correction
+        return correction
+    }
+}
 #endif

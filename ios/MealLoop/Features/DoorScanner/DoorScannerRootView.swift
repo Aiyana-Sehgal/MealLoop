@@ -44,6 +44,9 @@ struct DoorScannerTabs: View {
         _problems = State(initialValue: DoorProblemLog(mealState: repositories.mealState, mess: session.mess.id, clock: clock))
     }
 
+    /// DS-5 draws Report a problem with no tab bar; the other pushed pages keep it.
+    private var showsTabBar: Bool { router.selectedStaffTab != .home || path.last != .reportProblem }
+
     var body: some View {
         @Bindable var router = router
         ZStack(alignment: .bottom) {
@@ -66,15 +69,17 @@ struct DoorScannerTabs: View {
                     DoorMeView(model: home, problems: problems)
                 }
             }
-            StaffTabBar(selection: $router.selectedStaffTab)
-                .padding(.horizontal, MLSpacing.s16)
-                .padding(.bottom, MLSpacing.s8)
+            if showsTabBar {
+                StaffTabBar(selection: $router.selectedStaffTab)
+                    .padding(.horizontal, MLSpacing.s16)
+                    .padding(.bottom, MLSpacing.s8)
+            }
         }
         .mlToast(message: $toast, bottomInset: DoorLayout.tabBarClearance)
         .mlSheet(isPresented: $isSOSOpen) {
             DoorSOSPanel(model: sos, session: home.session, now: clock.now(), onClose: { isSOSOpen = false }) {
                 isSOSOpen = false
-                toast = DoorScannerCopy.markedAsChecked
+                toast = DoorScannerCopy.markedAsChecked(home.session.supervisorName)
             }
         }
         .task(id: environment.dataRevision) {
@@ -91,7 +96,7 @@ struct DoorScannerTabs: View {
     private func destination(_ route: DoorRoute) -> some View {
         switch route {
         case .reportProblem:
-            DoorReportProblemView(log: problems, supervisorName: home.session.supervisorName,
+            DoorReportProblemView(log: problems,
                                   onBack: { path.removeLast() }) {
                 path = [.openProblems]
             }
@@ -100,7 +105,8 @@ struct DoorScannerTabs: View {
                 path.append(.reportProblem)
             }
         case .withoutVoting(let meal):
-            DoorWithoutVotingView(model: DoorWithoutVotingViewModel(entries: repositories.entries, meal: meal.id),
+            DoorWithoutVotingView(model: DoorWithoutVotingViewModel(entries: repositories.entries, meal: meal.id,
+                                                                    directory: repositories.staffDirectory),
                                   meal: meal, mess: home.session.mess, onBack: { path.removeLast() })
         }
     }
@@ -115,8 +121,17 @@ struct DoorScannerTabs: View {
 enum DoorLayout {
     static let tabBarClearance: CGFloat = 96
     static let scrollBottomInset: CGFloat = 120
-    static let scanCardHeight: CGFloat = 236
+    /// Above the tab bar, for an action pinned on a page that keeps it (DS-6).
+    static let footerAboveTabBar: CGFloat = 80
     static let closedCardHeight: CGFloat = 352
-    static let waitingCardHeight: CGFloat = 400
-    static let meAvatar: CGFloat = 92
+    /// Where DS-8 Alerts Empty puts its block.
+    static let emptyStateTop: CGFloat = 205
+    /// iPhone SE: the frame sizes would push Report a problem under the tab bar.
+    static let compactHeightLimit: CGFloat = 700
+
+    /// Measured from the 2471:2234 and 2471:2437 frames at 393 x 852.
+    static func waitingCardHeight(isCompact: Bool) -> CGFloat { isCompact ? 280 : 438 }
+    static func scanCardHeight(isCompact: Bool) -> CGFloat { isCompact ? 200 : 290 }
+    /// DS-1 Offline: shorter, because the line above the chip takes the difference.
+    static let offlineScanCardHeight: CGFloat = 232
 }

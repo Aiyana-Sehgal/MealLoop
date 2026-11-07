@@ -51,11 +51,14 @@ final class DoorEntryFlow {
     private(set) var entry = DigitEntry()
     private(set) var lookup: DoorLookup = .typing
     private(set) var isRecording = false
+    /// First names found for the students on this attempt. A name is only shown, never used to decide anything.
+    private(set) var names: [StudentID: String] = [:]
     var outcome: DoorScanOutcome?
 
     private let meal: MealID
     private let entries: any EntryRepository
     private let mealState: any MealStateRepository
+    private let directory: any StaffDirectoryRepository
     private let mess: MessID
     /// Kept across a failed try, so a retry of the same scan can never count twice.
     private var pending: (student: StudentRef, method: EntryMethod, key: IdempotencyKey)?
@@ -65,6 +68,7 @@ final class DoorEntryFlow {
         self.mess = mess
         self.entries = repositories.entries
         self.mealState = repositories.mealState
+        self.directory = repositories.staffDirectory
     }
 
     // MARK: Typing
@@ -95,6 +99,7 @@ final class DoorEntryFlow {
         do {
             switch try await entries.resolveEntry(.lastFour(entry.text), for: meal) {
             case .student(let student):
+                names[student.id] = try? await directory.studentName(student.id)
                 lookup = .match(student)
             case .notRecognised:
                 lookup = .noMatch
@@ -123,6 +128,7 @@ final class DoorEntryFlow {
         do {
             switch try await entries.resolveEntry(.qrPayload(payload), for: meal) {
             case .student(let student):
+                names[student.id] = try? await directory.studentName(student.id)
                 await record(student, method: .qrScan)
             case .notRecognised:
                 outcome = .notRecognised

@@ -48,16 +48,22 @@ struct DoorAlertsView: View {
         return "\(mess.name) · \(MLFormat.mealSlot(meal.slot))"
     }
 
+    /// DS-8 draws a checked case as an outline, with no time. Only the Supervisor closes it.
+    private func alertStatus(_ stage: DoorSOSStage) -> SOSCardStatus {
+        if case .checkedByYou = stage { return .notTaken(DoorScannerCopy.checkedAlert(model.session.supervisorName)) }
+        return DoorSOSText.status(stage, timeZone: mess.timeZone)
+    }
+
     var body: some View {
         ZStack {
             OrbitBackground()
             ScrollView {
                 VStack(alignment: .leading, spacing: MLSpacing.s16) {
                     ScreenTitleBlock(title: DoorScannerCopy.alerts, subtitle: subtitle)
-                        .padding(.top, MLSize.hit + MLSpacing.s16)
+                        .padding(.top, MLSize.hit + MLSpacing.s8)
                     if let current = sos.current, let stage = sos.stage {
                         SOSCard(incident: DoorSOSText.incident(current, eyebrow: DoorScannerCopy.sosEyebrow, now: now, timeZone: mess.timeZone),
-                                status: DoorSOSText.status(stage, timeZone: mess.timeZone),
+                                status: alertStatus(stage),
                                 actionTitle: DoorSOSText.alertAction(stage),
                                 onAction: DoorSOSText.alertAction(stage) == nil ? nil : onOpenSOS)
                     }
@@ -70,9 +76,8 @@ struct DoorAlertsView: View {
                             }
                         }
                     } else if sos.current == nil {
-                        StateBlock(symbol: "bell", title: DoorScannerCopy.nothingNew,
-                                   message: DoorScannerCopy.alertsShowHere(model.session.supervisorName))
-                            .padding(.top, MLSpacing.s32 * 3)
+                        StateBlock(symbol: "bell", title: DoorScannerCopy.nothingNew, message: DoorScannerCopy.alertsShowHere)
+                            .padding(.top, DoorLayout.emptyStateTop)
                     }
                 }
                 .padding(.horizontal, MLSpacing.margin)
@@ -82,7 +87,8 @@ struct DoorAlertsView: View {
     }
 }
 
-/// Me (D18). Switch role, Language and Help have no screens yet, so they say so; Sign out works.
+/// Me (D18). Language and Help have no screens yet, so they say so; Sign out works.
+/// Switch role is left out by owner ruling, although the frame draws it: the role comes from the account.
 struct DoorMeView: View {
     @Environment(AppRouter.self) private var router
     @Environment(SessionStore.self) private var sessionStore
@@ -100,17 +106,20 @@ struct DoorMeView: View {
                     Text(DoorScannerCopy.me)
                         .font(MLType.largeTitle)
                         .foregroundStyle(MLColor.ink)
-                        .padding(.top, MLSize.hit + MLSpacing.s16)
-                    profile
+                        .padding(.top, MLSize.hit + MLSpacing.s8)
+                    StaffMeProfile(initials: session.staffInitials, title: MLFormat.roleName(session.role), detail: session.mess.name,
+                                   chip: model.shiftStartedAt.map { DoorScannerCopy.onShift(since: MLFormat.time($0, in: session.mess.timeZone)) }
+                                       ?? DoorScannerCopy.onShift)
                     HStack(spacing: MLSpacing.s12) {
-                        DoorCountTile(label: DoorScannerCopy.recordedIn, value: model.state.value?.recordedCount?.value)
-                        DoorCountTile(label: DoorScannerCopy.problemsReported, value: problems.problems.count)
+                        StaffMeTile(label: DoorScannerCopy.recordedIn, value: model.state.value?.recordedCount?.value)
+                        StaffMeTile(label: DoorScannerCopy.problemsReported, value: problems.problems.count)
                     }
                     VStack(spacing: 0) {
                         Rectangle().fill(MLColor.border).frame(height: 1)
-                        ForEach([DoorScannerCopy.switchRole, DoorScannerCopy.language, DoorScannerCopy.help], id: \.self) { title in
-                            QuietRow(title: title) { comingSoon = DoorComingSoon(title: title) }
+                        StaffMeRow(title: DoorScannerCopy.language, value: DoorScannerCopy.english) {
+                            comingSoon = DoorComingSoon(title: DoorScannerCopy.language)
                         }
+                        StaffMeRow(title: DoorScannerCopy.help) { comingSoon = DoorComingSoon(title: DoorScannerCopy.help) }
                         signOutRow
                     }
                 }
@@ -120,26 +129,6 @@ struct DoorMeView: View {
         }
         .fullScreenCover(item: $comingSoon) { page in
             NotImplementedView(title: page.title, actionTitle: DoorScannerCopy.backToHome) { comingSoon = nil }
-        }
-    }
-
-    private var profile: some View {
-        HStack(spacing: MLSpacing.s16) {
-            Text(session.staffInitials)
-                .font(MLType.title2)
-                .foregroundStyle(MLColor.lime)
-                .frame(width: DoorLayout.meAvatar, height: DoorLayout.meAvatar)
-                .background(Circle().fill(MLColor.ink))
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: MLSpacing.s4) {
-                Text(MLFormat.roleName(session.role))
-                    .font(MLType.title2)
-                    .foregroundStyle(MLColor.ink)
-                Text(session.mess.name)
-                    .font(MLType.body)
-                    .foregroundStyle(MLColor.inkSecondary)
-                MealProgressChip(text: DoorScannerCopy.onShift)
-            }
         }
     }
 
@@ -155,6 +144,9 @@ struct DoorMeView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(MLColor.border).frame(height: 1)
+        }
     }
 }
 

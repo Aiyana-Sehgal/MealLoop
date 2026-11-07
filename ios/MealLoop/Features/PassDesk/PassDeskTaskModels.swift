@@ -151,7 +151,7 @@ enum PassDeskProblemKind: String, CaseIterable, Identifiable, Sendable {
 
     var symbol: String {
         switch self {
-        case .cantCheck: return "iphone.slash"
+        case .cantCheck: return "iphone"
         case .crowd: return "person.2"
         case .foodShort: return "frying.pan"
         case .other: return "text.bubble"
@@ -163,6 +163,10 @@ struct PassDeskProblem: Identifiable, Equatable, Sendable {
     let id: UUID
     let title: String
     let sentAt: Date
+    /// True only for a report that really left this phone (Food running short).
+    var isDelivered = false
+    /// The dish, in place of the "Saved" line.
+    var dish: String?
 }
 
 /// Problems reported in this sign-in. Three kinds are STATIC AND LOCAL as drawn: no repository takes a problem report,
@@ -200,12 +204,12 @@ final class PassDeskProblemLog {
     func reportFoodShort(_ dish: String, meal: MealID) async -> Bool {
         let report = ShortageReport(mealID: meal, dishName: dish, level: .gettingLow, note: nil, reportedBy: session.role,
                                     idempotencyKey: .make())
-        return await send(title: PassDeskCopy.foodShort(dish)) { [repositories] in
+        return await send(title: PassDeskCopy.foodRunningShort, isDelivered: true, dish: dish) { [repositories] in
             _ = try await repositories.shortages.reportShortage(report)
         }
     }
 
-    private func send(title: String, _ work: @escaping () async throws -> Void) async -> Bool {
+    private func send(title: String, isDelivered: Bool = false, dish: String? = nil, _ work: @escaping () async throws -> Void) async -> Bool {
         guard !isSending else { return false }
         isSending = true
         defer { isSending = false }
@@ -214,7 +218,7 @@ final class PassDeskProblemLog {
         } catch {
             return false
         }
-        problems.insert(PassDeskProblem(id: UUID(), title: title, sentAt: clock.now()), at: 0)
+        problems.insert(PassDeskProblem(id: UUID(), title: title, sentAt: clock.now(), isDelivered: isDelivered, dish: dish), at: 0)
         return true
     }
 }

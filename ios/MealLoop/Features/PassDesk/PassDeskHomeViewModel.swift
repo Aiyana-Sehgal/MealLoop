@@ -6,14 +6,18 @@ import Observation
 @Observable
 final class PassDeskHomeViewModel {
     private(set) var state: LoadState<PassDeskHomeContent> = .idle
+    /// When this shift began, once it has. Nil means the chip says only "On shift".
+    private(set) var shiftStartedAt: Date?
     let session: StaffSession
     let flow: PassDeskCheckFlow
 
     private let repositories: Repositories
+    private let clock: any AppClock
 
     init(session: StaffSession, repositories: Repositories, clock: any AppClock) {
         self.session = session
         self.repositories = repositories
+        self.clock = clock
         self.flow = PassDeskCheckFlow(session: session, passes: repositories.specialPasses, clock: clock)
     }
 
@@ -35,6 +39,8 @@ final class PassDeskHomeViewModel {
             flow.meal = status.meal
             flow.passTotal = count.passes
             state = .loaded(content)
+            let started = try? await repositories.staffDirectory.shiftStartedAt(for: session.role, mess: session.mess.id)
+            shiftStartedAt = started.flatMap { $0 <= clock.now() ? $0 : nil }
         } catch RepositoryError.offline(let savedAt) {
             // Keep what was on screen; nothing new is claimed.
             state = .offline(state.value, savedAt: savedAt)

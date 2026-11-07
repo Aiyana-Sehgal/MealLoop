@@ -84,7 +84,8 @@ struct PassDeskAlertsView: View {
     let onOpenSOS: () -> Void
 
     private var mess: Mess { model.session.mess }
-    private var alerts: [PassDeskAlert] { PassDeskAlert.alerts(for: model.state.value) }
+    /// Nothing is shown before it has happened: the seed holds the day's rows, and the story clock may be earlier.
+    private var alerts: [PassDeskAlert] { PassDeskAlert.alerts(for: model.state.value).filter { $0.at <= now } }
     private var mealName: String { model.state.value.map { MLFormat.mealSlot($0.meal.slot) } ?? "" }
 
     var body: some View {
@@ -94,10 +95,10 @@ struct PassDeskAlertsView: View {
                 VStack(alignment: .leading, spacing: MLSpacing.s16) {
                     ScreenTitleBlock(title: PassDeskCopy.alerts,
                                      subtitle: model.state.value == nil ? mess.name : "\(mess.name) · \(mealName)")
-                        .padding(.top, MLSize.hit + MLSpacing.s16)
+                        .padding(.top, MLSize.hit + MLSpacing.s8)
                     if let current = sos.current, let stage = sos.stage {
                         SOSCard(incident: PassDeskSOSText.incident(current, eyebrow: PassDeskCopy.sosEyebrow, now: now, timeZone: mess.timeZone),
-                                status: PassDeskSOSText.status(stage, timeZone: mess.timeZone),
+                                status: alertStatus(stage),
                                 actionTitle: PassDeskSOSText.alertAction(stage),
                                 onAction: PassDeskSOSText.alertAction(stage) == nil ? nil : onOpenSOS)
                     }
@@ -107,15 +108,20 @@ struct PassDeskAlertsView: View {
                             ForEach(alerts) { row($0) }
                         }
                     } else if sos.current == nil {
-                        StateBlock(symbol: "bell", title: PassDeskCopy.nothingNew,
-                                   message: PassDeskCopy.alertsShowHere(model.session.supervisorName))
-                            .padding(.top, MLSpacing.s32 * 3)
+                        StateBlock(symbol: "bell", title: PassDeskCopy.nothingNew, message: PassDeskCopy.alertsShowHere)
+                            .padding(.top, PassDeskLayout.emptyStateTop)
                     }
                 }
                 .padding(.horizontal, MLSpacing.margin)
                 .padding(.bottom, PassDeskLayout.scrollBottomInset)
             }
         }
+    }
+
+    /// PD-8 draws a checked case as an outline, with no time. Only the Supervisor closes it.
+    private func alertStatus(_ stage: DoorSOSStage) -> SOSCardStatus {
+        if case .checkedByYou = stage { return .notTaken(PassDeskCopy.checkedByDesk) }
+        return PassDeskSOSText.status(stage, timeZone: mess.timeZone)
     }
 
     private func row(_ alert: PassDeskAlert) -> AlertRow {
@@ -153,17 +159,20 @@ struct PassDeskMeView: View {
                     Text(PassDeskCopy.me)
                         .font(MLType.largeTitle)
                         .foregroundStyle(MLColor.ink)
-                        .padding(.top, MLSize.hit + MLSpacing.s16)
-                    profile
+                        .padding(.top, MLSize.hit + MLSpacing.s8)
+                    StaffMeProfile(initials: session.staffInitials, title: MLFormat.roleName(session.role), detail: session.mess.name,
+                                   chip: model.shiftStartedAt.map { PassDeskCopy.onShift(since: MLFormat.time($0, in: session.mess.timeZone)) }
+                                       ?? PassDeskCopy.onShift)
                     HStack(spacing: MLSpacing.s12) {
-                        tile(PassDeskCopy.passesChecked, value: model.state.value?.count.recorded.value)
-                        tile(PassDeskCopy.problemsReported, value: problems.problems.count)
+                        StaffMeTile(label: PassDeskCopy.passesChecked, value: model.state.value?.count.recorded.value)
+                        StaffMeTile(label: PassDeskCopy.problemsReported, value: problems.problems.count)
                     }
                     VStack(spacing: 0) {
                         Rectangle().fill(MLColor.border).frame(height: 1)
-                        ForEach([PassDeskCopy.language, PassDeskCopy.help], id: \.self) { title in
-                            QuietRow(title: title) { comingSoon = PassDeskComingSoon(title: title) }
+                        StaffMeRow(title: PassDeskCopy.language, value: PassDeskCopy.english) {
+                            comingSoon = PassDeskComingSoon(title: PassDeskCopy.language)
                         }
+                        StaffMeRow(title: PassDeskCopy.help) { comingSoon = PassDeskComingSoon(title: PassDeskCopy.help) }
                         signOutRow
                     }
                 }
@@ -174,44 +183,6 @@ struct PassDeskMeView: View {
         .fullScreenCover(item: $comingSoon) { page in
             NotImplementedView(title: page.title, actionTitle: PassDeskCopy.backToHome) { comingSoon = nil }
         }
-    }
-
-    private var profile: some View {
-        HStack(spacing: MLSpacing.s16) {
-            Text(session.staffInitials)
-                .font(MLType.title2)
-                .foregroundStyle(MLColor.lime)
-                .frame(width: PassDeskLayout.meAvatar, height: PassDeskLayout.meAvatar)
-                .background(Circle().fill(MLColor.ink))
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: MLSpacing.s4) {
-                Text(MLFormat.roleName(session.role))
-                    .font(MLType.title2)
-                    .foregroundStyle(MLColor.ink)
-                Text(session.mess.name)
-                    .font(MLType.body)
-                    .foregroundStyle(MLColor.inkSecondary)
-                MealProgressChip(text: PassDeskCopy.onShift)
-            }
-        }
-    }
-
-    /// A missing count shows "—", never 0.
-    private func tile(_ label: String, value: Int?) -> some View {
-        VStack(alignment: .leading, spacing: MLSpacing.s4) {
-            Text(label)
-                .font(MLType.body)
-                .foregroundStyle(MLColor.inkSecondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
-            Text(value.map(String.init) ?? "—")
-                .font(MLType.heroTitle.monospaced())
-                .foregroundStyle(MLColor.ink)
-        }
-        .padding(MLSpacing.s16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).fill(MLColor.surface))
-        .accessibilityElement(children: .combine)
     }
 
     private var signOutRow: some View {
@@ -226,6 +197,9 @@ struct PassDeskMeView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(MLColor.border).frame(height: 1)
+        }
     }
 }
 

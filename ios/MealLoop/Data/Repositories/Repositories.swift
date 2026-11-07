@@ -151,8 +151,12 @@ struct Repositories: Sendable {
     let auth: any AuthRepository
     /// Defaulted, so every existing caller stays as it was and a source without a pass service says so.
     var specialPasses: any SpecialPassRepository = UnavailableSpecialPasses()
+    /// Defaulted for the same reason.
+    var studentExtras: any StudentExtrasRepository = UnavailableStudentExtras()
     var adminResults: any AdminResultsRepository = AdminDataNotBuilt()
     var adminStudents: any AdminStudentsRepository = AdminDataNotBuilt()
     var adminMore: any AdminMoreRepository = AdminDataNotBuilt()
     var adminMesses: any AdminMessRepository = AdminMessesNotBuilt()
+    /// Defaulted, so every existing caller stays as it was and a source without a directory says nothing.
+    var staffDirectory: any StaffDirectoryRepository = UnavailableStaffDirectory()
 }
