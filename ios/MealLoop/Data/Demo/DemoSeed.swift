@@ -165,6 +165,36 @@ enum DemoSeed {
         SampleStudent(name: "Dev", ref: StudentRef(id: StudentID("demo-student-0190"), maskedID: "••0190"), lunchAnswer: .notSure),
     ]
 
+    // pass_desk_spec.md: "Special meals: 214 passes, 41 checked so far, 42 after Aarav, 196 final."
+    static let specialPassesTotal = 214
+    static let specialMealsSoFar = 41
+    static let specialMealsFinal = 196
+
+    /// SAMPLE, NEVER A CREDENTIAL. pass_desk_spec.md calls these illustrations. 218 Lime: P04.
+    /// K2M9 Blue: export P04_check_this_pass_code_changed. 7A3F Lime: design_intent.md, "Codes and colours are sample".
+    static let samplePassCodes: [(code: String, colourName: String)] = [("218", "Lime"), ("K2M9", "Blue"), ("7A3F", "Lime")]
+    // Export P04_check_this_pass_code_changed: "Changes in 10 s". No document gives the real window.
+    static let passCodeWindow: TimeInterval = 10
+
+    /// SAMPLE. Who holds a pass, so every outcome can be reached: Aarav is the spec's example, Kiran's pass is the
+    /// Dinner pass of export P06_wrong_meal. Meera and Dev hold none, which fits their rows on P10.
+    static let samplePasses: [StudentID: MealSlot] = [
+        sampleStudent.id: .lunch,
+        StudentID("demo-student-0377"): .dinner,
+    ]
+
+    /// P10_new_pass_requests, row by row. P10 gives Dev's row no time, so it has none.
+    static var sampleReissues: [PassReissueRequest] {
+        func request(_ lastFour: String, _ status: PassReissueStatus, _ at: Date?) -> PassReissueRequest? {
+            guard let sample = sampleStudents.first(where: { $0.ref.maskedID.hasSuffix(lastFour) }) else { return nil }
+            return PassReissueRequest(id: PassReissueID("demo-reissue-\(lastFour)"),
+                                      holder: SpecialPassHolder(student: sample.ref, name: sample.name),
+                                      reason: nil, status: status, updatedAt: at)
+        }
+        return [request("0238", .waiting, time(12, 20)), request("0412", .approved, time(12, 8)),
+                request("0377", .done, time(11, 52)), request("0190", .rejected, nil)].compactMap { $0 }
+    }
+
     // Before the breakfast cutoff (5:30 AM), so 03_home's "You're in for breakfast" is true. Owner decision.
     static let sampleBreakfastAnswer = IntentionResponse.answered(.attending, at: time(5, 0))
     // Before the story starts, so the sample answers already exist at 7:00 AM.
