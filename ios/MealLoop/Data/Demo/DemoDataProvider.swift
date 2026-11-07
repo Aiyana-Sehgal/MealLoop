@@ -173,7 +173,7 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
         let admin = DemoAdminRepositories(core: self, store: adminStore)
         return Repositories(meals: self, mealState: self, headcount: self, entries: self, intentions: self,
                             shortages: self, wasteReports: self, sos: self, auth: self, specialPasses: self,
-                            adminResults: admin, adminStudents: admin, adminMore: admin)
+                            adminResults: admin, adminStudents: admin, adminMore: admin, staffDirectory: self)
     }
 
     /// For repositories that live outside this actor: throws exactly as the others do with no connection.

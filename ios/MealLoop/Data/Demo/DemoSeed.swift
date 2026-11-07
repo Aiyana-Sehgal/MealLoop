@@ -206,6 +206,9 @@ enum DemoSeed {
     static let simulatedRolePassword = "1234"
     #endif
 
+    /// SAMPLE, NOT MEASURED. Figma DS-8 Me (2512:173663) and PD-8 Me (2545:7144) draw "On shift · since 11:40 AM".
+    static let deskShiftStartedAt = time(11, 40)
+
     // MARK: - Accounts
 
     /// The one prototype credential for every seeded account. Never shown in a View and never logged.
