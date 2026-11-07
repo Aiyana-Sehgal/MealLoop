@@ -94,7 +94,7 @@ struct DemoState: Sendable {
     var reissueRequests = DemoSeed.sampleReissues
     /// Meals where a student's code was presented again after the entry was recorded.
     var repeatScans: Set<EntryKey> = []
-    var skipReasons: [IntentionKey: SkipReason] = [:]
+    var skipReasons: [IntentionKey: MealSkipReason] = [:]
     var entryCorrections: [IdempotencyKey: EntryCorrection] = [:]
 
     init(scenario: DemoScenario) {
@@ -883,12 +883,12 @@ extension DemoDataProvider: StudentExtrasRepository {
         }
     }
 
-    func skipReason(of student: StudentID, for meal: MealID) async throws -> SkipReason? {
+    func skipReason(of student: StudentID, for meal: MealID) async throws -> MealSkipReason? {
         try failIfOffline()
         return state.skipReasons[DemoState.IntentionKey(student: student, meal: meal)]
     }
 
-    func setSkipReason(_ reason: SkipReason, of student: StudentID, for meal: MealID) async throws {
+    func setSkipReason(_ reason: MealSkipReason, of student: StudentID, for meal: MealID) async throws {
         try failIfOffline()
         let key = DemoState.IntentionKey(student: student, meal: meal)
         guard case .answered(.skipping, _)? = state.intentions[key] else {

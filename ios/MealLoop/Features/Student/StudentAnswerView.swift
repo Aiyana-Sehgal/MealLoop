@@ -71,7 +71,7 @@ struct StudentAnswerView: View {
         }
     }
 
-    private func send(_ intention: MealIntention, reason: SkipReason? = nil) {
+    private func send(_ intention: MealIntention, reason: MealSkipReason? = nil) {
         isChanging = false
         Task { await model.answer(intention, for: mealID, reason: reason) }
     }
@@ -288,15 +288,15 @@ private struct AnswerErrorCard: View {
 struct WhySkippingSheet: View {
     let slot: MealSlot
     let onClose: () -> Void
-    let onSkip: (SkipReason?) -> Void
+    let onSkip: (MealSkipReason?) -> Void
 
-    @State private var reason: SkipReason?
+    @State private var reason: MealSkipReason?
 
     var body: some View {
         VStack(alignment: .leading, spacing: MLSpacing.s16) {
             SheetHeader(title: StudentCopy.whySkipping, subtitle: StudentCopy.whySkippingDetail, onClose: onClose)
             StudentFlowLayout(spacing: MLSpacing.s8) {
-                ForEach(SkipReason.allCases, id: \.self) { option in
+                ForEach(MealSkipReason.allCases, id: \.self) { option in
                     Button { reason = reason == option ? nil : option } label: {
                         Text(StudentCopy.reason(option))
                             .font(StudentType.secondaryMedium)

@@ -49,7 +49,7 @@ struct StudentHomeExtras: Codable, Sendable, Hashable {
 }
 
 /// The "Why skipping?" list. It equals the admin list exactly (design_intent.md, "Reasons for absence").
-enum SkipReason: String, Codable, Sendable, CaseIterable, Hashable {
+enum MealSkipReason: String, Codable, Sendable, CaseIterable, Hashable {
     case classOrExam
     case homeOrLeave
     case eatingElsewhere

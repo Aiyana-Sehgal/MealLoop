@@ -14,10 +14,10 @@ final class StudentHomeViewModel {
     /// An answer that failed and can be tried again (Answer · Lunch · Failed). It belongs to `failedMeal` only.
     private(set) var failedAnswer: MealIntention?
     private(set) var failedMeal: MealID?
-    private var failedReason: SkipReason?
+    private var failedReason: MealSkipReason?
     /// An answer tapped while offline. Nothing is stored until the connection is back and the backend accepts it.
-    private(set) var pendingAnswer: (intention: MealIntention, meal: MealID, reason: SkipReason?)?
-    private(set) var skipReasons: [MealID: SkipReason] = [:]
+    private(set) var pendingAnswer: (intention: MealIntention, meal: MealID, reason: MealSkipReason?)?
+    private(set) var skipReasons: [MealID: MealSkipReason] = [:]
 
     private(set) var rotatingCode: RotatingEntryCode?
     private(set) var entrySecondsLeft = StudentHomeViewModel.entryQRWindow
@@ -136,7 +136,7 @@ final class StudentHomeViewModel {
     }
 
     /// Sends the answer and shows what the backend stored. A second tap during a write does nothing.
-    func answer(_ intention: MealIntention, for meal: MealID, reason: SkipReason? = nil) async {
+    func answer(_ intention: MealIntention, for meal: MealID, reason: MealSkipReason? = nil) async {
         guard savingAnswer == nil else { return }
         savingAnswer = intention
         answerError = nil

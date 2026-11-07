@@ -137,7 +137,7 @@ final class StudentExtrasRepositoryTests: XCTestCase {
     }
 
     func testTheReasonListEqualsTheAdminList() {
-        XCTAssertEqual(SkipReason.allCases.map(StudentCopy.reason),
+        XCTAssertEqual(MealSkipReason.allCases.map(StudentCopy.reason),
                        ["Class or exam", "Home or leave", "Eating elsewhere", "Don't like the dish", "Dietary reason",
                         "Not hungry", "Other", "Prefer not to say"])
     }

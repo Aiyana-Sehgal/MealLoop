@@ -126,7 +126,7 @@ enum StudentCopy {
     static let whySkippingDetail = "Optional. It helps the mess plan. Never shown with your name."
     static func skipMeal(_ slot: MealSlot) -> String { "Skip \(mealWord(slot))" }
     static let skipNoReason = "Skip without a reason"
-    static func reason(_ reason: SkipReason) -> String {
+    static func reason(_ reason: MealSkipReason) -> String {
         switch reason {
         case .classOrExam: return "Class or exam"
         case .homeOrLeave: return "Home or leave"
