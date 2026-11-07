@@ -28,7 +28,10 @@ enum PassDeskRoute: Hashable {
 enum PassDeskLayout {
     static let tabBarClearance: CGFloat = 96
     static let scrollBottomInset: CGFloat = 120
-    static let keyHeight: CGFloat = 56
+    /// PD-1 Home during (2530:4460): 52 pt keys, so both rows under the keypad clear the tab bar.
+    static let keyHeight: CGFloat = 52
+    /// PD-1 Home during: the four boxes on the black card are 53 pt.
+    static let homeBoxHeight: CGFloat = 53
     /// The white keys on Look up and Request (2535:5422).
     static let pageKeyHeight: CGFloat = 80
     /// Measured from the 2530:4250 frame at 393 x 852.

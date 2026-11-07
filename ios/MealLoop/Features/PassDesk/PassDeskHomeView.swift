@@ -80,7 +80,7 @@ struct PassDeskHomeBody: View {
                 MealProgressChip(text: PassDeskCopy.mealInProgress(PassDeskCopy.recordedOf(content.count.recorded.value,
                                                                                            content.count.passes)))
                 PassDeskDigitCard(flow: flow, mess: mess)
-                KeyPad(isEnabled: !flow.isChecking, keyHeight: keyHeight) { digit in
+                KeyPad(isEnabled: !flow.isChecking, keyHeight: keyHeight, keyFill: MLColor.fillQuiet) { digit in
                     Task { await flow.type(digit) }
                 } onDelete: {
                     flow.deleteLast()
@@ -168,10 +168,11 @@ struct PassDeskDigitCard: View {
     let mess: Mess
 
     var body: some View {
-        HeroCard {
+        // A local card: the shared HeroCard and DigitBoxes draw 20 pt padding and 64 pt boxes; PD-1 draws 53 pt boxes.
+        VStack(alignment: .leading, spacing: 0) {
             HeroEyebrow(label: PassDeskCopy.lastFourDigits)
-            DigitBoxes(entry: flow.entry, surface: .hero, accessibilityTitle: PassDeskCopy.lastFourDigits)
-                .padding(.top, MLSpacing.s12)
+            PassDeskHomeDigitBoxes(entry: flow.entry)
+                .padding(.top, MLSpacing.s8)
             if let digits = flow.notFoundDigits {
                 Text(PassDeskCopy.noStudent(digits, mess: mess.name))
                     .font(MLType.bodyEmphasis)
@@ -181,6 +182,32 @@ struct PassDeskDigitCard: View {
                     .padding(.top, MLSpacing.s12)
             }
         }
+        .padding(.horizontal, MLSpacing.s20)
+        .padding(.top, 18)
+        .padding(.bottom, MLSpacing.s16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).fill(MLColor.heroBackground))
+    }
+}
+
+/// The four boxes of PD-1 at the frame's 53 pt; the same colours and accessibility as the shared `DigitBoxes`.
+struct PassDeskHomeDigitBoxes: View {
+    let entry: DigitEntry
+
+    var body: some View {
+        HStack(spacing: MLSpacing.s12) {
+            ForEach(0..<entry.length, id: \.self) { index in
+                Text(index < entry.digits.count ? String(entry.digits[index]) : " ")
+                    .font(MLType.title2.monospaced())
+                    .foregroundStyle(MLColor.onHero)
+                    .frame(maxWidth: .infinity, minHeight: PassDeskLayout.homeBoxHeight)
+                    .background(RoundedRectangle(cornerRadius: MLRadius.compact, style: .continuous)
+                        .fill(MLColor.onHero.opacity(0.15)))
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(PassDeskCopy.lastFourDigits)
+        .accessibilityValue(entry.spokenValue)
     }
 }
 
