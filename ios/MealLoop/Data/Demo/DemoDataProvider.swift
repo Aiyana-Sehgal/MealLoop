@@ -168,6 +168,8 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
     private nonisolated let adminMessStore = DemoAdminMessStore()
     private nonisolated let studentYouStore = DemoStudentYouStore()
     private nonisolated let studentRecordsStore = DemoStudentRecordsStore()
+    /// The instant the live pass code is read at, shared by the Student pass and the Pass Desk.
+    nonisolated let passCodeTicker = PassCodeTicker()
 
     /// A new provider is a relaunch: in-memory state and the clock go back to the scenario's start.
     init(scenario: DemoScenario = .duringMeal, clock: (any StoryClock)? = nil) {
@@ -191,7 +193,8 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
                             studentExtras: self, studentMeals: self, studentCommunity: self, adminResults: admin, adminStudents: admin, adminMore: admin,
                             adminMesses: DemoAdminMesses(core: self, store: adminMessStore), staffDirectory: self,
                             studentYou: DemoStudentYou(core: self, store: studentYouStore),
-                            studentRecords: DemoStudentRecords(core: self, store: studentRecordsStore))
+                            studentRecords: DemoStudentRecords(core: self, store: studentRecordsStore),
+                            livePassCodes: self)
     }
 
     /// For repositories that live outside this actor: throws exactly as the others do with no connection.
@@ -1166,6 +1169,64 @@ extension DemoDataProvider: StudentCommunityRepository {
         try failIfOffline()
         // The only staffed-hours fact in the seed is that the mess opens at 7:00 AM; no closing time is known.
         return clock.now() >= DemoSeed.messOpensForTheDay
+    }
+}
+// SIMULATED live pass code (owner ruling P-PASS-9, option a). The code of an instant is the sample at
+// floor(instant / window) in `DemoSeed.samplePassCodes`: stable within a window, changing at the boundary. One code per
+// window for everyone: the seed has no per-student codes (a prototype limit). `refreshPassCode` and `recordPassEntry`
+// above are unchanged.
+extension DemoDataProvider: LivePassCodeRepository {
+    nonisolated func passCodeInstant() async -> Date {
+        passCodeTicker.instant(story: clock.now())
+    }
+
+    private func windowCode(at instant: Date) -> CurrentPassCode {
+        let length = DemoSeed.passCodeWindow
+        let index = PassCodeWindow.index(at: instant, length: length)
+        let count = DemoSeed.samplePassCodes.count
+        let sample = DemoSeed.samplePassCodes[((index % count) + count) % count]
+        return CurrentPassCode(live: LivePassCode(code: sample.code, colourName: sample.colourName,
+                                                  changesAt: PassCodeWindow.end(of: index, length: length)),
+                               windowIndex: index,
+                               secondsLeft: PassCodeWindow.secondsLeft(at: instant, index: index, length: length),
+                               windowSeconds: Int(length))
+    }
+
+    func currentPassCode(for student: StudentID, meal: MealID, at instant: Date) async throws -> CurrentPassCode {
+        try failIfOffline()
+        try requireKnownMeal(meal)
+        guard DemoSeed.samplePasses[student] == state.mealStatus.meal.slot else { throw RepositoryError.notFound }
+        return windowCode(at: instant)
+    }
+
+    func recordPassEntryForCurrentCode(_ request: SpecialPassEntryRequest) async throws -> SpecialPassEntryResult {
+        // Offline: nothing is recorded, nothing is queued and nothing comes back as a result.
+        try failIfOffline()
+        try requireKnownMeal(request.mealID)
+        guard request.recordedBy == .passDesk else {
+            throw RepositoryError.notAllowed(reason: "Only the Pass Desk records a special-meal entry.")
+        }
+        if let previous = state.specialEntryResults[request.idempotencyKey] { return previous }
+        if state.mealStatus.state == .closed {
+            return .mealEnded(closedAt: state.mealStatus.closedAt, count: specialRecordedCount)
+        }
+        guard state.mealStatus.state == .inService else {
+            throw RepositoryError.notAllowed(reason: "Checking opens when the meal starts.")
+        }
+        if let entry = state.specialEntries[request.student.id] {
+            return .alreadyRecorded(firstRecordedAt: entry.recordedAt, count: specialRecordedCount)
+        }
+        guard DemoSeed.samplePasses[request.student.id] == state.mealStatus.meal.slot else {
+            throw RepositoryError.notAllowed(reason: "This student has no valid special-meal pass for this meal.")
+        }
+        let current = windowCode(at: passCodeTicker.instant(story: clock.now()))
+        guard request.comparedCode == current.live.code else { return .codeChanged }
+        let entry = SpecialPassEntry(mealID: request.mealID, student: request.student, recordedAt: clock.now(),
+                                     recordedBy: request.recordedBy)
+        state.specialEntries[request.student.id] = entry
+        let result = SpecialPassEntryResult.recorded(entry, count: specialRecordedCount)
+        state.specialEntryResults[request.idempotencyKey] = result
+        return result
     }
 }
 #endif

@@ -165,4 +165,6 @@ struct Repositories: Sendable {
     var studentYou: any StudentYouRepository = UnavailableStudentYou()
     /// Defaulted, so every existing caller stays as it was. My reports, My feedback, Spending, Help, Community updates.
     var studentRecords: any StudentRecordsRepository = UnavailableStudentRecords()
+    /// Defaulted, so every existing caller stays as it was. The clock-derived live pass code (P-PASS-9 a).
+    var livePassCodes: any LivePassCodeRepository = UnavailableLivePassCodes()
 }
