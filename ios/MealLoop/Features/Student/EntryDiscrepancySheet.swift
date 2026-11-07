@@ -64,7 +64,7 @@ struct EntryDiscrepancySheet: View {
                 .background(Capsule().fill(MLColor.ink))
             }
             .buttonStyle(.plain)
-            .disabled(isSending)
+            // `send` ignores a second tap. `.disabled` would grey the black button the frame keeps solid.
             .padding(.top, MLSpacing.s24)
         }
     }

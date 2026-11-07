@@ -149,6 +149,8 @@ struct StudentHomeHeader: View {
                     .font(StudentType.brand)
                     .foregroundStyle(MLColor.ink)
                     .lineLimit(1)
+                    // On a 375 pt phone the header is a few points too wide: shrink, never cut the name.
+                    .minimumScaleFactor(0.75)
             }
             .accessibilityElement(children: .combine)
             Spacer(minLength: 0)
@@ -159,9 +161,10 @@ struct StudentHomeHeader: View {
                         .font(StudentType.mono)
                         .foregroundStyle(MLColor.ink)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.75)
                 }
-                .padding(.leading, MLSpacing.s12)
-                .padding(.trailing, 14)
+                .padding(.leading, MLSpacing.s8)
+                .padding(.trailing, MLSpacing.s12)
                 .frame(height: MLSize.hit)
                 .modifier(StudentGlass(shape: Capsule()))
             }
