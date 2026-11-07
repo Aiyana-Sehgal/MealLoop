@@ -9,8 +9,11 @@ enum YouCopy {
     static let unread = "Unread"
     static let noNotificationsTitle = "No notifications"
     static let noNotificationsDetail = "Meal reminders, outing updates and replies to your feedback show here."
+    static let offline = "You're offline."
     static let notificationsOffline = "You're offline. These are the notifications you last saw."
     static let gettingNotifications = "Getting notifications"
+    /// Offline with nothing saved: never shown as an empty inbox.
+    static let nothingSaved = "Your notifications will show when you're back online."
 
     static let you = "You"
     static let outings = "Outings"

@@ -35,10 +35,12 @@ struct StudentNotificationsView: View {
             empty
         case .loaded, .stale, .offline:
             if case .offline = model.notifications {
-                StudentOfflineBanner(text: YouCopy.notificationsOffline)
+                StudentOfflineBanner(text: model.notifications.value == nil ? YouCopy.offline : YouCopy.notificationsOffline)
             }
             let groups = model.notificationGroups
-            if groups.today.isEmpty && groups.earlier.isEmpty {
+            if model.notifications.value == nil {
+                MealsStateCard(symbol: "wifi.slash", title: YouCopy.nothingSaved, detail: "")
+            } else if groups.today.isEmpty && groups.earlier.isEmpty {
                 empty
             } else {
                 section(YouCopy.today, groups.today)
