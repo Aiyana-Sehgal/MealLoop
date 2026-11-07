@@ -230,14 +230,14 @@ enum CheckNextTimePolicy {
     /// admin_sample_data.md: "cannot be closed as 'worked' until 2 comparable meals are recorded".
     static let requiredMeals = 2
 
+    /// A meal that ran out of food is not comparable, so it never counts (owner-proposed rule, not yet approved).
     static func countedMeals(_ check: CheckNextTime) -> Int {
-        check.comparable.filter { $0.isRecorded && $0.isComparable }.count
+        check.comparable.filter { $0.isRecorded && $0.isComparable && !$0.ranOut }.count
     }
 
-    /// A finished action counts for nothing here: only comparable meals do, and none of them may have run out.
+    /// A finished action counts for nothing here: only recorded comparable meals that did not run out do.
     static func canCloseAsWorked(_ check: CheckNextTime) -> Bool {
-        let counted = check.comparable.filter { $0.isRecorded && $0.isComparable }
-        return counted.count >= requiredMeals && !counted.contains { $0.ranOut }
+        countedMeals(check) >= requiredMeals
     }
 }
 

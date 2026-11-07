@@ -128,7 +128,8 @@ enum KitchenCopy {
     static let foodShort = "Food short"
     static func atPassDesk(_ dish: String) -> String { "\(dish) · pass desk" }
     static let wasteNotRecorded = "Waste not recorded"
-    static func addIt(_ meal: String) -> String { "\(meal) · add it" }
+    /// An earlier meal's missing report. Earlier meals cannot be recorded (owner ruling), so nothing asks to add it.
+    static func notRecordedFor(_ meal: String) -> String { "\(meal) · not recorded" }
     static let nothingNew = "Nothing new"
     static let alertsShowHere = "Meal and shortage updates show here."
 

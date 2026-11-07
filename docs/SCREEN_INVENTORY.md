@@ -10,6 +10,24 @@ Generated on 2026-10-23 from the repository only (no Figma access in this sessio
 - *Proposed priority*: P0 = first vertical slice (student answers a meal, headcount, door scan, kitchen waste record, admin result, plus the staff entry and meal state they need); P1 = the rest of the active core roles; P2 = outings (Guardian, Warden, Gate, student outings); P3 = polish. **The owner decides.**
 - *SwiftUI implementation status* starts at “Not started” and *Assigned owner* at “Unassigned”. “Runs in simulator, visual match partial” means the screen was built, reached in the simulator and compared with its reference, and differences remain (see `docs/FOUNDATION_VERIFICATION.md`). Only those rows have been checked.
 
+## Integration status of the built roles (7 November 2026)
+
+The *SwiftUI implementation status* cells below were written on 23 October, before the role parts were built. Since then, the parts listed here have merged into `feature/swiftui-foundation` and were built and tested together (`docs/verification/integration/REPORT.md`). For these roles, this table supersedes the per-row "Not started" cells. A frame is not called matched here unless its role report says so.
+
+| Role | Root and tabs on the combined base | Placeholders left (PlaceholderMetricTests) | Per-frame record | Core-story walk (integration) |
+|---|---|---|---|---|
+| Student | Home built; Meals, Community, You and Search are placeholders | 4 of 5 | `docs/verification/student-home/REPORT.md` | Sign in, lunch answer, entry QR, answers locked after the headcount is sent: passed |
+| Admin (Food head) | Today, Students, Results and More built; Search is a placeholder | 1 of 5 | `docs/verification/admin-today/REPORT.md`, `docs/verification/admin-results/REPORT.md` (Figma rework in progress, branch `fix/ios-admin-figma-match`) | Approve and send the headcount; past meal waste read only: passed |
+| Supervisor | Home, Alerts and Me built | 0 of 3 | `docs/verification/supervisor/REPORT.md` | Start meal, sees the shortage, close meal, waste read only: passed |
+| Door Scanner | Home, Alerts and Me built | 0 of 3 | `docs/verification/door-scanner/REPORT.md` | Entry recorded by typing the last four digits: passed |
+| Kitchen | Home, Alerts and Me built | 0 of 3 | `docs/verification/kitchen/REPORT.md` | Live count rose, shortage reported, "Ravi saw it", waste recorded: passed |
+| Pass Desk | Home, Alerts and Me built | 0 of 3 | `docs/verification/pass-desk/REPORT.md` | Not in the walk |
+| Warden | Queue, Out now, Escalated and History built | 0 of 4 | `docs/verification/outings/REPORT.md` | Not in the walk |
+| Gate | One home page, no tab bar (GA-1) | 0 of 1 | `docs/verification/outings/REPORT.md` | Not in the walk |
+| Guardian | Single-page flow built | 0 of 1 | `docs/verification/outings/REPORT.md` | Not in the walk |
+| Vendor, Super Admin | Placeholder root (Home and Me) | 2 of 2 each | None | Vendor acknowledgment is not built; skipped |
+| Student · Outings | Not built | n/a | None | Not in the walk |
+
 ## Active screens
 
 ### Shared staff entry (7)
@@ -44,12 +62,12 @@ Generated on 2026-10-23 from the repository only (no Figma access in this sessio
 | Student | `Q3_highlight_chip` | 04 Student Light (07 prototype) · “Meals · Wed 14 · Lunch” | Active | OrbitBackground | Not started | Unassigned | P3 (proposed) |
 | Student | `01_sign_in` | 04 Student Light (07 prototype) · “Onboarding · Sign in” | Active | OrbitBackground | Runs in simulator, visual match partial (see FOUNDATION_VERIFICATION) | Unassigned | P0 (proposed) |
 | Student | `02_getting_details` | 04 Student Light (07 prototype) · “Onboarding · Getting your details” | Active | OrbitBackground | Runs in simulator, visual match partial (see FOUNDATION_VERIFICATION) | Unassigned | P0 (proposed) |
-| Student | `03_home` | 04 Student Light (07 prototype) · “Home (Wed 14 Aug, 7:00 AM)” | Active | OrbitBackground, HeroCard, AnswerRow, TicketStrip, CrowdRow | Not started | Unassigned | P0 (proposed) |
+| Student | `03_home` | 04 Student Light (07 prototype) · “Home (Wed 14 Aug, 7:00 AM)” | Active | OrbitBackground, HeroCard, AnswerRow, TicketStrip, CrowdRow | Built (Student Home part); reached in the integration walk, not compared with the frame here | Unassigned | P0 (proposed) |
 | Student | `04_home_top_card_cases` | 04 Student Light (07 prototype) · “HeroCard (page 03): In, Skipped, Not answered, QR available, with the texts used on Home · After cutoff / Skipped / Not answered / Mess closed (3064 × 634)” | Active | OrbitBackground, HeroCard, AnswerRow, TicketStrip, CrowdRow | Not started | Unassigned | P0 (proposed) |
 | Student | `05_meals_lunch` | 04 Student Light (07 prototype) · “Meals · Wed 14 · Lunch” | Active | OrbitBackground, MealSegments4, DishTile, HighlightChip, DietMark | Not started | Unassigned | P0 (proposed) |
 | Student | `06_meals_dinner` | 04 Student Light (07 prototype) · “Meals · Wed 14 · Dinner” | Active | OrbitBackground, MealSegments4, DishTile, HighlightChip, DietMark | Not started | Unassigned | P0 (proposed) |
-| Student | `07_lunch_answer` | 04 Student Light (07 prototype) · “Answer · Lunch” | Active | OrbitBackground, MealSegments4, DishTile, HighlightChip, DietMark | Not started | Unassigned | P0 (proposed) |
-| Student | `08_entry_qr` | 04 Student Light (07 prototype) · “Entry QR” | Active | OrbitBackground, EntryQRCard | Not started | Unassigned | P0 (proposed) |
+| Student | `07_lunch_answer` | 04 Student Light (07 prototype) · “Answer · Lunch” | Active | OrbitBackground, MealSegments4, DishTile, HighlightChip, DietMark | Built (Student Home part); reached in the integration walk, not compared with the frame here | Unassigned | P0 (proposed) |
+| Student | `08_entry_qr` | 04 Student Light (07 prototype) · “Entry QR” | Active | OrbitBackground, EntryQRCard | Built (Student Home part); reached in the integration walk, not compared with the frame here | Unassigned | P0 (proposed) |
 | Student | `09_community_list` | 04 Student Light (07 prototype) · “Community” | Active | OrbitBackground, IssueCard | Not started | Unassigned | P1 (proposed) |
 | Student | `10_community_issue` | 04 Student Light (07 prototype) · “Community · Issue” | Active | OrbitBackground, IssueCard | Not started | Unassigned | P1 (proposed) |
 | Student | `11_feedback_step1_good_or_not` | 04 Student Light (07 prototype) · “Feedback · How was breakfast (sheet)” | Active | OrbitBackground, FaceButton, ProblemTile, SeveritySegmented | Not started | Unassigned | P1 (proposed) |

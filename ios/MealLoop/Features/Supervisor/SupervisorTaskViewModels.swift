@@ -68,12 +68,19 @@ final class SupervisorShortageViewModel {
                 state = .failed(LoadFailure(RepositoryError.notFound))
                 return
             }
-            state = .loaded(shortage)
+            state = .loaded(try await seen(shortage))
         } catch RepositoryError.offline(let savedAt) {
             state = .offline(state.value, savedAt: savedAt)
         } catch {
             state = .failed(LoadFailure(error))
         }
+    }
+
+    /// Opening a report is the Supervisor seeing it: the repository records the sighting once, by the seeded
+    /// Supervisor's name, so the Kitchen status row can say "Ravi saw it". Any other role only reads.
+    private func seen(_ shortage: Shortage) async throws -> Shortage {
+        guard session.role == .supervisor, case .sent = shortage.delivery else { return shortage }
+        return try await repositories.shortages.markSeen(shortage.id, by: session.role)
     }
 
     /// Marks the shortage resolved. Returns true when the data source accepted it.

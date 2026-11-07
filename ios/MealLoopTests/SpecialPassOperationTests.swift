@@ -140,6 +140,11 @@ final class SpecialPassOperationTests: XCTestCase {
         XCTAssertEqual(final.recorded.value, 1)
     }
 
+    /// Integration item 6: the window is the one the student's pass shows (design/audit/final2_report.md line 26).
+    func testTheCodeWindowIsTheOneTheStudentPassShows() {
+        XCTAssertEqual(DemoSeed.passCodeWindow, 10)
+    }
+
     func testPassEntriesStayOutOfTheDoorCount() async throws {
         let demo = serving()
         let before = try await demo.liveCount(for: lunch)

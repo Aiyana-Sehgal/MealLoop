@@ -272,6 +272,42 @@ final class SupervisorViewModelTests: XCTestCase {
         XCTAssertEqual(kitchen.actionError, "Only the Supervisor resolves a shortage.")
     }
 
+    func testOpeningAReportMarksItSeenSoTheKitchenSaysRaviSawIt() async throws {
+        let world = world()
+        let homeModel = home(world)
+        _ = try await loadedHome(homeModel)
+        await homeModel.startMeal()
+        let rice = try await reportRice(world)
+        guard case .sent = rice.delivery else { return XCTFail("A new report is only sent: \(rice.delivery)") }
+
+        world.clock.set(world.clock.now().addingTimeInterval(120))
+        let model = SupervisorShortageViewModel(shortageID: rice.id, session: staff(), repositories: world.repositories)
+        await model.load()
+        let seenAt = world.clock.now()
+        XCTAssertEqual(model.state.value?.delivery, .seen(at: seenAt, by: DemoSeed.supervisorName))
+
+        // The Kitchen reads the same repository the Supervisor wrote to.
+        let kitchenView = try await world.repositories.shortages.shortages(for: lunch).first { $0.id == rice.id }
+        guard case .seen(_, let by)? = kitchenView?.delivery else { return XCTFail("\(String(describing: kitchenView))") }
+        XCTAssertEqual(KitchenCopy.seenBy(by), "Ravi saw it")
+
+        // Opening it again keeps the first sighting.
+        world.clock.set(world.clock.now().addingTimeInterval(60))
+        await model.load()
+        XCTAssertEqual(model.state.value?.delivery, .seen(at: seenAt, by: DemoSeed.supervisorName))
+    }
+
+    func testAnotherRoleOpeningAReportDoesNotMarkItSeen() async throws {
+        let world = world(.duringMealShortageReported)
+        let shortage = try await world.repositories.shortages.shortages(for: lunch)[0]
+        guard case .sent = shortage.delivery else { return XCTFail("Seeded report should be only sent: \(shortage.delivery)") }
+        let kitchen = SupervisorShortageViewModel(shortageID: shortage.id, session: staff(.kitchenStaff),
+                                                  repositories: world.repositories)
+        await kitchen.load()
+        let stored = try await world.repositories.shortages.shortages(for: lunch)[0]
+        guard case .sent = stored.delivery else { return XCTFail("Only the Supervisor marks a report seen: \(stored.delivery)") }
+    }
+
     // MARK: Waste, read only
 
     func testWasteSaveIsRefusedForTheSupervisor() async throws {
