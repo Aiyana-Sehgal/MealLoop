@@ -5,6 +5,7 @@ import SwiftUI
 /// Sizes the type tokens don't hold. From the Figma text styles (ML/Hero Metric and friends).
 enum AdminType {
     static let chip = Font.system(size: 15, weight: .medium)
+    static let smallChip = Font.system(size: 13, weight: .medium)
     static let heroMetric = Font.system(size: 80, weight: .bold, design: .monospaced)
     static let heroLarge = Font.system(size: 72, weight: .bold, design: .monospaced)
     static let tileMetric = Font.system(size: 46, weight: .bold, design: .monospaced)
@@ -52,6 +53,8 @@ struct AdminChip: View {
     let text: String
     var style: AdminChipStyle = .outline
     var symbol: String?
+    /// The restyled pages draw chips a step smaller.
+    var isSmall = false
 
     private var foreground: Color {
         switch style {
@@ -70,13 +73,13 @@ struct AdminChip: View {
                     .accessibilityHidden(true)
             }
             Text(text)
-                .font(AdminType.chip)
+                .font(isSmall ? AdminType.smallChip : AdminType.chip)
                 .lineLimit(1)
                 .fixedSize()
         }
         .foregroundStyle(foreground)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 6)
+        .padding(.horizontal, isSmall ? 10 : 14)
+        .padding(.vertical, isSmall ? 4 : 6)
         .background { background }
     }
 

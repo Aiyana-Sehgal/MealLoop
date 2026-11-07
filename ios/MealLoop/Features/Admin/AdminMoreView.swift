@@ -219,8 +219,8 @@ struct AdminPassesScreen: View {
             AdminLoadedPage(model: AdminPageModel { try await more.passes() }, timeZone: nav.timeZone) { page, _ in
                 VStack(alignment: .leading, spacing: MLSpacing.s16) {
                     HStack(spacing: MLSpacing.s8) {
-                        AdminChip(text: page.mess, symbol: "fork.knife")
-                        AdminChip(text: AdminScreenCopy.rules, symbol: "info.circle")
+                        AdminChip(text: page.mess, symbol: "fork.knife", isSmall: true)
+                        AdminChip(text: AdminScreenCopy.rules, symbol: "info.circle", isSmall: true)
                     }
                     HeroCard {
                         VStack(spacing: MLSpacing.s12) {
@@ -239,7 +239,7 @@ struct AdminPassesScreen: View {
                                         .foregroundStyle(MLColor.onHeroSecondary)
                                 }
                             }
-                            .frame(width: 200, height: 200)
+                            .frame(width: 176, height: 176)
                             Text(AdminScreenCopy.expiredUnused(page.expiredUnused))
                                 .font(MLType.body)
                                 .foregroundStyle(MLColor.onHeroSecondary)
@@ -247,18 +247,25 @@ struct AdminPassesScreen: View {
                         .frame(maxWidth: .infinity)
                     }
                     AdminCard {
-                        HStack(spacing: MLSpacing.s8) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(page.requestName)
-                                    .font(MLType.staffPrimary)
-                                    .foregroundStyle(MLColor.ink)
-                                Text(page.requestDetail)
-                                    .font(MLType.body)
-                                    .foregroundStyle(MLColor.inkSecondary)
+                        Button {
+                            nav.toast(AdminScreenCopy.notInPrototype)
+                        } label: {
+                            HStack(spacing: MLSpacing.s8) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(page.requestName)
+                                        .font(MLType.staffPrimary)
+                                        .foregroundStyle(MLColor.ink)
+                                    Text(page.requestDetail)
+                                        .font(MLType.body)
+                                        .foregroundStyle(MLColor.inkSecondary)
+                                }
+                                Spacer(minLength: MLSpacing.s8)
+                                AdminChip(text: page.requestStatus, style: .filled, isSmall: true)
+                                AdminChevron()
                             }
-                            Spacer(minLength: MLSpacing.s8)
-                            AdminChip(text: page.requestStatus, style: .filled)
+                            .contentShape(Rectangle())
                         }
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -275,10 +282,10 @@ struct AdminVotesScreen: View {
         AdminPageScaffold(title: AdminScreenCopy.menuVotes, onBack: nav.pop) {
             AdminLoadedPage(model: AdminPageModel { try await more.votes() }, timeZone: nav.timeZone) { page, _ in
                 VStack(alignment: .leading, spacing: MLSpacing.s12) {
-                    AdminChip(text: AdminScreenCopy.rules, symbol: "info.circle")
+                    AdminChip(text: AdminScreenCopy.rules, symbol: "info.circle", isSmall: true)
                     HeroCard {
                         VStack(alignment: .leading, spacing: MLSpacing.s12) {
-                            AdminChip(text: AdminScreenCopy.voteClosed, style: .filled)
+                            AdminChip(text: AdminScreenCopy.voteClosed, style: .filled, isSmall: true)
                             HStack(alignment: .firstTextBaseline, spacing: MLSpacing.s8) {
                                 Text("\(page.forPercent)%")
                                     .font(MLType.heroNumber)
@@ -333,9 +340,19 @@ struct AdminVotesScreen: View {
                         }
                     }
                     AdminCard {
-                        Text(AdminScreenCopy.newProposals(page.newProposals))
-                            .font(MLType.staffPrimary)
-                            .foregroundStyle(MLColor.ink)
+                        Button {
+                            nav.toast(AdminScreenCopy.notInPrototype)
+                        } label: {
+                            HStack {
+                                Text(AdminScreenCopy.newProposals(page.newProposals))
+                                    .font(MLType.staffPrimary)
+                                    .foregroundStyle(MLColor.ink)
+                                Spacer()
+                                AdminChevron()
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -352,10 +369,10 @@ struct AdminRewardsScreen: View {
         AdminPageScaffold(title: AdminScreenCopy.rewards, onBack: nav.pop) {
             AdminLoadedPage(model: AdminPageModel { try await more.rewards() }, timeZone: nav.timeZone) { page, _ in
                 VStack(alignment: .leading, spacing: MLSpacing.s12) {
-                    AdminChip(text: AdminScreenCopy.rules, symbol: "info.circle")
+                    AdminChip(text: AdminScreenCopy.rules, symbol: "info.circle", isSmall: true)
                     HStack(spacing: MLSpacing.s8) {
-                        AdminChip(text: AdminScreenCopy.catalogue, style: .black)
-                        AdminChip(text: AdminScreenCopy.redemptions)
+                        AdminChip(text: AdminScreenCopy.catalogue, style: .black, isSmall: true)
+                        AdminChip(text: AdminScreenCopy.redemptions, isSmall: true)
                     }
                     HeroCard {
                         HStack(spacing: MLSpacing.s16) {
@@ -404,7 +421,7 @@ struct AdminSpareFoodScreen: View {
         AdminPageScaffold(title: AdminScreenCopy.spareFood, onBack: nav.pop) {
             AdminLoadedPage(model: AdminPageModel { try await more.spareFood() }, timeZone: nav.timeZone) { page, _ in
                 VStack(alignment: .leading, spacing: MLSpacing.s12) {
-                    AdminChip(text: page.mess, symbol: "fork.knife")
+                    AdminChip(text: page.mess, symbol: "fork.knife", isSmall: true)
                     HeroCard {
                         VStack(alignment: .leading, spacing: MLSpacing.s8) {
                             HStack(spacing: MLSpacing.s12) {
@@ -414,7 +431,7 @@ struct AdminSpareFoodScreen: View {
                                     .frame(width: 44, height: 44)
                                     .overlay(Circle().stroke(MLColor.onHero, lineWidth: 1.5))
                                     .accessibilityHidden(true)
-                                AdminChip(text: page.status, style: .filled)
+                                AdminChip(text: page.status, style: .filled, isSmall: true)
                             }
                             Text(page.title)
                                 .font(MLType.title2)
@@ -472,7 +489,7 @@ struct AdminHistoryScreen: View {
         AdminPageScaffold(title: AdminScreenCopy.history, onBack: nav.pop) {
             AdminLoadedPage(model: AdminPageModel { try await more.history() }, timeZone: nav.timeZone) { page, _ in
                 VStack(alignment: .leading, spacing: MLSpacing.s12) {
-                    AdminChip(text: AdminScreenCopy.allTypes, symbol: "flag")
+                    AdminChip(text: AdminScreenCopy.allTypes, symbol: "flag", isSmall: true)
                     HeroCard {
                         VStack(alignment: .leading, spacing: MLSpacing.s12) {
                             HStack(alignment: .firstTextBaseline, spacing: MLSpacing.s8) {
@@ -483,10 +500,7 @@ struct AdminHistoryScreen: View {
                                     .font(MLType.staffBody)
                                     .foregroundStyle(MLColor.onHeroSecondary)
                             }
-                            AdminStageLine(stages: page.lines.map { _ in "" }, current: 0, onHero: true)
-                                .frame(height: 28, alignment: .top)
-                                .clipped()
-                                .accessibilityHidden(true)
+                            AdminHistoryStrip()
                         }
                     }
                     AdminCard {
@@ -538,13 +552,31 @@ private extension AdminHistoryScreen {
                     .font(MLType.staffBody)
                     .foregroundStyle(MLColor.ink)
                 if let tag = line.tag {
-                    AdminChip(text: tag, style: .black)
+                    AdminChip(text: tag, style: .black, isSmall: true)
                 }
             }
-            .padding(.bottom, isLast ? 0 : MLSpacing.s24)
+            .padding(.bottom, isLast ? 0 : 56)
             Spacer(minLength: 0)
         }
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// The small mark under "entries today". It decorates; the entries are in the card below.
+struct AdminHistoryStrip: View {
+    var body: some View {
+        HStack(spacing: 0) {
+            Circle().stroke(MLColor.onHero, lineWidth: 1.5).frame(width: 18, height: 18)
+            Rectangle().fill(MLColor.onHero).frame(width: 12, height: 1.5)
+            Circle().fill(MLColor.onHero).frame(width: 10, height: 10)
+            Rectangle().fill(MLColor.onHero).frame(width: 12, height: 1.5)
+            Color.clear.frame(width: 12, height: 1)
+            Rectangle().fill(MLColor.onHero).frame(width: 12, height: 1.5)
+            Circle().fill(MLColor.onHero).frame(width: 10, height: 10)
+            Rectangle().fill(MLColor.onHero).frame(width: 12, height: 1.5)
+            Circle().stroke(MLColor.onHero, lineWidth: 1.5).frame(width: 12, height: 12)
+        }
+        .accessibilityHidden(true)
     }
 }
 
@@ -562,7 +594,7 @@ struct AdminRewardTicket: View {
                     Text(reward.title)
                         .font(MLType.staffPrimary)
                         .foregroundStyle(isAwaiting ? MLColor.inkSecondary : MLColor.ink)
-                    AdminChip(text: reward.status, style: isAwaiting ? .filled : .lime)
+                    AdminChip(text: reward.status, style: isAwaiting ? .filled : .lime, isSmall: true)
                 }
                 Text(reward.detail)
                     .font(MLType.body)
@@ -611,7 +643,7 @@ struct AdminOutingsScreen: View {
                         VStack(alignment: .leading, spacing: MLSpacing.s4) {
                             HeroEyebrow(label: AdminScreenCopy.outNow)
                             Text("\(page.outNow)")
-                                .font(AdminType.heroLarge)
+                                .font(AdminType.heroMetric)
                                 .foregroundStyle(MLColor.onHero)
                         }
                         VStack(alignment: .leading, spacing: MLSpacing.s4) {

@@ -423,7 +423,7 @@ struct AdminCommunityView: View {
                             .font(MLType.heroNumber)
                             .foregroundStyle(MLColor.onHero)
                         Text(AdminScreenCopy.saidMeToo)
-                            .font(MLType.body)
+                            .font(MLType.staffBody)
                             .foregroundStyle(MLColor.onHeroSecondary)
                     }
                     Text(AdminScreenCopy.raisedOn(AdminFormat.day(issue.raisedOn, in: nav.timeZone), issue.context))

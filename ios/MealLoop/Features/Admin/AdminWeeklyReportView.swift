@@ -117,10 +117,10 @@ struct AdminWeeklyReportView: View {
             HeroCard {
                 VStack(alignment: .leading, spacing: MLSpacing.s12) {
                     HeroEyebrow(label: report.eyebrow)
-                    HStack(alignment: .top, spacing: MLSpacing.s16) {
+                    HStack(alignment: .lastTextBaseline, spacing: MLSpacing.s16) {
                         figure("\(report.mealsLeftOver)", AdminScreenCopy.mealsLeftOver(report.mealsLeftOver), color: MLColor.lime)
                         figure("\(report.mealsRanOut)", AdminScreenCopy.mealsRanOut(report.mealsRanOut), color: MLColor.onHero)
-                        figure(report.dataCompletePercent.map { "\($0)%" } ?? AdminFormat.missing, AdminScreenCopy.dataComplete, color: MLColor.onHero)
+                        figure(report.dataCompletePercent.map { "\($0)%" } ?? AdminFormat.missing, AdminScreenCopy.dataComplete, color: MLColor.onHero, font: AdminType.count)
                     }
                 }
             }
@@ -159,10 +159,10 @@ struct AdminWeeklyReportView: View {
         }
     }
 
-    private func figure(_ value: String, _ label: String, color: Color) -> some View {
+    private func figure(_ value: String, _ label: String, color: Color, font: Font = AdminType.stat) -> some View {
         VStack(alignment: .leading, spacing: MLSpacing.s4) {
             Text(value)
-                .font(AdminType.stat)
+                .font(font)
                 .foregroundStyle(color)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)

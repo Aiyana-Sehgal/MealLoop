@@ -49,6 +49,12 @@ private struct AdminTabsView: View {
             } else {
                 tab($morePath) { AdminMoreScreen(nav: $0) }
             }
+            // Scroll edge fade (2262:22): rows dissolve before they reach the tab bar.
+            LinearGradient(colors: [MLColor.canvas.opacity(0), MLColor.canvas], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.6))
+                .frame(height: AdminLayout.scrollFadeHeight)
+                .ignoresSafeArea(edges: .bottom)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
             GlassTabBar(items: root.placeholderTabs.map { title in
                 GlassTabItem(tab: title, title: title, symbol: symbol(for: title))
             }, selection: $selectedTab, searchTab: RoleRoot.searchTab)

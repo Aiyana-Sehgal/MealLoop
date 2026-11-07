@@ -86,7 +86,7 @@ struct AdminTodayBody: View {
     private var mealName: String { MLFormat.mealSlot(content.selectedSlot) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: MLSpacing.s20) {
+        VStack(alignment: .leading, spacing: MLSpacing.s16) {
             HStack(alignment: .lastTextBaseline, spacing: MLSpacing.s12) {
                 Text(AdminCopy.greeting(displayName))
                     .font(MLType.largeTitle)

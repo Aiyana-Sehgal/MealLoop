@@ -120,10 +120,12 @@ struct AdminMessHeadcountView: View {
 
     private func subtitle(_ mess: AdminMessHeadcount) -> String {
         if let minutes = mess.noReplyMinutes, let sentAt = mess.sentAt, mess.reply == .noReply {
-            return AdminCopy.sentNoReply(MLFormat.time(sentAt, in: timeZone), minutes: minutes)
+            return AdminCopy.sentNoReply(short(sentAt), minutes: minutes)
         }
-        return mess.sendBy.map { AdminCopy.sendBy(MLFormat.time($0, in: timeZone)) } ?? AdminCopy.noData
+        return mess.sendBy.map { AdminCopy.sendBy(short($0)) } ?? AdminCopy.noData
     }
+
+    private func short(_ date: Date) -> String { AdminCopy.clock(MLFormat.time(date, in: timeZone)) }
 
     private func content(_ mess: AdminMessHeadcount) -> some View {
         VStack(alignment: .leading, spacing: MLSpacing.s16) {
@@ -177,7 +179,7 @@ struct AdminMessHeadcountView: View {
                 .foregroundStyle(MLColor.ink)
             Spacer()
             if let replied = line.repliedAt {
-                Text(AdminCopy.repliedLower(MLFormat.time(replied, in: timeZone)))
+                Text(AdminCopy.repliedLower(short(replied)))
                     .font(MLType.monoBody)
                     .foregroundStyle(MLColor.inkSecondary)
             } else {
@@ -222,8 +224,8 @@ struct AdminMessHeadcountView: View {
 
     private func eyebrow(_ mess: AdminMessHeadcount) -> String {
         guard let sentAt = mess.sentAt else { return AdminCopy.expectedDiners }
-        let time = MLFormat.time(sentAt, in: timeZone)
-        if case .replied(let at) = mess.reply { return AdminCopy.sentAndReplied(time, MLFormat.time(at, in: timeZone)) }
+        let time = short(sentAt)
+        if case .replied(let at) = mess.reply { return AdminCopy.sentAndReplied(time, short(at)) }
         return AdminCopy.sentToVendorAt(time)
     }
 

@@ -184,10 +184,12 @@ struct AdminMessTile: View {
     private var timeZone: TimeZone { content.mess.timeZone }
     private var isHero: Bool { content.tileIsUrgent }
     private var hasData: Bool { meal?.filledSteps != nil }
+    /// A meal the story doesn't hold yet, with a time its forecast is due.
+    private var forecastDue: Date? { hasData ? nil : content.otherMesses?.ownForecastAt }
     private var isServing: Bool { meal?.status.state == .inService }
 
     var body: some View {
-        AdminTileCard(isHero: isHero, hasData: hasData) {
+        AdminTileCard(isHero: isHero, hasData: hasData || forecastDue != nil) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(AdminCopy.tileName(content.mess.name))
                     .font(MLType.staffBody)
@@ -205,7 +207,7 @@ struct AdminMessTile: View {
                 .foregroundStyle(isHero ? MLColor.onHero : (hasData ? MLColor.ink : MLColor.inkSecondary))
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-            SegmentedProgress(current: meal?.filledSteps, total: 4, surface: isHero ? .hero : .light,
+            SegmentedProgress(current: meal?.filledSteps ?? (forecastDue == nil ? nil : 0), total: 4, surface: isHero ? .hero : .light,
                               missingText: AdminCopy.noData)
             bottomLine
         }
@@ -213,7 +215,13 @@ struct AdminMessTile: View {
 
     @ViewBuilder
     private var bottomLine: some View {
-        if let meal, hasData {
+        if let forecastDue {
+            Text(AdminCopy.forecastAt(AdminCopy.clock(MLFormat.time(forecastDue, in: timeZone))))
+                .font(MLType.body)
+                .foregroundStyle(MLColor.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+        } else if let meal, hasData {
             Text(statusLine(meal))
                 .font(MLType.body)
                 .foregroundStyle(isHero ? MLColor.onHeroSecondary : MLColor.ink)
@@ -229,7 +237,8 @@ struct AdminMessTile: View {
     @ViewBuilder
     private func action(_ meal: AdminMealContent) -> some View {
         if let next = meal.nextAction {
-            let title = if case .approve = next { AdminCopy.reviewAndApprove } else { AdminCopy.reviewAndSend }
+            // One word fits the tile, as "Send" does on the frame. Both open the page: nothing happens from here.
+            let title = if case .approve = next { AdminCopy.stepApprove } else { AdminCopy.stepSend }
             if isHero {
                 LimeActionButton(title: title, action: openHeadcount)
             } else {
@@ -288,7 +297,7 @@ struct AdminOtherMessTile: View {
 
     private var hasData: Bool { mess.expected != nil || mess.forecastAt != nil }
     private var steps: Int? {
-        guard mess.expected != nil else { return nil }
+        guard mess.expected != nil else { return mess.forecastAt == nil ? nil : 0 }
         switch mess.reply {
         case .notSent: return 1
         case .waiting, .noReply: return 2
@@ -315,7 +324,7 @@ struct AdminOtherMessTile: View {
     }
 
     private var line: String {
-        if let forecastAt = mess.forecastAt, mess.expected == nil { return AdminCopy.forecastAt(MLFormat.time(forecastAt, in: timeZone)) }
+        if let forecastAt = mess.forecastAt, mess.expected == nil { return AdminCopy.forecastAt(AdminCopy.clock(MLFormat.time(forecastAt, in: timeZone))) }
         guard mess.expected != nil else { return AdminCopy.noData }
         return mess.canSend ? AdminCopy.sendAction : AdminCopy.replyWord(mess.reply, in: timeZone)
     }
@@ -338,6 +347,8 @@ struct AdminOtherMessTile: View {
             Text(line)
                 .font(MLType.body)
                 .foregroundStyle(hasData ? MLColor.ink : MLColor.inkSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
         }
     }
 }

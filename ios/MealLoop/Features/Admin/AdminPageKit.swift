@@ -28,6 +28,7 @@ struct AdminPageScaffold<Content: View>: View {
                                 .foregroundStyle(MLColor.inkSecondary)
                         }
                     }
+                    .padding(.top, -MLSpacing.s8)
                     content
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -43,6 +44,7 @@ enum AdminLayout {
     /// Clears the floating tab bar (62 pt, 8 pt gap, a little air).
     static let scrollBottomInset: CGFloat = 120
     static let tabBarClearance: CGFloat = 86
+    static let scrollFadeHeight: CGFloat = 130
 }
 
 /// Wraps its children like text, for chips.
@@ -191,8 +193,9 @@ struct AdminRow<Trailing: View>: View {
                 AdminDishPictogram(dish: leadingDish)
             }
             VStack(alignment: .leading, spacing: 2) {
+                // A row with a detail line leads with a semibold title; a one-line row is regular, as drawn.
                 Text(title)
-                    .font(MLType.staffBody)
+                    .font(detail == nil ? MLType.staffBody : MLType.staffPrimary)
                     .foregroundStyle(MLColor.ink)
                     .multilineTextAlignment(.leading)
                 if let detail {

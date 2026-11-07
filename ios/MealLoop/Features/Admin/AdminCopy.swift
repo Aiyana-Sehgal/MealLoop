@@ -28,6 +28,8 @@ enum AdminCopy {
     static func tileName(_ mess: String) -> String { mess.components(separatedBy: " ").first ?? mess }
     static func messName(_ name: String) -> String { name.isEmpty ? "" : "\(name) Mess" }
     static func forecastAt(_ time: String) -> String { "Forecast at \(time)" }
+    /// "11:30 AM" written "11:30", as the headcount frames write it.
+    static func clock(_ time: String) -> String { time.components(separatedBy: " ").first ?? time }
     static func statusAt(_ status: String, _ time: String) -> String { "\(status) \(time)" }
     /// "Sambar left over", from the record. A meal with no food line says it needs a look.
     static func reviewTitle(_ meal: AdminMealFacts) -> String {
@@ -146,7 +148,15 @@ enum AdminCopy {
     static let stageServing = "Serving"
     static func ofExpected(_ count: Int) -> String { "of \(count) expected" }
     static func usualByNow(_ count: Int) -> String { "usual by now ~\(count)" }
-    static func mealHours(_ start: String, _ end: String) -> String { "\(start)–\(end)" }
+    /// "12–2 PM". The first time drops what the second repeats.
+    static func mealHours(_ start: String, _ end: String) -> String {
+        func tidy(_ time: String) -> String { time.replacingOccurrences(of: ":00", with: "") }
+        let first = tidy(start)
+        let last = tidy(end)
+        let sameHalf = first.split(separator: " ").last == last.split(separator: " ").last
+        let lead = (start.hasPrefix("12") && end.hasSuffix("PM")) || sameHalf ? clock(first) : first
+        return "\(lead)–\(last)"
+    }
     static func updatedAt(_ hours: String, _ time: String) -> String { "\(hours) · updated \(time)" }
     static func levelChip(_ level: ShortageLevel) -> String {
         switch level {
