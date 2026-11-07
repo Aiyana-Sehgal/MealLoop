@@ -20,14 +20,14 @@ Differences on every frame, not repeated per line: the system font stands in for
 
 ## Results per frame
 
-**30 frames compared: 18 match, 6 differ in text only, 6 differ in layout or content. 1 frame not built.**
+**30 frames compared: 17 match, 7 differ in text only, 6 differ in layout or content. 1 frame not built.**
 
 | Frame | Node | Result |
 |---|---|---|
 | Meals · Wed 14 · Lunch | 221:62892 | Matches. |
 | Meals · Menu changed | 221:64980 | Matches. Hook: the 11:10 AM change time (in the app it is when the Food Head saves). |
 | Meals · Service ended | 221:65007 | Matches. Hook: story clock 2:10 PM with Lunch picked. |
-| Meals · Not published | 221:65026 | Matches. Hook: no seeded day is unpublished. |
+| Meals · Not published | 221:65026 | Differs in text since `9c029e4` (owner decision M7): "Menu not published yet" and "Your entry QR works either way." Recaptured on both phones after the change. Hook: no seeded day is unpublished. |
 | Meals · No menu | 221:65036 | Matches. Hook (in the app: the Food Head empties a meal). |
 | Meals · Loading | 221:65046 | Matches. Hook: a slow menu. |
 | Meals · Offline | 221:65059 | Differs in text: "saved at 7:00 AM" where the frame says 6:58 AM; the time is when this phone last loaded the menu. Hook. |
@@ -97,47 +97,57 @@ shows on the student's Meals tab.
 - Pass codes and colours are the Pass Desk's existing samples (218 Lime, K2M9 Blue, 7A3F Lime). The 10 s window is the
   existing `passCodeWindow`.
 
-## Open questions (proposed IDs)
+## Owner decisions on the open questions
 
-- **P-STUDENT-M1 Crowd word during service.** Home's Crowd row says Busy while a meal is served. Crowd · Main Mess draws
-  "Quiet now" at 12:10. The Crowd page uses the same estimate as Home so the two never disagree, so at 12:10 it says
-  "Busy now · Quieter after 1:30 PM". Which should it be?
-- **P-STUDENT-M2 Estimate label.** The brief asks for a clear estimate label; the frame has none. The Crowd card's top line
-  reads "LUNCH · 12:10 PM · ESTIMATE", and VoiceOver says "Estimate from door entries, not a head count".
-- **P-STUDENT-M3 Crowd bars.** The bars are the drawn pattern, not door entries counted per 15 minutes. Should the real
-  service compute them from recorded entries, and how many entries count as "enough"? Too few shows "Not enough entries
-  yet" (built and tested).
-- **P-STUDENT-M4 4XQD Orange.** Pass · Live 3 draws 4XQD Orange, which is not among the Pass Desk's sample codes. Adding it
-  would change the desk's rotation, which this brief does not allow. Live 3 is captured with the next seeded code.
-- **P-STUDENT-M5 When "Use pass" works.** No document says how early a student may start the pass. The prototype allows it
-  any time before the meal ends; the desk still records only during the meal.
-- **P-STUDENT-M6 Search scope.** The No results frame says Search covers "Community and Help" and suggests "Special pass" and
-  "Help". Per the owner ruling only dishes are searched, so the copy says "this week's menu" and the suggestions are
-  "sambar" and "paneer". Search · Menu result is not built.
-- **P-STUDENT-M7 "The mess usually posts it by 6 AM."** Frame copy on Not published, kept as drawn. No policy document
-  gives the time.
-- **P-STUDENT-M8 Tiers on other days.** Only the Wednesday frames say which dishes are tiles. Other days use the board's
-  tiers (first highlighted veg dish on the black tile, other highlighted veg dishes as tiles, the rest "Comes with it",
-  non-veg as slim rows). Should the Food Head mark mains in the admin Menu instead?
+The owner ruled on all eight after the first report. What was built stays for the review unless noted.
+
+- **P-STUDENT-M1 Crowd word during service: decided.** Keep "Busy now", labelled as an estimate. It matches the Home crowd
+  row, and entry scans never claim real occupancy.
+- **P-STUDENT-M2 Estimate label: decided.** Keep "ESTIMATE" on the Crowd card. Estimates are always labelled.
+- **P-STUDENT-M3 Crowd bars: decided for the review, threshold open.** The bars stay simulated (the drawn pattern).
+  Still open: how many door entries are enough to compute the pattern; to be set after the pilot baseline.
+- **P-STUDENT-M4 4XQD Orange: decided.** Not added. Pass codes are to be fixed by the clock-derived code task
+  (P-PASS-9), so the student pass and the Pass Desk share one code source.
+- **P-STUDENT-M5 When "Use pass" works: open.** It works any time before the meal ends, left as is for the review. Logged
+  as an open product decision.
+- **P-STUDENT-M6 Search scope: decided.** A search result opening the Dish page is fine for the review. Search · Menu
+  result stays not built.
+- **P-STUDENT-M7 Not published copy: decided and changed.** No document gives a posting time, so the card now reads
+  "Menu not published yet" and "Your entry QR works either way." (commit `9c029e4`). This is a text difference from
+  frame 221:65026, which says "This menu isn't up yet" and "The mess usually posts it by 6 AM."
+- **P-STUDENT-M8 Tiers on other days: decided for the review, follow-up open.** Left as built. The Food Head is to be
+  asked to mark main dishes later.
 - P7, P8 and P9 follow their defaults: Snacks are menu only (with the frame's "(draft)" note), Highlight opens "Marked by
   the mess on the menu board" and says nothing more, and the `**` gravies are slim non-veg rows.
 
+Still open after these rulings: the crowd entry threshold (M3), how early the pass may be used (M5) and the Food Head
+marking main dishes (M8). They are recorded here; `docs/OPEN_DECISIONS.md` was not edited, as the Student 2 brief
+forbids it.
+
 ## Commands and counts
 
-Final code `ddd496e` (the report commit adds only files under this folder). Xcode 27.2, iOS 27.2 simulators, one at a
-time, `-parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1`, each run gated on
+After the owner's review the branch merged `origin/main` (`692eae4`, which brings PRs #23 and #26, the CI workflow and
+the docs) in merge commit `2dea145`; the one conflict, in `DemoDataProvider.makeRepositories`, kept both sides
+(`studentMeals` and main's `adminMesses` and `staffDirectory`). Then commit `9c029e4` changed the Not published copy.
+Every run below is on `9c029e4`. Xcode 27.2, iOS 27.2 simulator, one at a time,
+`-parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1`, each run gated on
 `pgrep -x xcodebuild`. Counts are from the `.xcresult` bundles.
 
 | Run | Exit | Tests | Passed | Failed | Skipped |
 |---|---|---|---|---|---|
-| Debug, scheme `MealLoop`, `test` | 0 | 528 | 516 | 0 | 12 |
-| Review, scheme `MealLoop Review`, `test` | 0 | 527 | 515 | 0 | 12 |
+| Debug, scheme `MealLoop`, `test` | 0 | 590 | 568 | 0 | 22 |
+| Review, scheme `MealLoop Review`, `test` | 0 | 589 | 567 | 0 | 22 |
 | Release, `-configuration Release build` | 0 | n/a | `** BUILD SUCCEEDED **` | n/a | n/a |
+
+The 22 skipped are screenshot tests that skip in a normal run: 10 `StaffFigmaScreenshotTests` (new from main),
+8 `OutingScreenshotTests`, 4 `SupervisorScreenshotTests`. None of this branch's tests skip. Before the merge, on
+`ddd496e`, the counts were Debug 528 / 516 passed and Review 527 / 515 passed, 0 failed, 12 skipped.
 
 New tests: 19 in `StudentMealsRepositoryTests` and 13 in `StudentMealsScreensTests`; every existing test still passes
 (the base had 496 in Debug).
 
-Captures: 31 states on iPhone 18 Pro and 31 on iPhone SE (3rd generation), from the Review build with hooks. The
+Captures: 31 states on iPhone 18 Pro and 31 on iPhone SE (3rd generation), from the Review build with hooks, on
+`ddd496e`. Not published was captured again on both phones on `9c029e4`; the merge changed no Student screen. The
 Review run of the capture script was interrupted once by the end of a session and run again in full; only the second
 run is used.
 
