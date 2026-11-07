@@ -341,6 +341,13 @@ actor DemoAdminStore {
 
     var weekMenu: WeekMenu { menu }
 
+    /// When the Food Head last changed each day's menu in this run. Read by the Student Meals tab.
+    private(set) var menuChangedAt: [Date: Date] = [:]
+
+    func noteMenuChange(on day: Date, at time: Date) {
+        menuChangedAt[day] = time
+    }
+
     func saveDay(_ day: MenuDay) throws -> WeekMenu {
         guard let index = menu.days.firstIndex(where: { $0.day == day.day }) else { throw RepositoryError.notFound }
         menu.days[index] = day
@@ -628,13 +635,17 @@ struct DemoAdminRepositories: AdminResultsRepository, AdminStudentsRepository, A
     func saveDay(_ day: MenuDay, by role: Role) async throws -> WeekMenu {
         try await core.requireConnection()
         try requireFoodHead(role)
-        return try await store.saveDay(day)
+        let saved = try await store.saveDay(day)
+        await store.noteMenuChange(on: day.day, at: core.clock.now())
+        return saved
     }
 
     func applyToTodaysDinner(_ change: QuickChange, by role: Role) async throws -> WeekMenu {
         try await core.requireConnection()
         try requireFoodHead(role)
-        return try await store.apply(change)
+        let saved = try await store.apply(change)
+        await store.noteMenuChange(on: saved.today, at: core.clock.now())
+        return saved
     }
 
     func people() async throws -> AdminPeople {
