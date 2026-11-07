@@ -1,3 +1,4 @@
+#if DEMO_DATA || REVIEW_DATA
 import Foundation
 
 extension DemoDataProvider: StaffDirectoryRepository {
@@ -12,3 +13,4 @@ extension DemoDataProvider: StaffDirectoryRepository {
         }
     }
 }
+#endif
