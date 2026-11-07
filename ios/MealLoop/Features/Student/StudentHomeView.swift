@@ -6,6 +6,7 @@ enum StudentHomeRoute: Hashable {
     case entryQR
     case pass
     case crowd
+    case report
     /// A page another Student part builds. Until then it says Coming soon.
     case comingSoon(String)
 }
@@ -46,7 +47,7 @@ struct StudentHomeView: View {
                     VStack(alignment: .leading, spacing: MLSpacing.s16) {
                         StudentHomeHeader(credits: model.state.value?.extras?.credits,
                                           onRewards: { path.append(.comingSoon(StudentCopy.rewards)) },
-                                          onReport: { path.append(.comingSoon(StudentCopy.reportIssue)) },
+                                          onReport: { path.append(.report) },
                                           onNotifications: { path.append(.comingSoon(StudentCopy.notifications)) })
                         greeting
                         content
@@ -96,6 +97,12 @@ struct StudentHomeView: View {
                 StudentCrowdScreen(session: session) { path.removeLast() }
             } else {
                 StudentComingSoonView(title: MealsCopy.crowd) { path.removeLast() }
+            }
+        case .report:
+            if let session {
+                StudentReportScreen(session: session) { path.removeLast() }
+            } else {
+                StudentComingSoonView(title: StudentCopy.reportIssue) { path.removeLast() }
             }
         case .comingSoon(let title):
             StudentComingSoonView(title: title) { path.removeLast() }
