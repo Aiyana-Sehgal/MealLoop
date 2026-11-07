@@ -16,7 +16,8 @@ enum AdminSeed {
     private static func mealID(_ text: String) -> MealID { MealID("admin-sample-\(text)") }
     static let tueDinnerNorth = mealID("2024-08-13-dinner-north")
     static let monLunchMain = mealID("2024-08-12-lunch-main")
-    static let tueDinnerMain = mealID("2024-08-13-dinner-main")
+    /// The same meal the Supervisor lists as Tue 13 · Dinner (DemoSeed.pastMeals), so both roles read one record.
+    static let tueDinnerMain = MealID("demo-2024-08-13-dinner")
     static let monDinnerSouth = mealID("2024-08-12-dinner-south")
     static let tueLunchNorth = mealID("2024-08-13-lunch-north")
 
@@ -50,9 +51,11 @@ enum AdminSeed {
              leftovers: [FoodAmount(dish: "Rice", amount: 6, unit: .kilograms)]),
         meal(monLunchMain, mess: "Main", slot: .lunch, day: 12, sent: 820, came: 730,
              leftovers: [FoodAmount(dish: "Dal", amount: 3, unit: .litres), FoodAmount(dish: "Sambar", amount: 2, unit: .litres)]),
-        // F01_results_to_check_meal_report_tue_dinner. Differs from the Supervisor seed for the same meal (REPORT.md).
-        meal(tueDinnerMain, mess: "Main", slot: .dinner, day: 13, sent: 640, sentAt: d(13, 16, 30), came: 691, closedAt: d(13, 21, 30),
-             plate: 11, ranOut: [FoodRanOut(dish: "Rice", at: d(13, 20, 34))], late: true, data: 90, missing: [.amountCooked],
+        // F01_results_to_check_meal_report_tue_dinner. Final entries, closing time and waste come from the meal history the
+        // Supervisor reads (598, supervisor_spec.md line 19; waste not recorded). F01's 640 sent, 691 came and 11 kg are in
+        // no spec document (design/audit/prototype_gaps.md #425), so they are not seeded and show as missing.
+        meal(tueDinnerMain, mess: "Main", slot: .dinner, day: 13, sent: nil, came: nil,
+             ranOut: [FoodRanOut(dish: "Rice", at: d(13, 20, 34))], late: true, data: 90, missing: [.amountCooked],
              questions: ["Was there an event?"], review: true),
         // A09_reason_more_came.
         meal(monDinnerSouth, mess: "South", slot: .dinner, day: 12, sent: 580, came: 627,
@@ -387,7 +390,29 @@ struct DemoAdminRepositories: AdminResultsRepository, AdminStudentsRepository, A
     }
 
     private func allMeals() async throws -> [AdminMealFacts] {
-        [try await storyLunch()] + AdminSeed.pastMeals
+        let history = try await core.mealHistory(for: DemoSeed.mess.id)
+        return [try await storyLunch()] + AdminSeed.pastMeals.map { Self.agreeing($0, with: history) }
+    }
+
+    /// A past meal the Supervisor also lists takes its final entries, closing time and waste from that same meal
+    /// history, so Admin and Supervisor never show different figures for one meal. Missing stays missing, never zero.
+    private static func agreeing(_ meal: AdminMealFacts, with history: [MealRecord]) -> AdminMealFacts {
+        guard let record = history.first(where: { $0.mealID == meal.id }) else { return meal }
+        let isWasteRecorded = { if case .recorded = record.waste { return true } else { return false } }()
+        let rows = record.wasteReport
+        let leftovers = (rows?.leftovers ?? []).compactMap { row -> FoodAmount? in
+            guard case .entered(let amount) = row.measurement else { return nil }
+            return FoodAmount(dish: row.dishName, amount: amount, unit: row.unit)
+        }
+        var missing = meal.missing
+        if !isWasteRecorded, !missing.contains(.wasteRecord) { missing.append(.wasteRecord) }
+        return AdminMealFacts(
+            id: meal.id, mess: meal.mess, slot: meal.slot, day: meal.day, headcountSent: meal.headcountSent, sentAt: meal.sentAt,
+            finalEntries: record.finalEntries.value, closedAt: record.closedAt, isClosed: true, leftovers: leftovers,
+            plateWasteKg: rows?.plateWaste.measuredKilograms, ranOut: meal.ranOut, wasReportedLate: meal.wasReportedLate,
+            dataCompletePercent: isWasteRecorded ? meal.dataCompletePercent : nil, missing: missing,
+            headcountChange: meal.headcountChange, openQuestions: meal.openQuestions, needsReview: meal.needsReview,
+            linkedCheck: meal.linkedCheck, suggestedChange: meal.suggestedChange)
     }
 
     /// The story meal, read from the same repositories every other role uses. Until it closes there is no final count.
