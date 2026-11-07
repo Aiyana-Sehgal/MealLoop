@@ -99,6 +99,11 @@ struct DemoState: Sendable {
     /// Students who chose "Hold to use" on their special-meal pass, keyed by the request that did it.
     var passStarts: [StudentID: Date] = [:]
     var passStartResults: [IdempotencyKey: StudentPassStanding] = [:]
+    /// Student Community: the stored problems, who backed which (each student once) and the report receipts.
+    var studentIssues = DemoSeed.sampleIssues
+    var issueBackers: [CommunityIssueID: Set<StudentID>] = [:]
+    var reportReceipts: [IdempotencyKey: StudentReportReceipt] = [:]
+    var nextReportNumber = DemoSeed.firstReportNumber
 
     init(scenario: DemoScenario) {
         let meal = DemoSeed.lunch
@@ -181,7 +186,7 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
         let admin = DemoAdminRepositories(core: self, store: adminStore)
         return Repositories(meals: self, mealState: self, headcount: self, entries: self, intentions: self,
                             shortages: self, wasteReports: self, sos: self, auth: self, specialPasses: self,
-                            studentExtras: self, studentMeals: self, adminResults: admin, adminStudents: admin, adminMore: admin,
+                            studentExtras: self, studentMeals: self, studentCommunity: self, adminResults: admin, adminStudents: admin, adminMore: admin,
                             adminMesses: DemoAdminMesses(core: self, store: adminMessStore), staffDirectory: self)
     }
 
@@ -1066,6 +1071,96 @@ extension DemoDataProvider: StudentMealsRepository {
                             currentSlot: current, bestSlot: DemoSeed.crowdBestSlot,
                             waitNowMinutes: serving ? DemoSeed.crowdWaitNowMinutes : nil,
                             busiestWaitMinutes: DemoSeed.crowdBusiestWaitMinutes, busiestAt: DemoSeed.crowdBusiestAt)
+    }
+}
+
+// MARK: - StudentCommunityRepository
+
+extension DemoDataProvider: StudentCommunityRepository {
+    private func view(_ sample: DemoSeed.SampleIssue, for student: StudentID) -> StudentIssue {
+        let backers = state.issueBackers[sample.id] ?? []
+        return StudentIssue(id: sample.id, title: sample.title, messName: DemoSeed.mess.name, reportedOn: sample.reportedOn,
+                            updatedAt: sample.updatedAt, stage: sample.stage, stageNote: sample.stageNote,
+                            backers: sample.baseBackers + backers.count, isBackedByMe: backers.contains(student),
+                            hiddenReason: sample.hiddenReason, isAboutWaiting: sample.isAboutWaiting)
+    }
+
+    func issues(at mess: MessID, for student: StudentID) async throws -> [StudentIssue] {
+        try failIfOffline()
+        guard mess == DemoSeed.mess.id else { return [] }
+        let open = state.studentIssues.filter { $0.stage != .fixed }.sorted { $0.stage > $1.stage }
+        let fixed = state.studentIssues.filter { $0.stage == .fixed }
+        return (open + fixed).map { view($0, for: student) }
+    }
+
+    func issue(_ id: CommunityIssueID, for student: StudentID) async throws -> StudentIssue {
+        try failIfOffline()
+        guard let sample = state.studentIssues.first(where: { $0.id == id }) else { throw RepositoryError.notFound }
+        return view(sample, for: student)
+    }
+
+    func back(_ id: CommunityIssueID, by student: StudentID) async throws -> StudentIssue {
+        try failIfOffline()
+        guard let sample = state.studentIssues.first(where: { $0.id == id }) else { throw RepositoryError.notFound }
+        guard sample.stage != .fixed else { throw RepositoryError.notAllowed(reason: "This problem is fixed.") }
+        // The reporter already counts; a set keeps every student to one backing.
+        if sample.reporter != student {
+            state.issueBackers[id, default: []].insert(student)
+        }
+        return view(sample, for: student)
+    }
+
+    func unback(_ id: CommunityIssueID, by student: StudentID) async throws -> StudentIssue {
+        try failIfOffline()
+        guard let sample = state.studentIssues.first(where: { $0.id == id }) else { throw RepositoryError.notFound }
+        state.issueBackers[id]?.remove(student)
+        return view(sample, for: student)
+    }
+
+    func submitReport(_ report: StudentReportRequest) async throws -> StudentReportReceipt {
+        // Offline: nothing is stored and nothing is returned as sent.
+        try failIfOffline()
+        if let first = state.reportReceipts[report.idempotencyKey] { return first }
+        guard !report.category.isUrgent else {
+            throw RepositoryError.notAllowed(reason: "Urgent reports go to the counter staff as an SOS.")
+        }
+        let now = clock.now()
+        let outcome: StudentReportOutcome
+        if let reason = Self.reviewReason(for: report.note) {
+            outcome = .heldForReview(reason: reason)
+        } else {
+            let id = CommunityIssueID("demo-report-\(state.nextReportNumber)")
+            state.studentIssues.append(DemoSeed.SampleIssue(id: id, title: Self.issueTitle(report), reportedOn: now, updatedAt: now,
+                                                            stage: .reported, stageNote: nil, baseBackers: 1, hiddenReason: nil,
+                                                            isAboutWaiting: report.category == .staffOrService, reporter: report.student))
+            outcome = .published(id)
+        }
+        let receipt = StudentReportReceipt(reference: "ML-\(state.nextReportNumber)", category: report.category, place: report.place,
+                                           meal: report.meal, sentAt: now, outcome: outcome)
+        state.nextReportNumber += 1
+        state.reportReceipts[report.idempotencyKey] = receipt
+        return receipt
+    }
+
+    /// The deterministic checks. A report that names someone from the staff list, or carries a phone number, is held.
+    static func reviewReason(for note: String?) -> String? {
+        guard let note, !note.isEmpty else { return nil }
+        let words = Set(note.components(separatedBy: CharacterSet.letters.inverted).map { $0.lowercased() })
+        if DemoSeed.namesHeldForReview.contains(where: { words.contains($0.lowercased()) }) { return DemoSeed.heldForNamingReason }
+        if note.filter(\.isNumber).count >= 10 { return DemoSeed.heldForPhoneReason }
+        return nil
+    }
+
+    /// The Community title: the student's own words when given, otherwise the category. Never the student's name.
+    private static func issueTitle(_ report: StudentReportRequest) -> String {
+        if let note = report.note?.trimmingCharacters(in: .whitespacesAndNewlines), !note.isEmpty { return note }
+        return StudentReportCategoryTitle.title(report.category)
+    }
+
+    func isReportDeskStaffed(at mess: MessID) async throws -> Bool {
+        try failIfOffline()
+        // The only staffed-hours fact in the seed is that the mess opens at 7:00 AM; no closing time is known.
+        return clock.now() >= DemoSeed.messOpensForTheDay
     }
 }
 #endif

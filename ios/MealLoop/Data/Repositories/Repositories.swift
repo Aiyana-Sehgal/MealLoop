@@ -154,6 +154,7 @@ struct Repositories: Sendable {
     /// Defaulted for the same reason.
     var studentExtras: any StudentExtrasRepository = UnavailableStudentExtras()
     var studentMeals: any StudentMealsRepository = UnavailableStudentMeals()
+    var studentCommunity: any StudentCommunityRepository = UnavailableStudentCommunity()
     var adminResults: any AdminResultsRepository = AdminDataNotBuilt()
     var adminStudents: any AdminStudentsRepository = AdminDataNotBuilt()
     var adminMore: any AdminMoreRepository = AdminDataNotBuilt()
