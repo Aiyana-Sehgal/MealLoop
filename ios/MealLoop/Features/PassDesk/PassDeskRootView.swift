@@ -29,10 +29,18 @@ enum PassDeskLayout {
     static let tabBarClearance: CGFloat = 96
     static let scrollBottomInset: CGFloat = 120
     static let keyHeight: CGFloat = 56
+    /// The white keys on Look up and Request (2535:5422).
+    static let pageKeyHeight: CGFloat = 80
+    /// Measured from the 2530:4250 frame at 393 x 852.
+    static let waitingHeight: CGFloat = 257
+    static let compactWaitingHeight: CGFloat = 150
+    /// Above the tab bar, for an action pinned on a page that keeps it (PD-6).
+    static let footerAboveTabBar: CGFloat = 80
+    static let emptyStateTop: CGFloat = 205
+    static let noProblemsTop: CGFloat = 120
     /// Short phones (iPhone SE): the whole keypad must clear the tab bar, because 0 is on the bottom row.
     static let compactKeyHeight: CGFloat = 46
     static let compactHeightLimit: CGFloat = 700
-    static let meAvatar: CGFloat = 92
 }
 
 /// Home, Alerts and Me around one set of models, so the tabs always agree.
@@ -57,7 +65,8 @@ struct PassDeskTabs: View {
         _problems = State(initialValue: PassDeskProblemLog(session: session, repositories: repositories, clock: clock))
     }
 
-    private var showsTabBar: Bool { router.selectedStaffTab != .home || path.isEmpty }
+    /// PD-6 Open problems keeps the tab bar; the other pushed pages have none.
+    private var showsTabBar: Bool { router.selectedStaffTab != .home || path.isEmpty || path.last == .openProblems }
 
     var body: some View {
         @Bindable var router = router
@@ -105,7 +114,7 @@ struct PassDeskTabs: View {
         .mlSheet(isPresented: $isSOSOpen) {
             PassDeskSOSPanel(model: sos, session: home.session, now: clock.now(), onClose: { isSOSOpen = false }) {
                 isSOSOpen = false
-                toast = PassDeskCopy.markedAsChecked
+                toast = PassDeskCopy.markedAsChecked(home.session.supervisorName)
             }
         }
         .task(id: environment.dataRevision) {

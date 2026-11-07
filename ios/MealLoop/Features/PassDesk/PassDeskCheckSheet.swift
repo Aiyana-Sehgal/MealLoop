@@ -98,7 +98,7 @@ struct PassDeskCodeCard: View {
     var body: some View {
         VStack(spacing: MLSpacing.s8) {
             if compare.justChanged {
-                StatusText(text: PassDeskCopy.justChanged, dot: .filled)
+                StaffStatusPill(text: PassDeskCopy.justChanged, style: .outline)
             }
             Text(PassDeskCopy.screenShouldShow)
                 .font(MLType.body)
@@ -116,6 +116,11 @@ struct PassDeskCodeCard: View {
         .padding(MLSpacing.s20)
         .frame(maxWidth: .infinity)
         .background(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).fill(MLColor.fillQuiet))
+        .overlay {
+            if compare.justChanged {
+                RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).stroke(MLColor.ink, lineWidth: 1.5)
+            }
+        }
         .accessibilityElement(children: .combine)
     }
 }
