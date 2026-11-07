@@ -148,4 +148,6 @@ struct Repositories: Sendable {
     let auth: any AuthRepository
     /// Defaulted, so every existing caller stays as it was and a source without a pass service says so.
     var specialPasses: any SpecialPassRepository = UnavailableSpecialPasses()
+    /// Defaulted for the same reason.
+    var studentExtras: any StudentExtrasRepository = UnavailableStudentExtras()
 }
