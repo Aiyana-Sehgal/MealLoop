@@ -161,4 +161,6 @@ struct Repositories: Sendable {
     var adminMesses: any AdminMessRepository = AdminMessesNotBuilt()
     /// Defaulted, so every existing caller stays as it was and a source without a directory says nothing.
     var staffDirectory: any StaffDirectoryRepository = UnavailableStaffDirectory()
+    /// Defaulted, so every existing caller stays as it was. Student Notifications, You, Credits and Attendance.
+    var studentYou: any StudentYouRepository = UnavailableStudentYou()
 }
