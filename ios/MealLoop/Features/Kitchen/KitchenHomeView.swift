@@ -1,32 +1,23 @@
 import SwiftUI
 
-/// Builds the view model from the environment and reloads whenever the shared data changes.
-struct KitchenHomeScreen: View {
-    @Environment(AppEnvironment.self) private var environment
-    let session: StaffSession
-
-    var body: some View {
-        KitchenHomeView(model: KitchenHomeViewModel(session: session, repositories: environment.repositories,
-                                                    clock: environment.clock))
-    }
-}
-
-/// Kitchen Home: K01 (before), K02 (during), K03 (shortage reported) and K05 / K15 (after the meal).
+/// Kitchen Home: K01 (before), K02 (during), K03 (shortage reported) and K05 / K15 / K16 (after the meal).
 struct KitchenHomeView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(AppRouter.self) private var router
-    @State private var model: KitchenHomeViewModel
+    let model: KitchenHomeViewModel
+    let sos: KitchenSOSViewModel
+    let open: (KitchenRoute) -> Void
+    let onOpenSOS: () -> Void
+    let onToast: (String) -> Void
 
-    init(model: KitchenHomeViewModel) {
-        _model = State(initialValue: model)
-    }
+    @State private var isReporting = false
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .topTrailing) {
             OrbitBackground()
             ScrollView {
                 VStack(alignment: .leading, spacing: MLSpacing.s16) {
-                    StaffHeader(initials: model.session.staffInitials) {
+                    KitchenHeader(initials: model.session.staffInitials) {
                         router.selectedStaffTab = .me
                     }
                     AsyncContentView(state: model.state,
@@ -34,19 +25,78 @@ struct KitchenHomeView: View {
                                      emptyMessage: "The next meal will show here.",
                                      timeZone: model.session.mess.timeZone,
                                      retry: { await model.load() }) { content in
-                        KitchenHomeBody(content: content, now: environment.clock.now()) { title in
-                            router.staffHomePath.append(.notImplemented(title: title))
-                        }
+                        KitchenHomeBody(content: content, now: environment.clock.now(), failed: model.failedReports,
+                                        open: open, onReport: { isReporting = true },
+                                        onRetry: { failed in Task { await model.retry(failed) } })
                     }
                 }
                 .padding(.horizontal, MLSpacing.margin)
-                .padding(.bottom, 120)
+                .padding(.bottom, KitchenLayout.scrollBottomInset)
             }
             .refreshable { await model.load() }
+            if let current = sos.current {
+                SOSEdgeTab(count: sos.cases.count, isClaimedByYou: sos.isClaimedByYou,
+                           claimedStatus: KitchenCopy.tabChecking, action: onOpenSOS)
+                    .padding(.top, MLSize.avatar + MLSpacing.s24)
+                    .id(current.id)
+            }
         }
-        .task(id: environment.dataRevision) {
-            await model.load()
+        .mlSheet(isPresented: $isReporting) {
+            KitchenShortageSheet(model: model, onClose: { isReporting = false }) { outcome in
+                isReporting = false
+                switch outcome {
+                case .sent:
+                    onToast(KitchenCopy.sentTo(model.session.supervisorName))
+                case .mealEnded(let at):
+                    open(.mealEndedWhileReporting(at))
+                case .needsDish, .alreadyReported, .couldNotSend:
+                    break
+                }
+            }
         }
+    }
+}
+
+/// The staff header with its own avatar label, so it never reads the same as the Me tab.
+struct KitchenHeader: View {
+    let initials: String
+    let onAvatarTap: () -> Void
+
+    var body: some View {
+        HStack {
+            HStack(spacing: MLSpacing.s8) {
+                OrbitMarkView()
+                Text("MealLoop")
+                    .font(MLType.bodyEmphasis)
+                    .foregroundStyle(MLColor.ink)
+            }
+            .accessibilityElement(children: .combine)
+            Spacer()
+            Button(action: onAvatarTap) {
+                Text(initials)
+                    .font(MLType.bodyEmphasis)
+                    .foregroundStyle(MLColor.lime)
+                    .frame(width: MLSize.avatar, height: MLSize.avatar)
+                    .background(Circle().fill(MLColor.ink))
+            }
+            .buttonStyle(.plain)
+            .frame(minWidth: MLSize.hit, minHeight: MLSize.hit)
+            .accessibilityLabel(KitchenCopy.avatarLabel)
+        }
+    }
+}
+
+/// The large count on a Kitchen card, regular weight as on K01 and K02. Shows "—" when missing, never 0.
+struct KitchenHeroNumber: View {
+    let value: Int?
+    var size: CGFloat = KitchenLayout.heroNumber
+
+    var body: some View {
+        Text(value.map { String($0) } ?? "—")
+            .font(.system(size: size, weight: .regular, design: .monospaced))
+            .foregroundStyle(MLColor.onHero)
+            .lineLimit(1)
+            .minimumScaleFactor(0.5)
     }
 }
 
@@ -54,8 +104,10 @@ struct KitchenHomeView: View {
 struct KitchenHomeBody: View {
     let content: KitchenHomeContent
     let now: Date
-    /// Opens a "Not implemented" page for actions that are not built yet.
-    let openNotImplemented: (String) -> Void
+    let failed: [KitchenFailedReport]
+    let open: (KitchenRoute) -> Void
+    let onReport: () -> Void
+    let onRetry: (KitchenFailedReport) -> Void
 
     private var timeZone: TimeZone { content.mess.timeZone }
     private var mealName: String { MLFormat.mealSlot(content.meal.slot) }
@@ -87,8 +139,11 @@ struct KitchenHomeBody: View {
     private func beforeMeal(_ forecast: Forecast) -> some View {
         HeroCard {
             HeroEyebrow(label: KitchenCopy.forecastEyebrow)
-            HeroCount(value: forecast.diners, caption: KitchenCopy.forecastCaption)
+            KitchenHeroNumber(value: forecast.diners)
                 .padding(.top, MLSpacing.s12)
+            Text(KitchenCopy.forecastCaption)
+                .font(MLType.staffBody)
+                .foregroundStyle(MLColor.onHeroSecondary)
             if forecast.diners == nil {
                 Text(KitchenCopy.forecastNotReady)
                     .font(MLType.body)
@@ -99,10 +154,10 @@ struct KitchenHomeBody: View {
         VStack(spacing: 0) {
             Rectangle().fill(MLColor.border).frame(height: 1)
             QuietRow(title: "\(KitchenCopy.menuRow) \(mealName)") {
-                openNotImplemented("\(KitchenCopy.menuRow) \(mealName)")
+                open(.menu(content.meal))
             }
             QuietRow(title: KitchenCopy.pastMealsRow) {
-                openNotImplemented(KitchenCopy.pastMealsRow)
+                open(.history)
             }
         }
     }
@@ -115,41 +170,32 @@ struct KitchenHomeBody: View {
         HeroCard {
             HeroEyebrow(label: KitchenCopy.liveEyebrow, showsDot: true,
                         time: entered.asOf.map { MLFormat.time($0, in: timeZone) })
-            HeroCount(value: entered.value, caption: KitchenCopy.liveCaption)
-                .padding(.top, MLSpacing.s12)
-            LimeActionButton(title: KitchenCopy.reportShortage, systemImage: "exclamationmark.triangle") {
-                openNotImplemented(KitchenCopy.reportShortage)
-            }
-            .padding(.top, MLSpacing.s20)
+            KitchenHeroNumber(value: entered.value)
+                .padding(.top, MLSpacing.s4)
+            Text(KitchenCopy.liveCaption)
+                .font(MLType.staffBody)
+                .foregroundStyle(MLColor.onHeroSecondary)
+            LimeActionButton(title: KitchenCopy.reportShortage, systemImage: "exclamationmark.triangle", action: onReport)
+                .padding(.top, MLSpacing.s20)
         }
         // No row at all when nothing has been reported.
+        ForEach(failed) { report in
+            ShortageRow(title: KitchenCopy.shortageTitle(dish: report.report.dishName, level: MLFormat.shortageLevel(report.report.level)),
+                        detail: KitchenCopy.couldNotSend, retryTitle: KitchenCopy.retry,
+                        onRetry: { onRetry(report) }, systemImage: "exclamationmark.triangle")
+        }
         ForEach(content.visibleShortages) { shortage in
-            shortageRow(shortage)
+            KitchenShortageStatusRow(shortage: shortage, timeZone: timeZone)
         }
         if content.hiddenShortageCount > 0 {
             QuietRow(title: KitchenCopy.seeAll, value: "\(content.hiddenShortageCount)") {
-                openNotImplemented(KitchenCopy.seeAll)
+                open(.shortages)
             }
         }
         VStack(spacing: 0) {
             Rectangle().fill(MLColor.border).frame(height: 1)
             QuietRow(title: KitchenCopy.pastMealsRow) {
-                openNotImplemented(KitchenCopy.pastMealsRow)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func shortageRow(_ shortage: Shortage) -> some View {
-        let title = KitchenCopy.shortageTitle(dish: shortage.dishName, level: MLFormat.shortageLevel(shortage.level))
-        switch shortage.delivery {
-        case .sent(let at):
-            ShortageRow(title: title, detail: "Sent", detailTime: MLFormat.time(at, in: timeZone))
-        case .seen(_, let by):
-            ShortageRow(title: title, detail: KitchenCopy.seenBy(by))
-        case .couldNotSend:
-            ShortageRow(title: title, detail: KitchenCopy.couldNotSend, retryTitle: KitchenCopy.retry) {
-                openNotImplemented(KitchenCopy.retry)
+                open(.history)
             }
         }
     }
@@ -169,9 +215,7 @@ struct KitchenHomeBody: View {
                 .foregroundStyle(MLColor.onHeroSecondary)
                 .padding(.top, MLSpacing.s16)
             if let value = finalEntries.value {
-                Text("\(value)")
-                    .font(MLType.heroNumber)
-                    .foregroundStyle(MLColor.onHero)
+                KitchenHeroNumber(value: value, size: KitchenLayout.finalNumber)
             } else {
                 // Missing is never shown as zero.
                 Text(KitchenCopy.unavailable)
@@ -183,7 +227,7 @@ struct KitchenHomeBody: View {
         VStack(spacing: 0) {
             Rectangle().fill(MLColor.border).frame(height: 1)
             QuietRow(title: KitchenCopy.pastMealsRow) {
-                openNotImplemented(KitchenCopy.pastMealsRow)
+                open(.history)
             }
         }
     }
@@ -199,7 +243,7 @@ struct KitchenHomeBody: View {
             }
             switch waste.status {
             case .notStarted:
-                InkActionButton(title: KitchenCopy.recordWaste) { openNotImplemented(KitchenCopy.recordWaste) }
+                InkActionButton(title: KitchenCopy.recordWaste) { open(.recordWaste(content.meal)) }
             case .draft(let savedAt):
                 HStack(spacing: MLSpacing.s4) {
                     Text(KitchenCopy.draftProgress(done: waste.completedFieldCount, total: waste.totalFieldCount))
@@ -207,14 +251,14 @@ struct KitchenHomeBody: View {
                 }
                 .font(MLType.body)
                 .foregroundStyle(MLColor.inkSecondary)
-                InkActionButton(title: KitchenCopy.continueWaste) { openNotImplemented(KitchenCopy.recordWaste) }
+                InkActionButton(title: KitchenCopy.continueWaste) { open(.recordWaste(content.meal)) }
             case .recorded:
                 if let until = WasteReportPolicy.editableUntil(waste.status) {
                     Text(now < until ? KitchenCopy.editUntil(MLFormat.time(until, in: timeZone)) : KitchenCopy.editingClosed)
                         .font(MLType.body)
                         .foregroundStyle(MLColor.inkSecondary)
                 }
-                InkActionButton(title: KitchenCopy.viewReport) { openNotImplemented(KitchenCopy.viewReport) }
+                InkActionButton(title: KitchenCopy.viewReport) { open(.pastMeal(content.meal.id)) }
             }
         }
         .padding(MLSpacing.s20)
@@ -227,9 +271,30 @@ struct KitchenHomeBody: View {
         case .notStarted:
             StatusText(text: "Not started", dot: .empty)
         case .draft:
-            StatusText(text: "Draft", dot: .empty)
+            StatusText(text: "Draft", dot: .dashed)
         case .recorded(let savedAt):
             StatusText(text: "\(KitchenCopy.recorded()) \(MLFormat.time(savedAt, in: timeZone))", dot: .filled)
+        }
+    }
+}
+
+/// One report's status: Sent with its time, or "Ravi saw it" once that is confirmed.
+struct KitchenShortageStatusRow: View {
+    let shortage: Shortage
+    let timeZone: TimeZone
+
+    private var title: String {
+        KitchenCopy.shortageTitle(dish: shortage.dishName, level: MLFormat.shortageLevel(shortage.level))
+    }
+
+    var body: some View {
+        switch shortage.delivery {
+        case .sent(let at):
+            ShortageRow(title: title, detail: "Sent", detailTime: MLFormat.time(at, in: timeZone))
+        case .seen(_, let by):
+            ShortageRow(title: title, detail: KitchenCopy.seenBy(by))
+        case .couldNotSend:
+            ShortageRow(title: title, detail: KitchenCopy.couldNotSend, systemImage: "exclamationmark.triangle")
         }
     }
 }

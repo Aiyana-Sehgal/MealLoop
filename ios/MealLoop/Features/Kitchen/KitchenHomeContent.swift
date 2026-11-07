@@ -11,7 +11,26 @@ enum KitchenHomePhase: Equatable {
     case afterMeal(finalEntries: CountReading, closedAt: Date?, waste: WasteReportSummary)
 }
 
+/// A report that did not get through. It keeps its key, so a retry can never count twice.
+struct KitchenFailedReport: Equatable, Identifiable {
+    let report: ShortageReport
+
+    var id: String { report.idempotencyKey.rawValue }
+}
+
+/// What came of a tap on "Send to Ravi".
+enum KitchenReportOutcome: Equatable {
+    case needsDish
+    case sent
+    case alreadyReported(Shortage)
+    case mealEnded(at: Date?)
+    case couldNotSend
+}
+
 struct KitchenHomeContent: Equatable {
+    /// A second report for the same dish within this time asks first (kitchen_spec.md: 10 minutes).
+    static let repeatWindow: TimeInterval = 10 * 60
+
     let meal: Meal
     let mess: Mess
     let staffInitials: String
@@ -27,6 +46,11 @@ struct KitchenHomeContent: Equatable {
     /// Up to two shortage rows are shown on Home; the rest are behind "See all".
     var visibleShortages: [Shortage] {
         if case .duringMeal(_, _, let shortages) = phase { return Array(shortages.prefix(2)) }
+        return []
+    }
+
+    var allShortages: [Shortage] {
+        if case .duringMeal(_, _, let shortages) = phase { return shortages }
         return []
     }
 
