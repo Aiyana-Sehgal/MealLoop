@@ -1,7 +1,6 @@
 import SwiftUI
 
-/// The Admin root: Today, Students, Results, More and the round Search (A01). Today is built here;
-/// Students, Results and More stay Coming soon until their parts land.
+/// The Admin root: Today, Students, Results, More and the round Search (A01).
 struct AdminRootView: View {
     let session: Session
 
@@ -21,14 +20,15 @@ enum AdminRoute: Hashable {
 }
 
 private struct AdminTabsView: View {
-    @Environment(AppEnvironment.self) private var environment
-    @Environment(AppRouter.self) private var router
-    @Environment(SessionStore.self) private var sessionStore
     let context: AdminContext
 
     private let root = RoleRoot.admin
     @State private var selectedTab = RoleRoot.admin.placeholderTabs.first ?? ""
     @State private var todayPath: [AdminRoute] = []
+    @State private var studentsPath: [AdminPage] = []
+    @State private var resultsPath: [AdminPage] = []
+    @State private var morePath: [AdminPage] = []
+    @State private var toast: String?
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -40,11 +40,12 @@ private struct AdminTabsView: View {
                 }
             } else if selectedTab == RoleRoot.searchTab {
                 SearchPlaceholderView(prompt: root.searchPrompt)
+            } else if selectedTab == studentsTab {
+                tab($studentsPath) { AdminStudentsScreen(nav: $0) }
+            } else if selectedTab == resultsTab {
+                tab($resultsPath) { AdminResultsScreen(nav: $0) }
             } else {
-                NotImplementedView(title: selectedTab, actionTitle: "Sign out") {
-                    router.reset()
-                    sessionStore.signOut()
-                }
+                tab($morePath) { AdminMoreScreen(nav: $0) }
             }
             GlassTabBar(items: root.placeholderTabs.map { title in
                 GlassTabItem(tab: title, title: title, symbol: symbol(for: title))
@@ -52,9 +53,21 @@ private struct AdminTabsView: View {
             .padding(.horizontal, MLSpacing.s16)
             .padding(.bottom, MLSpacing.s8)
         }
+        .mlToast(message: $toast, bottomInset: AdminLayout.tabBarClearance)
+    }
+
+    private func tab<Root: View>(_ path: Binding<[AdminPage]>, @ViewBuilder root: @escaping (AdminNav) -> Root) -> some View {
+        let nav = AdminNav(context: context, push: { path.wrappedValue.append($0) },
+                           pop: { _ = path.wrappedValue.popLast() }, toast: { toast = $0 })
+        return NavigationStack(path: path) {
+            root(nav)
+                .navigationDestination(for: AdminPage.self) { AdminPageDestination(page: $0, nav: nav) }
+        }
     }
 
     private var todayTab: String { root.placeholderTabs.first ?? "" }
+    private var studentsTab: String { root.placeholderTabs.dropFirst().first ?? "" }
+    private var resultsTab: String { root.placeholderTabs.dropFirst(2).first ?? "" }
     private var moreTab: String { root.placeholderTabs.last ?? "" }
 
     private func symbol(for title: String) -> String {
@@ -64,5 +77,40 @@ private struct AdminTabsView: View {
         case "Results": return "chart.bar"
         default: return "ellipsis"
         }
+    }
+}
+
+private struct AdminPageDestination: View {
+    let page: AdminPage
+    let nav: AdminNav
+
+    var body: some View {
+        Group {
+            switch page {
+            case .reason(let kind): AdminReasonScreen(kind: kind, nav: nav)
+            case .meal(let meal): AdminMealReportScreen(meal: meal, nav: nav)
+            case .check(let check): AdminCheckScreen(check: check, nav: nav)
+            case .findMeal: AdminFindMealScreen(nav: nav)
+            case .safetyCases: AdminSafetyCasesScreen(nav: nav)
+            case .safetyCase(let id): AdminSafetyCaseScreen(id: id, nav: nav)
+            case .weeklyReport: AdminWeeklyReportScreen(nav: nav)
+            case .feedback(let id): AdminFeedbackScreen(id: id, nav: nav)
+            case .community(let id): AdminCommunityScreen(id: id, nav: nav)
+            case .skipReasons: AdminSkipReasonsScreen(nav: nav)
+            case .weeklyMenu: AdminMenuScreen(nav: nav)
+            case .checkDay(let date): AdminCheckDayScreen(date: date, nav: nav)
+            case .editDay(let date): AdminEditDayScreen(date: date, nav: nav)
+            case .people: AdminPeopleScreen(nav: nav)
+            case .peopleRole(let id): AdminRoleScreen(id: id, nav: nav)
+            case .announce: AdminAnnounceScreen(nav: nav)
+            case .passes: AdminPassesScreen(nav: nav)
+            case .votes: AdminVotesScreen(nav: nav)
+            case .rewards: AdminRewardsScreen(nav: nav)
+            case .spareFood: AdminSpareFoodScreen(nav: nav)
+            case .history: AdminHistoryScreen(nav: nav)
+            case .outings: AdminOutingsScreen(nav: nav)
+            }
+        }
+        .toolbar(.hidden, for: .navigationBar)
     }
 }
