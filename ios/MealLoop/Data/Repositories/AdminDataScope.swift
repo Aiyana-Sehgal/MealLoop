@@ -274,6 +274,7 @@ extension Repositories {
     func scopedAdmin(_ session: Session, mess: Mess) -> Repositories {
         var value = self
         let scope = AdminDataScope(session: session, mess: mess, sourceMess: (auth as? any AdminDataOrigin)?.adminSourceMess)
+        value.mealState = ScopedAdminMealState(base: mealState, scope: scope)
         value.headcount = ScopedAdminHeadcount(base: headcount, meals: mealState, scope: scope)
         value.adminResults = ScopedAdminResultsRepository(base: adminResults, scope: scope)
         value.adminStudents = ScopedAdminStudentsRepository(base: adminStudents, scope: scope)
@@ -357,5 +358,25 @@ extension ScopedAdminStudentsRepository: SingleMessStudentsRepository {
         let value = try await base.studentsOverview()
         return SingleMessStudents(feedback: value.feedback.filter { scope.allMesses || $0.mess == scope.name },
                                   community: value.community.filter { scope.allMesses || $0.context.hasPrefix(scope.mess.name + " · ") })
+    }
+}
+
+/// Reads inside the Admin subtree carry its session too. Unknown live sources are unavailable, not an empty meal day.
+struct ScopedAdminMealState: MealStateRepository {
+    let base: any MealStateRepository
+    let scope: AdminDataScope
+    private func require(_ mess: MessID) throws {
+        try scope.require()
+        guard scope.allMesses || scope.mess.id == mess else { throw RepositoryError.notAllowed(reason: "This mess is outside your account's scope.") }
+        guard scope.sourceMess?.id == mess else { throw RepositoryError.notImplemented(feature: "Live meal data for this mess") }
+    }
+    func currentMeal(for mess: MessID) async throws -> MealStatus? { try require(mess); return try await base.currentMeal(for: mess) }
+    func meals(for mess: MessID) async throws -> [MealStatus] { try require(mess); return try await base.meals(for: mess) }
+    func mealHistory(for mess: MessID) async throws -> [MealRecord] { try require(mess); return try await base.mealHistory(for: mess) }
+    func startMeal(_ meal: MealID, by role: Role) async throws -> MealStatus {
+        throw RepositoryError.notAllowed(reason: "Only the assigned Supervisor starts a meal.")
+    }
+    func closeMeal(_ meal: MealID, by role: Role) async throws -> MealStatus {
+        throw RepositoryError.notAllowed(reason: "Only the assigned Supervisor closes a meal.")
     }
 }

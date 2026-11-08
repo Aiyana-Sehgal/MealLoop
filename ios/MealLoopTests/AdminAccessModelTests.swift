@@ -30,6 +30,8 @@ import XCTest
         let today = AdminTodayViewModel(context: context, repositories: repos, clock: core.clock)
         await today.load()
         XCTAssertNil(today.state.value, "No North live data must not become Main data")
+        guard case .failed = today.state else { return XCTFail("Missing live source must say unavailable, not that no meal exists") }
+        do { _ = try await repos.mealState.currentMeal(for: DemoSeed.mess.id); XCTFail("Main live-read leak") } catch {}
         do { _ = try await repos.headcount.headcount(for: DemoSeed.lunch.id); XCTFail("Main leak") } catch {}
     }
     func testSuperAdminAllMessContextAndPasswordDismissal() async throws {

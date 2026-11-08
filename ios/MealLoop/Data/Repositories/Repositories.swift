@@ -142,7 +142,7 @@ protocol IntelligenceService: Sendable {}
 struct Repositories: Sendable {
     var people: any PeopleRepository = UnavailablePeople()
     let meals: any MealRepository
-    let mealState: any MealStateRepository
+    var mealState: any MealStateRepository
     var headcount: any HeadcountRepository
     let entries: any EntryRepository
     let intentions: any IntentionRepository
