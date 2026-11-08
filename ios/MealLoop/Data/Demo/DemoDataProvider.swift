@@ -170,6 +170,7 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
     private nonisolated let studentRecordsStore = DemoStudentRecordsStore()
     /// The instant the live pass code is read at, shared by the Student pass and the Pass Desk.
     nonisolated let passCodeTicker = PassCodeTicker()
+    private nonisolated let superAdminStore = DemoSuperAdminStore()
 
     /// A new provider is a relaunch: in-memory state and the clock go back to the scenario's start.
     init(scenario: DemoScenario = .duringMeal, clock: (any StoryClock)? = nil) {
@@ -194,7 +195,7 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
                             adminMesses: DemoAdminMesses(core: self, store: adminMessStore), staffDirectory: self,
                             studentYou: DemoStudentYou(core: self, store: studentYouStore),
                             studentRecords: DemoStudentRecords(core: self, store: studentRecordsStore),
-                            livePassCodes: self)
+                            livePassCodes: self, superAdmin: DemoSuperAdmin(core: self, store: superAdminStore))
     }
 
     /// For repositories that live outside this actor: throws exactly as the others do with no connection.
