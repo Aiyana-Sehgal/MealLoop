@@ -52,13 +52,13 @@ final class SupervisorHomeViewModel {
     /// Starts the meal for every role of the mess. Returns true when the data source accepted it.
     @discardableResult
     func startMeal() async -> Bool {
-        await write { meal in try await self.repositories.mealState.startMeal(meal, by: self.session.role) }
+        await write { meal in try await self.repositories.mealState.startMeal(meal, by: self.session) }
     }
 
     /// Closes the meal for every role of the mess. It resolves no shortage and completes no waste report.
     @discardableResult
     func closeMeal() async -> Bool {
-        await write { meal in try await self.repositories.mealState.closeMeal(meal, by: self.session.role) }
+        await write { meal in try await self.repositories.mealState.closeMeal(meal, by: self.session) }
     }
 
     private func write(_ change: @escaping (MealID) async throws -> MealStatus) async -> Bool {

@@ -143,7 +143,7 @@ struct Repositories: Sendable {
     var people: any PeopleRepository = UnavailablePeople()
     let meals: any MealRepository
     let mealState: any MealStateRepository
-    let headcount: any HeadcountRepository
+    var headcount: any HeadcountRepository
     let entries: any EntryRepository
     let intentions: any IntentionRepository
     let shortages: any ShortageRepository
