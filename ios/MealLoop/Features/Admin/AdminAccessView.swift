@@ -145,7 +145,7 @@ struct AdminAccessView: View {
     }
     private var subtitle: String {
         if let id = personID, let person = model.person(id) { return "\(person.account.displayName) · \(model.messName(person.account))" }
-        if let role { return "\(model.people(role).count) people · all messes" }
+        if let role { let count = model.people(role).count; return "\(count) \(count == 1 ? "person" : "people") · all messes" }
         return AdminAccessCopy.allMesses
     }
     private func rolesPage(_ directory: AccessDirectory) -> some View {
@@ -161,7 +161,7 @@ struct AdminAccessView: View {
             ForEach(model.people(role)) { person in
                 Button { nav.push(.accessPerson(person.id)) } label: {
                     HStack(spacing: MLSpacing.s12) {
-                        Text(AdminCopy.initials(person.account.displayName)).font(MLType.bodyEmphasis)
+                        Text(person.account.displayName.split(separator: " ").count == 1 ? String(person.account.displayName.prefix(2)).uppercased() : AdminCopy.initials(person.account.displayName)).font(MLType.bodyEmphasis)
                             .frame(width: MLSize.avatar, height: MLSize.avatar).background(Circle().fill(MLColor.surface))
                         VStack(alignment: .leading, spacing: MLSpacing.s4) {
                             Text(person.account.displayName).font(MLType.staffBody).foregroundStyle(MLColor.ink)
