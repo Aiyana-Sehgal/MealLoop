@@ -171,6 +171,7 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
     private nonisolated let adminMessStore = DemoAdminMessStore()
     private nonisolated let studentYouStore = DemoStudentYouStore()
     private nonisolated let studentRecordsStore = DemoStudentRecordsStore()
+    private nonisolated let studentSpendingStore = DemoStudentSpendingStore()
     /// The instant the live pass code is read at, shared by the Student pass and the Pass Desk.
     nonisolated let passCodeTicker = PassCodeTicker()
     private nonisolated let peopleStore = DemoPeopleStore()
@@ -200,7 +201,8 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
                             studentYou: DemoStudentYou(core: self, store: studentYouStore),
                             studentRecords: DemoStudentRecords(core: self, store: studentRecordsStore),
                             livePassCodes: self, superAdmin: DemoSuperAdmin(core: self, store: superAdminStore),
-                            passUse: self)
+                            passUse: self,
+                            studentSpending: DemoStudentSpending(core: self, store: studentSpendingStore))
     }
 
     /// For repositories that live outside this actor: throws exactly as the others do with no connection.
