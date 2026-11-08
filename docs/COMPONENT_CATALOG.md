@@ -22,6 +22,30 @@ To change one, or to add one, see [Shared files](PARTS_AND_OWNERSHIP.md#shared-f
 | Something that failed | `FieldErrorText`, or a row with Retry. Never a toast, which disappears |
 | A value that is missing | `nil`, which every component shows as "—" or dashed. Never 0 |
 
+## How to adopt MLScreen
+
+`MLScreen.swift`, `MLMotion.swift`, `MLDynamicType.swift`. The scaffold for [the SwiftUI standards](SWIFTUI_STANDARDS.md). Adoption is opt-in, one screen at a time; nothing changes for a screen until you wrap it. **See it:** the gallery page "Screen · MLScreen scaffold" (`MLScreenGalleryView`, Debug only) and the captures in [`docs/verification/foundation-standards/`](verification/foundation-standards/). **First adopters:** Welcome and Staff sign in (`Features/Entry/EntryViews.swift`).
+
+1. **Replace the screen's own `ZStack { OrbitBackground(); ScrollView { … } }`** with `MLScreen`. It draws the Orbit background, the `ScrollView`, the large title and subtitle, and `.scrollDismissesKeyboard(.interactively)`.
+   ```swift
+   MLScreen("Meal report", subtitle: "Lunch · Wed 14 Aug") {
+       rows                                   // content
+   } bottom: {
+       InkActionButton(title: "Send") { … }   // pinned primary action
+   }
+   ```
+   Other forms: `MLScreen(title) { content }`, `MLScreen(title, trailing: { … }) { content }`, and the full form with `header:` (a brand row or eyebrow above the title).
+2. **Delete the drawn title and `BackButton`, and stop hiding the bar** on pushed screens: remove `.toolbar(.hidden, for: .navigationBar)` and `.navigationBarBackButtonHidden(true)` from the destination. `MLScreen` uses the system back button (the glass circle on iOS 26, chevron only on iOS 17 and 18 through `.toolbarRole(.editor)`), so the left-edge swipe-back works. The large title collapses into the bar once it scrolls under it: `onScrollGeometryChange` on iOS 18 and later, a preference key on iOS 17.
+3. **Pinned action:** put the screen's primary button in `bottom:`. It sits on the bottom safe area and rides above the keyboard; the bar gets a canvas and a hairline only while content runs underneath it.
+4. **Tab roots:** pass `bottomClearance: .tabBar` (86 pt: the 62 pt floating bar, its 8 pt gap and 16 pt of air) instead of a hand-made bottom padding.
+5. **Short forms:** `placement: .upperMiddle` keeps the header at the top and splits the leftover height one part above the title and two below the form, so no empty band opens above the pinned button. `fillsViewport: true` makes the content at least the visible height (Welcome centres its brand this way).
+6. **Fields:** add `.mlKeepsVisible(id:when:)` to each field (`when: focus == .email`), so the focused field scrolls above the pinned bar and the keyboard.
+7. **Text that scales:** `.mlFont(.body)` and the other `MLDynamicType` styles are the `MLType` sizes, growing with Dynamic Type. `MLType` itself is fixed.
+8. **Motion:** `MLMotion.animate(.snappy, reduceMotion:) { … }`, `.mlAnimation(.smooth, value:)`, `.mlTransition(.fromTop)`, `.mlNumericText(count)` and `.mlHaptic(.success, trigger:)`. Under Reduce Motion every curve becomes a cross-fade and every entrance an opacity change.
+9. **Sheets:** keep `mlSheet`; it sizes to its measured content. New: `mlSheet(isPresented:isWorking:onDismiss:)` (no swipe-away while a send is in flight), `mlSheet(item:)`, and `mlConfirmSheet` (`ConfirmSheet`: title, subject, detail, Cancel and the action side by side) for a compact confirmation at the bottom.
+
+Check each adopted screen as the standards say: swipe back from the left edge, scroll until the title collapses, and capture it at the largest Dynamic Type size.
+
 ## Dialogs and sheets
 
 ### ConfirmDialog, `mlConfirmDialog`
