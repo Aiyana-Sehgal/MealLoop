@@ -22,12 +22,18 @@ final class StudentPassViewModel {
     private(set) var phase: PassConfirmPhase = .holding
     private(set) var nextMeal: (meal: Meal, dishes: [Dish])?
     private(set) var crowd: StudentCrowd?
+    /// Owner ruling (Prompt 2B): seconds left of the 30 s validity after the hold, from the repository. Nil when the pass
+    /// is not in use.
+    private(set) var inUseSecondsLeft: Int?
+    /// Why the hold was refused, in the backend's words ("Already used").
+    private(set) var holdError: String?
 
     let context: StudentContext
     let name: String
     private let meals: any StudentMealsRepository
     private let passes: any SpecialPassRepository
     private let live: any LivePassCodeRepository
+    private let use: any PassUseRepository
     private let extras: any StudentExtrasRepository
     private let clock: any AppClock
     private var startKey = IdempotencyKey(UUID().uuidString)
@@ -39,6 +45,7 @@ final class StudentPassViewModel {
         self.meals = repositories.studentMeals
         self.passes = repositories.specialPasses
         self.live = repositories.livePassCodes
+        self.use = repositories.passUse
         self.extras = repositories.studentExtras
         self.clock = clock
     }
@@ -46,6 +53,7 @@ final class StudentPassViewModel {
     var timeZone: TimeZone { context.mess.timeZone }
 
     var isLive: Bool {
+        if inUseSecondsLeft != nil { return true }
         if case .live? = state.value { return true }
         return false
     }
@@ -55,7 +63,8 @@ final class StudentPassViewModel {
         do {
             let standing = try await meals.passStanding(of: context.student.id, at: context.mess.id)
             state = .loaded(standing)
-            if case .live = standing, liveCode == nil {
+            await refreshUse()
+            if isLive, liveCode == nil {
                 await refreshCode()
             }
             if !standing.showsTicket {
@@ -81,19 +90,39 @@ final class StudentPassViewModel {
         startKey = IdempotencyKey(UUID().uuidString)
     }
 
-    /// The hold finished: ask the backend to start the pass. True when the live code can show.
+    /// The hold finished: the hold is the entry (owner ruling, Prompt 2B). The pass is In use for the backend's validity,
+    /// then Used. A refusal ("Already used") or offline keeps the pass as it was. True when the live code can show.
     func confirmHold() async -> Bool {
-        guard phase != .sending else { return false }
+        guard phase != .sending, let meal = state.value?.ticket?.meal else { return false }
         phase = .sending
+        holdError = nil
         do {
-            let standing = try await meals.startPass(of: context.student.id, key: startKey)
-            state = .loaded(standing)
+            _ = try await use.usePass(of: context.student.id, meal: meal.id, key: startKey)
+            state = .loaded(try await meals.passStanding(of: context.student.id, at: context.mess.id))
             phase = .holding
+            await refreshUse()
             await refreshCode()
             return true
+        } catch RepositoryError.notAllowed(let reason) {
+            holdError = reason
+            phase = .failed
+            return false
         } catch {
             phase = .failed
             return false
+        }
+    }
+
+    /// In use or not, from the repository at the pass-code instant. Used drops the code: it can't be shown again.
+    func refreshUse() async {
+        guard let meal = state.value?.ticket?.meal,
+              let current = try? await use.passUseState(of: context.student.id, meal: meal.id, at: await live.passCodeInstant())
+        else { return }
+        if case .inUse(_, _, let left) = current {
+            inUseSecondsLeft = left
+        } else {
+            if inUseSecondsLeft != nil { liveCode = nil }
+            inUseSecondsLeft = nil
         }
     }
 
@@ -114,6 +143,10 @@ final class StudentPassViewModel {
     /// door has just recorded turns to Used.
     func tick() async {
         guard isLive, let left = secondsLeft else { return }
+        if inUseSecondsLeft != nil {
+            await refreshUse()
+            if inUseSecondsLeft == nil { return }
+        }
         if left > 1 {
             secondsLeft = left - 1
             return

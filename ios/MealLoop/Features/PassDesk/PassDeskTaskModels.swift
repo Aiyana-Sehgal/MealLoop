@@ -1,46 +1,6 @@
 import Foundation
 import Observation
 
-/// Look up a student (P17). Status only: this model has no way to record.
-@MainActor
-@Observable
-final class PassDeskLookUpModel {
-    private(set) var entry = DigitEntry()
-    private(set) var state: LoadState<SpecialPassLookup> = .idle
-
-    private let passes: any SpecialPassRepository
-    private let meal: MealID
-
-    init(passes: any SpecialPassRepository, meal: MealID) {
-        self.passes = passes
-        self.meal = meal
-    }
-
-    func type(_ digit: Int) async {
-        guard !entry.isComplete else { return }
-        entry.append(digit)
-        guard entry.isComplete else { return }
-        state = .loading
-        do {
-            state = .loaded(try await passes.lookUpPass(lastFour: entry.text, for: meal))
-        } catch RepositoryError.offline(let savedAt) {
-            state = .offline(nil, savedAt: savedAt)
-        } catch {
-            state = .failed(LoadFailure(error))
-        }
-    }
-
-    func deleteLast() {
-        entry.deleteLast()
-        state = .idle
-    }
-
-    func reset() {
-        entry.clear()
-        state = .idle
-    }
-}
-
 /// Request a new pass (P09). It goes to the admin pass-exception flow and starts Waiting; nothing here approves.
 @MainActor
 @Observable

@@ -26,118 +26,6 @@ struct PassDeskPage<Content: View>: View {
     }
 }
 
-/// Look up a student (P17). Status only: it says so, and it cannot record.
-struct PassDeskLookUpView: View {
-    @State private var model: PassDeskLookUpModel
-    let session: StaffSession
-    let meal: Meal
-    let onBack: () -> Void
-
-    private var mealName: String { MLFormat.mealSlot(meal.slot) }
-
-    init(model: PassDeskLookUpModel, session: StaffSession, meal: Meal, onBack: @escaping () -> Void) {
-        _model = State(initialValue: model)
-        self.session = session
-        self.meal = meal
-        self.onBack = onBack
-    }
-
-    var body: some View {
-        PassDeskPage(title: PassDeskCopy.lookUp, subtitle: PassDeskCopy.lookUpSubtitle, onBack: onBack) {
-            Text(PassDeskCopy.lastFourDigits)
-                .font(MLType.body)
-                .foregroundStyle(MLColor.inkSecondary)
-            StaffDigitBoxes(entry: model.entry, accessibilityTitle: PassDeskCopy.lastFourDigits)
-            if case .idle = model.state {
-                KeyPad(keyHeight: PassDeskLayout.pageKeyHeight) { digit in
-                    Task { await model.type(digit) }
-                } onDelete: {
-                    model.deleteLast()
-                }
-            } else {
-                AsyncContentView(state: model.state, timeZone: session.mess.timeZone, retry: { model.reset() }) { lookup in
-                    result(lookup)
-                }
-            }
-        }
-        .staffPinnedFooter {
-            if !isIdle {
-                InkActionButton(title: PassDeskCopy.lookUpAnother) { model.reset() }
-            }
-        }
-    }
-
-    private var isIdle: Bool {
-        if case .idle = model.state { return true }
-        return false
-    }
-
-    @ViewBuilder
-    private func result(_ lookup: SpecialPassLookup) -> some View {
-        let timeZone = session.mess.timeZone
-        let name = PassDeskCopy.specialName(mealName)
-        switch lookup {
-        case .notFound:
-            FieldErrorText(text: PassDeskCopy.noStudent(model.entry.text, mess: session.mess.name))
-        case .valid(let holder, _):
-            card(holder, status: StaffStatusPill(text: PassDeskCopy.valid, style: .lime),
-                 rows: [FactRow(label: PassDeskCopy.pass, value: name, isMono: false),
-                        FactRow(label: PassDeskCopy.used, value: PassDeskCopy.notYet, isMono: false)],
-                 note: PassDeskCopy.notAnEntry)
-        case .used(let holder, let at, _):
-            card(holder, status: StaffStatusPill(text: PassDeskCopy.used, style: .outline),
-                 rows: [FactRow(label: PassDeskCopy.pass, value: name, isMono: false),
-                        FactRow(label: PassDeskCopy.used, value: MLFormat.time(at, in: timeZone))],
-                 note: PassDeskCopy.notAnEntry)
-        case .noPass(let holder):
-            card(holder, status: StaffStatusPill(text: PassDeskCopy.noPass, style: .dashed),
-                 rows: [FactRow(label: PassDeskCopy.pass, value: PassDeskCopy.noneFor(mealName), isMono: false)],
-                 note: PassDeskCopy.regularMealNotEntry())
-        case .wrongMeal(let holder, let slot):
-            card(holder, status: StaffStatusPill(text: PassDeskCopy.wrongMeal, style: .outline),
-                 rows: [FactRow(label: PassDeskCopy.pass, value: PassDeskCopy.specialName(MLFormat.mealSlot(slot)), isMono: false),
-                        FactRow(label: PassDeskCopy.used, value: PassDeskCopy.notYet, isMono: false)],
-                 note: PassDeskCopy.passIsForNotEntry(MLFormat.mealSlot(slot)))
-        }
-    }
-
-    /// One card as the frame draws it: holder and pill, a hairline, then the facts.
-    private func card(_ holder: SpecialPassHolder, status: StaffStatusPill, rows: [FactRow], note: String) -> some View {
-        VStack(spacing: MLSpacing.s12) {
-            VStack(spacing: 0) {
-                HStack(spacing: MLSpacing.s8) {
-                    PassDeskHolderRow(holder: holder, detail: session.mess.name)
-                    status
-                }
-                .padding(.bottom, MLSpacing.s12)
-                ForEach(rows) { row in
-                    Rectangle().fill(MLColor.border).frame(height: 1)
-                    HStack {
-                        Text(row.label)
-                            .font(MLType.staffBody)
-                            .foregroundStyle(MLColor.inkSecondary)
-                        Spacer(minLength: MLSpacing.s8)
-                        Text(row.value ?? "—")
-                            .font(row.isMono ? MLType.monoBody : MLType.staffPrimary)
-                            .foregroundStyle(MLColor.ink)
-                    }
-                    .frame(minHeight: 50)
-                    .accessibilityElement(children: .combine)
-                }
-            }
-            .padding(.horizontal, MLSpacing.s16)
-            .padding(.top, MLSpacing.s16)
-            .padding(.bottom, MLSpacing.s4)
-            .background(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).fill(MLColor.surface))
-            Text(note)
-                .font(MLType.body)
-                .foregroundStyle(MLColor.inkSecondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity)
-        }
-    }
-}
-
 /// Request a new pass (P09). "Send request" goes to the admin pass-exception flow; nothing here approves anything.
 struct PassDeskRequestView: View {
     @State private var form: PassDeskRequestForm
@@ -445,6 +333,34 @@ struct PassDeskOpenProblemsView: View {
         .padding(.vertical, MLSpacing.s12)
         .overlay(alignment: .bottom) {
             Rectangle().fill(MLColor.border).frame(height: 1)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+
+/// The initials circle, name and one line (P04, P09, P17).
+struct PassDeskHolderRow: View {
+    let holder: SpecialPassHolder
+    let detail: String
+
+    var body: some View {
+        HStack(spacing: MLSpacing.s12) {
+            Text(String(holder.name.prefix(2)).uppercased())
+                .font(MLType.bodyEmphasis)
+                .foregroundStyle(MLColor.ink)
+                .frame(width: MLSize.hit, height: MLSize.hit)
+                .background(Circle().fill(MLColor.fillQuiet))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(PassDeskCopy.holderLine(holder))
+                    .font(MLType.staffPrimary)
+                    .foregroundStyle(MLColor.ink)
+                Text(detail)
+                    .font(MLType.body)
+                    .foregroundStyle(MLColor.inkSecondary)
+            }
+            Spacer(minLength: 0)
         }
         .accessibilityElement(children: .combine)
     }

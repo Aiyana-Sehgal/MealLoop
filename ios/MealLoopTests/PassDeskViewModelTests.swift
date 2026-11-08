@@ -29,10 +29,19 @@ final class PassDeskViewModelTests: XCTestCase {
         return model
     }
 
-    private func typed(_ digits: String, _ flow: PassDeskCheckFlow) async {
+    private func checkDigits(_ world: World) -> PassDeskCheckDigitsModel {
+        PassDeskCheckDigitsModel(use: world.repositories.passUse, live: world.repositories.livePassCodes, meal: lunch)
+    }
+
+    private func typed(_ digits: String, _ model: PassDeskCheckDigitsModel) async {
         for character in digits {
-            await flow.type(character.wholeNumberValue ?? 0)
+            await model.type(character.wholeNumberValue ?? 0)
         }
+    }
+
+    /// The student's hold of "Use pass" on their own phone: the only way an entry is recorded (owner ruling, Prompt 2B).
+    private func studentHolds(_ world: World) async throws -> PassUseState {
+        try await world.repositories.passUse.usePass(of: DemoSeed.sampleStudent.id, meal: lunch, key: .make())
     }
 
     private func recorded(_ world: World) async throws -> Int {
@@ -68,216 +77,119 @@ final class PassDeskViewModelTests: XCTestCase {
         XCTAssertEqual(savedAt, DemoSeed.offlineSavedAt)
     }
 
-    // MARK: Check and record
+    // MARK: Home shows the live code; the desk records nothing (owner ruling, Prompt 2B)
+    // These replace the earlier keypad, check sheet and "Matches · record entry" tests, whose behaviour the ruling removed.
 
-    func testTheFourthDigitOpensTheCheckAndRecordsNothing() async throws {
-        let world = world()
-        let flow = await home(world).flow
-        await typed("023", flow)
-        XCTAssertNil(flow.compare, "Nothing is asked before the fourth digit")
-        await typed("8", flow)
-        XCTAssertEqual(flow.compare?.holder.student, DemoSeed.sampleStudent)
-        XCTAssertEqual(flow.compare?.live.code, DemoSeed.samplePassCodes[0].code)
-        XCTAssertEqual(flow.compare?.secondsLeft, Int(DemoSeed.passCodeWindow))
-        let count = try await recorded(world)
-        XCTAssertEqual(count, 0)
+    func testHomeShowsTheLiveCodeDuringTheMealAndNoneOutsideIt() async {
+        let during = await home(world())
+        XCTAssertNotNil(during.code.current, "The code and colour show during the meal")
+        XCTAssertFalse(during.code.isUnavailable)
+        let before = await home(world(.storyStart))
+        XCTAssertNil(before.code.current, "No code before the meal")
+        let after = await home(world(.afterMeal))
+        XCTAssertNil(after.code.current, "No code after the meal")
     }
 
-    func testRecordingHappensOnlyOnMatches() async throws {
-        let world = world()
-        let flow = await home(world).flow
-        await typed("0238", flow)
-        await flow.matches()
-        XCTAssertEqual(flow.outcome, .verified(SpecialPassHolder(student: DemoSeed.sampleStudent, name: "Aarav"),
-                                               count: DemoSeed.specialMealsSoFar + 1, passes: DemoSeed.specialPassesTotal))
-        XCTAssertNil(flow.compare)
-        let count = try await recorded(world)
-        XCTAssertEqual(count, 1)
-    }
-
-    func testDoesntMatchShowsWhatItShouldAndRecordsNothing() async throws {
-        let world = world()
-        let flow = await home(world).flow
-        await typed("0238", flow)
-        let live = try XCTUnwrap(flow.compare?.live)
-        flow.doesNotMatch()
-        XCTAssertEqual(flow.outcome, .mismatch(live))
-        let count = try await recorded(world)
-        XCTAssertEqual(count, 0)
-        await flow.checkAgain()
-        XCTAssertNil(flow.outcome)
-        XCTAssertNotNil(flow.compare, "Check again opens the sheet afresh")
-    }
-
-    func testClosingTheSheetRecordsNothing() async throws {
-        let world = world()
-        let flow = await home(world).flow
-        await typed("0238", flow)
-        flow.reset()
-        XCTAssertNil(flow.compare)
-        XCTAssertTrue(flow.entry.digits.isEmpty)
-        let count = try await recorded(world)
-        XCTAssertEqual(count, 0)
-    }
-
-    func testAStudentNobodyHoldsIsSaidOnHome() async {
-        let flow = await home(world()).flow
-        await typed("0999", flow)
-        XCTAssertEqual(flow.notFoundDigits, "0999")
-        XCTAssertNil(flow.outcome)
-        await flow.type(1)
-        XCTAssertNil(flow.notFoundDigits, "The next key starts again")
-        XCTAssertEqual(flow.entry.text, "1")
-    }
-
-    func testNoPassAndWrongMealRecordNothing() async throws {
-        let world = world()
-        let flow = await home(world).flow
-        await typed("0412", flow)
-        guard case .noPass? = flow.outcome else { return XCTFail("\(String(describing: flow.outcome))") }
-        flow.reset()
-        await typed("0377", flow)
-        guard case .wrongMeal(_, let slot)? = flow.outcome else { return XCTFail("\(String(describing: flow.outcome))") }
-        XCTAssertEqual(slot, .dinner)
-        let count = try await recorded(world)
-        XCTAssertEqual(count, 0)
-    }
-
-    func testASecondCheckIsAlreadyRecordedAndTheCountStays() async throws {
-        let world = world()
-        let flow = await home(world).flow
-        await typed("0238", flow)
-        await flow.matches()
-        flow.reset()
-        await typed("0238", flow)
-        guard case .alreadyRecorded(_, _, let count)? = flow.outcome else {
-            return XCTFail("\(String(describing: flow.outcome))")
+    func testHomeHasNoKeypadDigitBoxesOrRecordButton() throws {
+        let source = try String(contentsOf: URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("../MealLoop/Features/PassDesk/PassDeskHomeView.swift").standardizedFileURL, encoding: .utf8)
+        for banned in ["KeyPad(", "DigitBoxes", "Matches", "Doesn't match", "Record entry", "recordPassEntry", "Camera"] {
+            XCTAssertFalse(source.contains(banned), "Home contains \(banned)")
         }
-        XCTAssertEqual(count, DemoSeed.specialMealsSoFar + 1)
-        let entries = try await recorded(world)
-        XCTAssertEqual(entries, 1)
+        let labels = Mirror(reflecting: PassDeskHomeViewModel(session: staff(), repositories: world().repositories,
+                                                              clock: world().clock)).children.compactMap(\.label)
+        XCTAssertFalse(labels.contains { $0.contains("flow") }, "No check-and-record flow on Home")
     }
 
-    // MARK: The live code
-
-    func testTheCodeChangesWhenTheWindowRunsOut() async throws {
+    func testTheDeskCodeIsThePhonesCodeAndChangesAtTheBoundary() async throws {
         let world = world()
-        let flow = await home(world).flow
-        await typed("0238", flow)
-        let first = try XCTUnwrap(flow.compare?.live.code)
-        let changesAt = try XCTUnwrap(flow.compare?.live.changesAt)
-        for _ in 0..<Int(DemoSeed.passCodeWindow) - 1 {
-            await flow.tick()
-        }
-        XCTAssertEqual(flow.compare?.live.code, first, "The code holds for its whole window")
-        // The code follows the clock (P-PASS-9 a): it changes when time crosses the window, not because of a tick.
-        world.clock.set(changesAt)
-        await flow.tick()
-        XCTAssertNotEqual(flow.compare?.live.code, first)
-        XCTAssertEqual(flow.compare?.justChanged, true)
-        XCTAssertEqual(flow.compare?.secondsLeft, Int(DemoSeed.passCodeWindow))
-        await flow.tick()
-        await flow.tick()
-        XCTAssertEqual(flow.compare?.justChanged, false, "The highlight is brief")
+        let model = await home(world)
+        let first = try XCTUnwrap(model.code.current)
+        let phone = try await world.repositories.livePassCodes.currentPassCode(
+            for: DemoSeed.sampleStudent.id, meal: lunch, at: await world.repositories.livePassCodes.passCodeInstant())
+        XCTAssertEqual(first.live.code, phone.live.code)
+        XCTAssertEqual(first.live.colourName, phone.live.colourName)
+        world.clock.set(first.live.changesAt)
+        while (model.code.secondsLeft ?? 0) > 1 { await model.code.tick() }
+        await model.code.tick()
+        XCTAssertNotEqual(model.code.current?.live.code, first.live.code, "An expired window is never shown as current")
     }
 
-    func testAnExpiredWindowCannotBeRecorded() async throws {
+    func testLosingTheConnectionHidesTheCode() async throws {
         let world = world()
-        let flow = await home(world).flow
-        await typed("0238", flow)
-        let changesAt = try XCTUnwrap(flow.compare?.live.changesAt)
-        world.clock.set(changesAt)
-        await flow.matches()
-        XCTAssertEqual(flow.compare?.isExpired, true)
-        XCTAssertNil(flow.outcome)
-        let count = try await recorded(world)
-        XCTAssertEqual(count, 0)
-        await flow.matches()
-        let again = try await recorded(world)
-        XCTAssertEqual(again, 0, "Expired stays expired until Check again")
-    }
-
-    func testLosingTheConnectionMidWindowExpiresTheCode() async throws {
-        let world = world()
-        let flow = await home(world).flow
-        await typed("0238", flow)
+        let model = await home(world)
+        XCTAssertNotNil(model.code.current)
         await world.demo.setScenario(.offline)
-        for _ in 0..<Int(DemoSeed.passCodeWindow) {
-            await flow.tick()
-        }
-        XCTAssertEqual(flow.compare?.isExpired, true)
+        await model.load()
+        XCTAssertNil(model.code.current, "Offline: the code is never shown as valid")
     }
 
-    // MARK: Offline and the meal ending
-
-    func testAnOfflineLookupIsNeverSuccess() async throws {
+    func testTheDeskRecordsNothingAndTheStudentsHoldRecordsOne() async throws {
         let world = world()
-        let flow = await home(world).flow
+        let model = await home(world)
+        for _ in 0..<12 { await model.code.tick() }
+        let none = try await recorded(world)
+        XCTAssertEqual(none, 0, "Showing the code records nothing")
+        _ = try await studentHolds(world)
+        let one = try await recorded(world)
+        XCTAssertEqual(one, 1)
+        await model.load()
+        XCTAssertEqual(model.state.value?.count.recorded.value, DemoSeed.specialMealsSoFar + 1)
+    }
+
+    // MARK: Check last 4 digits: a lookup that never records
+
+    func testCheckingDigitsSaysValidAndRecordsNothing() async throws {
+        let world = world()
+        let model = checkDigits(world)
+        await typed("0238", model)
+        XCTAssertEqual(model.statusLine, "Valid for lunch · not used yet")
+        let count = try await recorded(world)
+        XCTAssertEqual(count, 0)
+    }
+
+    func testCheckingDigitsAfterTheHoldSaysInUseThenUsed() async throws {
+        let world = world()
+        guard case .inUse(let usedAt, _, _) = try await studentHolds(world) else { return XCTFail("In use") }
+        let model = checkDigits(world)
+        await typed("0238", model)
+        XCTAssertEqual(model.statusLine, "In use · valid for \(Int(PassUsePolicy.validity)) s")
+        world.clock.set(usedAt.addingTimeInterval(PassUsePolicy.validity))
+        model.deleteLast()
+        await model.type(8)
+        XCTAssertEqual(model.statusLine, "Used")
+        let count = try await recorded(world)
+        XCTAssertEqual(count, 1, "The check added nothing")
+    }
+
+    func testCheckingDigitsNotFoundNoPassAndWrongMeal() async {
+        let world = world()
+        let nobody = checkDigits(world)
+        await typed("9999", nobody)
+        XCTAssertEqual(nobody.statusLine, "Not found")
+        let meera = checkDigits(world)
+        await typed("0412", meera)
+        XCTAssertEqual(meera.statusLine, "No special pass")
+        let kiran = checkDigits(world)
+        await typed("0377", kiran)
+        XCTAssertEqual(kiran.statusLine, "Wrong meal")
+    }
+
+    func testCheckingDigitsOfflineNeverShowsSuccess() async {
+        let world = world()
         await world.demo.setScenario(.offline)
-        await typed("0238", flow)
-        XCTAssertEqual(flow.outcome, .cantCheck(lastUpdate: DemoSeed.offlineSavedAt))
+        let model = checkDigits(world)
+        await typed("0238", model)
+        XCTAssertEqual(model.statusLine, "Can't check right now")
     }
 
-    func testAnOfflineRecordIsNeverSuccessAndNeverQueued() async throws {
+    func testAnOfflineHoldIsNeverRecorded() async throws {
         let world = world()
-        let flow = await home(world).flow
-        await typed("0238", flow)
         await world.demo.setScenario(.offline)
-        await flow.matches()
-        XCTAssertEqual(flow.outcome, .cantCheck(lastUpdate: DemoSeed.offlineSavedAt))
-        await world.demo.setScenario(.duringMeal)
-        let count = try await recorded(world)
-        XCTAssertEqual(count, 0)
-    }
-
-    func testTheMealEndingWhileCheckingRecordsNothing() async throws {
-        let world = world()
-        let flow = await home(world).flow
-        await typed("0238", flow)
-        _ = try await world.demo.closeMeal(lunch, by: .supervisor)
-        await flow.matches()
-        guard case .mealEnded(let closedAt, _, _)? = flow.outcome else {
-            return XCTFail("\(String(describing: flow.outcome))")
-        }
-        XCTAssertNotNil(closedAt)
-        let count = try await recorded(world)
-        XCTAssertEqual(count, 0)
-    }
-
-    // MARK: Look up
-
-    func testALookupNeverRecordsAndSaysSo() async throws {
-        let world = world()
-        let model = PassDeskLookUpModel(passes: world.repositories.specialPasses, meal: lunch)
-        for digit in [0, 2, 3, 8] {
-            await model.type(digit)
-        }
-        guard case .loaded(.valid) = model.state else { return XCTFail("\(model.state)") }
-        let count = try await recorded(world)
-        XCTAssertEqual(count, 0)
-        let reading = try await world.demo.specialMealCount(for: lunch)
-        XCTAssertEqual(reading.recorded.value, DemoSeed.specialMealsSoFar)
-    }
-
-    func testALookupShowsUsedOnceRecorded() async throws {
-        let world = world()
-        let flow = await home(world).flow
-        await typed("0238", flow)
-        await flow.matches()
-        let model = PassDeskLookUpModel(passes: world.repositories.specialPasses, meal: lunch)
-        for digit in [0, 2, 3, 8] {
-            await model.type(digit)
-        }
-        guard case .loaded(.used) = model.state else { return XCTFail("\(model.state)") }
-    }
-
-    func testALookupOfflineClaimsNothing() async {
-        let world = world(.offline)
-        let model = PassDeskLookUpModel(passes: world.repositories.specialPasses, meal: lunch)
-        for digit in [0, 2, 3, 8] {
-            await model.type(digit)
-        }
-        guard case .offline(nil, _) = model.state else { return XCTFail("\(model.state)") }
+        do {
+            _ = try await studentHolds(world)
+            XCTFail("Offline")
+        } catch RepositoryError.offline {}
     }
 
     // MARK: Reissue
@@ -413,27 +325,23 @@ final class PassDeskViewModelTests: XCTestCase {
         }
     }
 
-    func testAnotherRoleCannotRecordThroughTheFlow() async throws {
-        let world = world()
-        let flow = PassDeskCheckFlow(session: staff(.supervisor), passes: world.repositories.specialPasses,
-                                     live: world.repositories.livePassCodes, clock: world.clock)
-        flow.meal = DemoSeed.lunch
-        await typed("0238", flow)
-        await flow.matches()
-        XCTAssertNotNil(flow.actionError)
-        let count = try await recorded(world)
-        XCTAssertEqual(count, 0)
+    func testTheDeskHasNoRecordOperationOnItsScreens() throws {
+        let folder = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("../MealLoop/Features/PassDesk").standardizedFileURL
+        let files = try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)
+        for file in files where file.pathExtension == "swift" {
+            let source = try String(contentsOf: file, encoding: .utf8)
+            XCTAssertFalse(source.contains("recordPassEntry"), "\(file.lastPathComponent) records")
+        }
     }
 
-    func testARecordedEntryIsVisibleToOtherRolesThroughTheRepository() async throws {
+    func testAStudentsHoldIsVisibleToOtherRolesThroughTheRepository() async throws {
         let world = world()
-        let flow = await home(world).flow
-        await typed("0238", flow)
-        await flow.matches()
+        _ = try await studentHolds(world)
         // The read takes no role: what the Supervisor's or Admin's screens would read.
         let entries = try await world.repositories.specialPasses.specialMealEntries(for: lunch)
         XCTAssertEqual(entries.map(\.student), [DemoSeed.sampleStudent])
-        XCTAssertEqual(entries.first?.recordedBy, .passDesk)
+        XCTAssertEqual(entries.first?.recordedBy, .student)
         let count = try await world.repositories.specialPasses.specialMealCount(for: lunch)
         XCTAssertEqual(count.recorded.value, DemoSeed.specialMealsSoFar + 1)
     }

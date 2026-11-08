@@ -24,52 +24,50 @@ final class PassCodeScreensTests: XCTestCase {
         return model
     }
 
-    private func desk(_ demo: DemoDataProvider, _ clock: DemoClock) async -> PassDeskCheckFlow {
+    private func desk(_ demo: DemoDataProvider, _ clock: DemoClock) async -> PassDeskHomeViewModel {
         let staff = StaffSession(role: .passDesk, mess: DemoSeed.mess, staffInitials: DemoSeed.staffInitials(for: .passDesk),
                                  supervisorName: DemoSeed.supervisorName)
         let home = PassDeskHomeViewModel(session: staff, repositories: demo.makeRepositories(), clock: clock)
         await home.load()
-        for digit in [0, 2, 3, 8] { await home.flow.type(digit) }
-        return home.flow
+        return home
     }
 
     func testThePhoneAndTheDeskShowTheSameCodeColourAndCountdown() async throws {
         let (demo, clock) = world()
         let phone = try await student(demo, clock)
-        let sheet = await desk(demo, clock)
+        let desk = await desk(demo, clock)
         let phoneCode = try XCTUnwrap(phone.liveCode)
-        let deskCompare = try XCTUnwrap(sheet.compare)
-        XCTAssertEqual(phoneCode.code, deskCompare.live.code)
-        XCTAssertEqual(phoneCode.colourName, deskCompare.live.colourName)
-        XCTAssertEqual(phoneCode.changesAt, deskCompare.live.changesAt)
-        XCTAssertEqual(phone.secondsLeft, deskCompare.secondsLeft)
+        let deskCode = try XCTUnwrap(desk.code.current)
+        XCTAssertEqual(phoneCode.code, deskCode.live.code)
+        XCTAssertEqual(phoneCode.colourName, deskCode.live.colourName)
+        XCTAssertEqual(phoneCode.changesAt, deskCode.live.changesAt)
+        XCTAssertEqual(phone.secondsLeft, desk.code.secondsLeft)
     }
 
     func testAfterTheBoundaryBothMoveToTheSameNextCode() async throws {
         let (demo, clock) = world()
         let phone = try await student(demo, clock)
-        let sheet = await desk(demo, clock)
+        let desk = await desk(demo, clock)
         let first = try XCTUnwrap(phone.liveCode)
         clock.set(first.changesAt)
         await phone.refreshCode()
-        while sheet.compare?.secondsLeft ?? 0 > 1 { await sheet.tick() }
-        await sheet.tick()
+        while (desk.code.secondsLeft ?? 0) > 1 { await desk.code.tick() }
+        await desk.code.tick()
         let phoneNext = try XCTUnwrap(phone.liveCode)
         XCTAssertNotEqual(phoneNext.code, first.code)
-        XCTAssertEqual(sheet.compare?.live.code, phoneNext.code)
-        XCTAssertEqual(sheet.compare?.live.colourName, phoneNext.colourName)
+        XCTAssertEqual(desk.code.current?.live.code, phoneNext.code)
+        XCTAssertEqual(desk.code.current?.live.colourName, phoneNext.colourName)
     }
 
-    func testTheCodeOnThePhoneRecordsAtTheDeskOnceAndLookingRecordsNothing() async throws {
+    func testTheHoldRecordsOnceAndTheDeskRecordsNothing() async throws {
         let (demo, clock) = world()
-        _ = try await student(demo, clock)
-        let sheet = await desk(demo, clock)
+        let desk = await desk(demo, clock)
+        for _ in 0..<5 { await desk.code.tick() }
         let before = try await demo.specialMealEntries(for: DemoSeed.lunch.id).count
-        XCTAssertEqual(before, 0, "Typing the digits and showing the sheet records nothing")
-        await sheet.matches()
-        guard case .verified? = sheet.outcome else { return XCTFail("\(String(describing: sheet.outcome))") }
+        XCTAssertEqual(before, 0, "Showing the code records nothing")
+        _ = try await student(demo, clock)
         let after = try await demo.specialMealEntries(for: DemoSeed.lunch.id).count
-        XCTAssertEqual(after, 1)
+        XCTAssertEqual(after, 1, "The student's hold is the entry")
     }
 }
 #endif

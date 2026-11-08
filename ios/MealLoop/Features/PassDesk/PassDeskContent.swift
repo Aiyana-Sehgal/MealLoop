@@ -60,25 +60,3 @@ struct PassDeskAlert: Equatable, Identifiable {
         return Array(alerts.sorted { $0.at > $1.at }.prefix(3))
     }
 }
-
-/// Check this pass: what the student's phone should show right now.
-struct PassDeskCompare: Equatable {
-    let holder: SpecialPassHolder
-    var live: LivePassCode
-    var secondsLeft: Int
-    /// True for a moment after the code changed under the sheet.
-    var justChanged = false
-    /// The window ran out and no new code came: staff must check again.
-    var isExpired = false
-}
-
-/// Every end of a check. Only `.verified` can show the lime screen, and only a saved entry makes one.
-enum PassDeskOutcome: Equatable {
-    case verified(SpecialPassHolder, count: Int?, passes: Int?)
-    case noPass(SpecialPassHolder)
-    case wrongMeal(SpecialPassHolder, passFor: MealSlot)
-    case alreadyRecorded(SpecialPassHolder, firstRecordedAt: Date, count: Int?)
-    case mismatch(LivePassCode)
-    case cantCheck(lastUpdate: Date?)
-    case mealEnded(closedAt: Date?, count: Int?, passes: Int?)
-}

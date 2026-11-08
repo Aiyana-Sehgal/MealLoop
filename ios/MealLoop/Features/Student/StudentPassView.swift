@@ -116,6 +116,12 @@ struct StudentPassView: View {
             PassLiveTicket(ticket: ticket, code: model.liveCode, secondsLeft: model.secondsLeft, window: model.codeWindow,
                            reduceMotion: reduceMotion, usedAt: nil, timeZone: model.timeZone)
             PassFooter(title: MealsCopy.noScanNeeded, detail: MealsCopy.markedWhenYouComeIn)
+        case .used(let ticket, _, _) where model.inUseSecondsLeft != nil:
+            // Owner ruling (Prompt 2B): In use for the backend's validity, on the Live card the frames draw.
+            MealsLargeHeader(title: MealsCopy.specialPass, subtitle: subtitle(ticket), onBack: onBack)
+            PassLiveTicket(ticket: ticket, code: model.liveCode, secondsLeft: model.secondsLeft, window: model.codeWindow,
+                           reduceMotion: reduceMotion, usedAt: nil, timeZone: model.timeZone)
+            PassInUseLine(secondsLeft: model.inUseSecondsLeft ?? 0)
         case .used(let ticket, let at, true):
             MealsLargeHeader(title: MealsCopy.specialPass, subtitle: subtitle(ticket), onBack: onBack)
             PassLiveTicket(ticket: ticket, code: model.liveCode, secondsLeft: nil, window: nil, reduceMotion: reduceMotion,
@@ -176,6 +182,29 @@ struct StudentPassView: View {
                 confirming = true
             }
         }
+    }
+}
+
+/// Words of the In use state (owner ruling, Prompt 2B). The seconds come from the backend.
+enum PassUseCopy {
+    static let inUse = "In use"
+    static func validFor(_ seconds: Int) -> String { "Valid for \(seconds) s" }
+}
+
+/// The status line under the Live card while the pass is in use: a dot and "In use", then "Valid for N s".
+struct PassInUseLine: View {
+    let secondsLeft: Int
+
+    var body: some View {
+        VStack(spacing: 4) {
+            StatusText(text: PassUseCopy.inUse)
+            Text(PassUseCopy.validFor(secondsLeft))
+                .font(StudentType.secondary)
+                .foregroundStyle(MLColor.inkSecondary)
+                .monospacedDigit()
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
     }
 }
 

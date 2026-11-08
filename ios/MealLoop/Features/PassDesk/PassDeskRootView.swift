@@ -17,7 +17,8 @@ struct PassDeskRootView: View {
 
 /// Pushed screens inside the Home tab.
 enum PassDeskRoute: Hashable {
-    case lookUp(Meal)
+    /// Check last 4 digits: the last option, read only.
+    case checkDigits(Meal)
     case requestPass(Meal, digits: String?)
     case requests
     case reportProblem
@@ -97,23 +98,8 @@ struct PassDeskTabs: View {
                     .padding(.horizontal, MLSpacing.s16)
                     .padding(.bottom, MLSpacing.s8)
             }
-            if let outcome = home.flow.outcome {
-                PassDeskOutcomeView(outcome: outcome, session: home.session, meal: home.state.value?.meal,
-                                    onDone: finishCheck,
-                                    onRetry: { Task { await home.flow.checkAgain() } },
-                                    onRequest: requestAfterCheck,
-                                    onReport: {
-                                        finishCheck()
-                                        path.append(.reportProblem)
-                                    })
-            }
         }
         .mlToast(message: $toast, bottomInset: PassDeskLayout.tabBarClearance)
-        .mlSheet(isPresented: compareBinding) {
-            if let compare = home.flow.compare {
-                PassDeskCheckSheet(flow: home.flow, compare: compare, session: home.session, meal: home.state.value?.meal)
-            }
-        }
         .mlSheet(isPresented: $isSOSOpen) {
             PassDeskSOSPanel(model: sos, session: home.session, now: clock.now(), onClose: { isSOSOpen = false }) {
                 isSOSOpen = false
@@ -125,36 +111,18 @@ struct PassDeskTabs: View {
         }
     }
 
-    /// Closing the sheet by any route leaves the flow, and so records nothing.
-    private var compareBinding: Binding<Bool> {
-        Binding(get: { home.flow.compare != nil }, set: { isPresented in
-            if !isPresented, home.flow.compare != nil { home.flow.reset() }
-        })
-    }
-
     private func reload() async {
         await home.load()
         await sos.load()
-    }
-
-    private func finishCheck() {
-        home.flow.reset()
-        Task { await reload() }
-    }
-
-    private func requestAfterCheck() {
-        let digits = home.flow.entry.text
-        finishCheck()
-        if let meal = home.state.value?.meal { path.append(.requestPass(meal, digits: digits)) }
     }
 
     @ViewBuilder
     private func destination(_ route: PassDeskRoute) -> some View {
         let back = { _ = path.popLast() }
         switch route {
-        case .lookUp(let meal):
-            PassDeskLookUpView(model: PassDeskLookUpModel(passes: repositories.specialPasses, meal: meal.id),
-                               session: home.session, meal: meal, onBack: back)
+        case .checkDigits(let meal):
+            PassDeskCheckDigitsView(model: PassDeskCheckDigitsModel(use: repositories.passUse, live: repositories.livePassCodes,
+                                                                    meal: meal.id), onBack: back)
         case .requestPass(let meal, let digits):
             PassDeskRequestView(form: PassDeskRequestForm(session: home.session, passes: repositories.specialPasses, meal: meal.id),
                                 digits: digits, onBack: back) {

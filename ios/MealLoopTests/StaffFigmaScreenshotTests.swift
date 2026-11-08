@@ -270,64 +270,23 @@ final class StaffFigmaScreenshotTests: XCTestCase {
         try await shot("2545_6742", world) { desk(world, tab: .alerts) }
     }
 
-    private func checkFlow(_ world: World, digits: [Int]) async -> PassDeskCheckFlow {
-        let flow = PassDeskCheckFlow(session: world.staff, passes: world.repositories.specialPasses, clock: world.clock)
-        flow.meal = DemoSeed.lunch
-        for digit in digits { await flow.type(digit) }
-        return flow
-    }
+    // Owner ruling (Prompt 2B): the check sheet and outcome frames (2533_*, 2534_*, 2531_5403) are superseded. The desk
+    // shows the live code on Home and checks the last four only as a lookup.
 
-    private func checkShot(_ node: String, _ world: World, _ flow: PassDeskCheckFlow, compare: PassDeskCompare) async throws {
-        try await shot(node, world, wait: 1.4) {
-            Sheeted(base: desk(world)) {
-                PassDeskCheckSheet(flow: flow, compare: compare, session: world.staff, meal: DemoSeed.lunch)
-            }
-        }
-    }
-
-    func testDeskCheckSheet() async throws {
-        let world = World(.duringMeal, role: .passDesk)
-        world.at(12, 50)
-        let flow = await checkFlow(world, digits: [0, 2, 3, 8])
-        var compare = try XCTUnwrap(flow.compare)
-        try await checkShot("2533_4953", world, flow, compare: compare)
-        compare.live = try await world.repositories.specialPasses.refreshPassCode(for: compare.holder.student.id, meal: DemoSeed.lunch.id)
-        compare.justChanged = true
-        try await checkShot("2533_5217", world, flow, compare: compare)
-        compare.justChanged = false
-        compare.isExpired = true
-        try await checkShot("2533_5411", world, flow, compare: compare)
-    }
-
-    func testDeskOutcomes() async throws {
-        let world = World(.duringMeal, role: .passDesk)
-        world.at(12, 50)
-        let flow = await checkFlow(world, digits: [0, 2, 3, 8])
-        let compare = try XCTUnwrap(flow.compare)
-        let holder = compare.holder
-        func outcome(_ node: String, _ value: PassDeskOutcome) async throws {
-            try await shot(node, world, wait: 0.5) {
-                PassDeskOutcomeView(outcome: value, session: world.staff, meal: DemoSeed.lunch,
-                                    onDone: {}, onRetry: {}, onRequest: {}, onReport: {})
-            }
-        }
-        try await outcome("2533_5598", .verified(holder, count: 42, passes: 214))
-        try await outcome("2534_5241", .noPass(holder))
-        try await outcome("2534_5359", .wrongMeal(holder, passFor: .dinner))
-        try await outcome("2534_5466", .alreadyRecorded(holder, firstRecordedAt: DemoSeed.time(12, 18), count: 42))
-        try await outcome("2534_5568", .mismatch(compare.live))
-        try await outcome("2534_5675", .cantCheck(lastUpdate: DemoSeed.time(12, 49)))
-        try await outcome("2531_5403", .mealEnded(closedAt: DemoSeed.closedAt, count: 196, passes: 214))
+    private func checkDigits(_ world: World, _ digits: [Int]) async -> PassDeskCheckDigitsModel {
+        let model = PassDeskCheckDigitsModel(use: world.repositories.passUse, live: world.repositories.livePassCodes,
+                                             meal: DemoSeed.lunch.id)
+        for digit in digits { await model.type(digit) }
+        return model
     }
 
     func testDeskLookUpRequestAndProblems() async throws {
         let world = World(.duringMeal, role: .passDesk)
         world.at(12, 52)
         func lookUp(_ node: String, _ digits: [Int]) async throws {
-            let model = PassDeskLookUpModel(passes: world.repositories.specialPasses, meal: DemoSeed.lunch.id)
-            for digit in digits { await model.type(digit) }
+            let model = await checkDigits(world, digits)
             try await shot(node, world) {
-                PassDeskLookUpView(model: model, session: world.staff, meal: DemoSeed.lunch, onBack: {})
+                PassDeskCheckDigitsView(model: model, onBack: {})
             }
         }
         try await lookUp("2535_5422", [])
@@ -335,8 +294,7 @@ final class StaffFigmaScreenshotTests: XCTestCase {
         try await lookUp("2535_5824", [0, 4, 1, 2])
         try await lookUp("2535_5948", [0, 3, 7, 7])
 
-        let used = await checkFlow(world, digits: [0, 2, 3, 8])
-        await used.matches()
+        _ = try await world.repositories.passUse.usePass(of: DemoSeed.sampleStudent.id, meal: DemoSeed.lunch.id, key: .make())
         try await lookUp("2535_5697", [0, 2, 3, 8])
 
         let form = PassDeskRequestForm(session: world.staff, passes: world.repositories.specialPasses, meal: DemoSeed.lunch.id)

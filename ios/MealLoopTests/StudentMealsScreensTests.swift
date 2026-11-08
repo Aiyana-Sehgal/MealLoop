@@ -169,10 +169,11 @@ final class StudentMealsScreensTests: XCTestCase {
     }
 
     func testAFailedHoldSaysSoAndKeepsThePassAvailable() async throws {
-        let (_, meals, repositories, clock) = try make()
-        meals.startFails = true
+        let (demo, _, repositories, clock) = try make()
         let model = try XCTUnwrap(StudentPassViewModel(session: try session, repositories: repositories, clock: clock))
         await model.load()
+        // The hold is the use (owner ruling, Prompt 2B); losing the connection makes it fail, and nothing is used.
+        await demo.setScenario(.offline)
         model.beginConfirm()
         let started = await model.confirmHold()
         XCTAssertFalse(started)
@@ -181,21 +182,43 @@ final class StudentMealsScreensTests: XCTestCase {
         XCTAssertNil(model.liveCode)
     }
 
-    func testTheLiveCodeTurnsUsedWhenTheDoorRecordsIt() async throws {
-        let (demo, _, repositories, clock) = try make()
+    // Owner ruling (Prompt 2B): the hold is the entry; In use for the backend's validity, then Used for good. This
+    // replaces the test where the desk recorded the entry, which the ruling removed.
+
+    func testATapAloneDoesNothing() async throws {
+        let (demo, _, repositories, clock) = try make(at: DemoSeed.time(12, 32))
         let model = try XCTUnwrap(StudentPassViewModel(session: try session, repositories: repositories, clock: clock))
         await model.load()
         model.beginConfirm()
-        _ = await model.confirmHold()
-        _ = try await demo.startMeal(DemoSeed.lunch.id, by: .supervisor)
-        guard case .valid(_, let live) = try await demo.lookUpPass(lastFour: "0238", for: DemoSeed.lunch.id) else { return XCTFail("Valid") }
-        _ = try await demo.recordPassEntry(SpecialPassEntryRequest(mealID: DemoSeed.lunch.id, student: DemoSeed.sampleStudent,
-                                                                   comparedCode: live.code, recordedBy: .passDesk,
-                                                                   idempotencyKey: IdempotencyKey("desk")))
-        for _ in 0..<Int(DemoSeed.passCodeWindow) { await model.tick() }
-        guard case .used(_, _, true)? = model.state.value else { return XCTFail("Used, shown as the greyed ticket") }
-        XCTAssertTrue(model.state.value?.showsTicket ?? false)
+        guard case .available? = model.state.value else { return XCTFail("Still available") }
+        let entries = try await demo.specialMealEntries(for: DemoSeed.lunch.id).count
+        XCTAssertEqual(entries, 0)
+    }
+
+    func testTheHoldIsInUseForThirtySecondsThenUsedAndASecondHoldIsRefused() async throws {
+        let start = DemoSeed.time(12, 32)
+        let (_, _, repositories, clock) = try make(at: start)
+        let model = try XCTUnwrap(StudentPassViewModel(session: try session, repositories: repositories, clock: clock))
+        await model.load()
+        model.beginConfirm()
+        let held = await model.confirmHold()
+        XCTAssertTrue(held)
+        XCTAssertEqual(model.inUseSecondsLeft, Int(PassUsePolicy.validity))
+        XCTAssertTrue(model.isLive)
+        XCTAssertNotNil(model.liveCode, "In use shows the live code and colour")
+        clock.set(start.addingTimeInterval(PassUsePolicy.validity - 1))
+        await model.tick()
+        XCTAssertNotNil(model.inUseSecondsLeft, "Still in use at 29 s")
+        clock.set(start.addingTimeInterval(PassUsePolicy.validity + 1))
+        await model.tick()
+        XCTAssertNil(model.inUseSecondsLeft)
         XCTAssertFalse(model.isLive)
+        XCTAssertNil(model.liveCode, "Used shows no code")
+        guard case .used(_, _, true)? = model.state.value else { return XCTFail("Used, shown as the greyed ticket") }
+        model.beginConfirm()
+        let again = await model.confirmHold()
+        XCTAssertFalse(again)
+        XCTAssertEqual(model.holdError, "Already used")
     }
 
     func testAnExpiredPassShowsTheNextMealAndTheCrowd() async throws {

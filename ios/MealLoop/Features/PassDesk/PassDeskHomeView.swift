@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// Pass Desk Home: P02 (before), P03 (during, keypad on Home), P15 (with the SOS tab) and P13 (after).
+/// Pass Desk Home: P02 (before), during the meal (owner ruling, Prompt 2B: the live code and colour and three rows, no
+/// keypad and no record), P15 (with the SOS tab) and P13 (after).
 struct PassDeskHomeView: View {
     @Environment(AppRouter.self) private var router
     let model: PassDeskHomeViewModel
@@ -12,12 +13,19 @@ struct PassDeskHomeView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            page(keyHeight: proxy.size.height < PassDeskLayout.compactHeightLimit
-                 ? PassDeskLayout.compactKeyHeight : PassDeskLayout.keyHeight)
+            page(compact: proxy.size.height < PassDeskLayout.compactHeightLimit)
+        }
+        .task(id: model.state.value?.phase == .duringMeal) {
+            guard model.state.value?.phase == .duringMeal else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled else { return }
+                await model.code.tick()
+            }
         }
     }
 
-    private func page(keyHeight: CGFloat) -> some View {
+    private func page(compact: Bool) -> some View {
         ZStack(alignment: .topTrailing) {
             OrbitBackground()
             ScrollView {
@@ -30,8 +38,8 @@ struct PassDeskHomeView: View {
                                      emptyMessage: PassDeskCopy.noMealDetail,
                                      timeZone: model.session.mess.timeZone,
                                      retry: onReload) { content in
-                        PassDeskHomeBody(content: content, mess: model.session.mess, flow: model.flow,
-                                         openProblems: openProblems, keyHeight: keyHeight, open: { path.append($0) })
+                        PassDeskHomeBody(content: content, mess: model.session.mess, code: model.code,
+                                         openProblems: openProblems, compact: compact, open: { path.append($0) })
                     }
                 }
                 .padding(.horizontal, MLSpacing.margin)
@@ -52,23 +60,22 @@ struct PassDeskHomeView: View {
 struct PassDeskHomeBody: View {
     let content: PassDeskHomeContent
     let mess: Mess
-    let flow: PassDeskCheckFlow
+    let code: PassDeskLiveCodeModel
     let openProblems: Int
-    let keyHeight: CGFloat
+    let compact: Bool
     let open: (PassDeskRoute) -> Void
 
     private var mealName: String { MLFormat.mealSlot(content.meal.slot) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: MLSpacing.s16) {
-            // Home during the meal is being redesigned by the owner, so its layout stays exactly as it was.
-            ScreenTitleBlock(title: mealName, subtitle: subtitle)
+            ScreenTitleBlock(title: content.phase == .duringMeal ? PassDeskSimpleCopy.title : mealName, subtitle: subtitle)
                 .padding(.top, content.phase == .duringMeal ? 0 : MLSpacing.s4)
             switch content.phase {
             case .beforeMeal(let opensAt):
                 waitingCard(opensAt)
-                StaffHomeRow(symbol: "magnifyingglass", title: PassDeskCopy.lookUp, detail: PassDeskCopy.lookUpDetail) {
-                    open(.lookUp(content.meal))
+                StaffHomeRow(symbol: "magnifyingglass", title: PassDeskSimpleCopy.checkLastFour) {
+                    open(.checkDigits(content.meal))
                 }
                 StaffHomeRow(symbol: "arrow.right", title: PassDeskCopy.requestNewPass) {
                     open(.requestPass(content.meal, digits: nil))
@@ -77,17 +84,12 @@ struct PassDeskHomeBody: View {
                     open(.reportProblem)
                 }
             case .duringMeal:
-                MealProgressChip(text: PassDeskCopy.mealInProgress(PassDeskCopy.recordedOf(content.count.recorded.value,
-                                                                                           content.count.passes)))
-                PassDeskDigitCard(flow: flow, mess: mess)
-                KeyPad(isEnabled: !flow.isChecking, keyHeight: keyHeight, keyFill: MLColor.fillQuiet) { digit in
-                    Task { await flow.type(digit) }
-                } onDelete: {
-                    flow.deleteLast()
-                }
+                PassDeskCodeCard(code: code.current, secondsLeft: code.secondsLeft, isUnavailable: code.isUnavailable)
                 quietRows {
                     QuietRow(title: PassDeskCopy.requestNewPass) { open(.requestPass(content.meal, digits: nil)) }
                     QuietRow(title: PassDeskCopy.reportProblem) { open(.reportProblem) }
+                    QuietRow(title: PassDeskSimpleCopy.checkLastFour) { open(.checkDigits(content.meal)) }
+                        .accessibilityIdentifier("passdesk.checkLastFour")
                 }
             case .afterMeal:
                 endedCard
@@ -105,6 +107,10 @@ struct PassDeskHomeBody: View {
     private var subtitle: String {
         if case .afterMeal(let closedAt?) = content.phase {
             return PassDeskCopy.endedSubtitle(mess: mess.name, time: MLFormat.time(closedAt, in: mess.timeZone))
+        }
+        if content.phase == .duringMeal {
+            return PassDeskSimpleCopy.header(meal: mealName, hours: MLFormat.timeRange(content.meal.startsAt, content.meal.endsAt,
+                                                                                       in: mess.timeZone), mess: mess.name)
         }
         return PassDeskCopy.homeSubtitle(mess: mess.name)
     }
@@ -128,7 +134,7 @@ struct PassDeskHomeBody: View {
                 .multilineTextAlignment(.center)
         }
         .padding(MLSpacing.s20)
-        .frame(maxWidth: .infinity, minHeight: keyHeight < PassDeskLayout.keyHeight ? PassDeskLayout.compactWaitingHeight : PassDeskLayout.waitingHeight)
+        .frame(maxWidth: .infinity, minHeight: compact ? PassDeskLayout.compactWaitingHeight : PassDeskLayout.waitingHeight)
         .background(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).fill(MLColor.heroBackground))
         .accessibilityElement(children: .combine)
     }
@@ -159,55 +165,6 @@ struct PassDeskHomeBody: View {
                 }
             }
         }
-    }
-}
-
-/// The black card with the four boxes (P03). A last four nobody holds is said here, with Try again.
-struct PassDeskDigitCard: View {
-    let flow: PassDeskCheckFlow
-    let mess: Mess
-
-    var body: some View {
-        // A local card: the shared HeroCard and DigitBoxes draw 20 pt padding and 64 pt boxes; PD-1 draws 53 pt boxes.
-        VStack(alignment: .leading, spacing: 0) {
-            HeroEyebrow(label: PassDeskCopy.lastFourDigits)
-            PassDeskHomeDigitBoxes(entry: flow.entry)
-                .padding(.top, MLSpacing.s8)
-            if let digits = flow.notFoundDigits {
-                Text(PassDeskCopy.noStudent(digits, mess: mess.name))
-                    .font(MLType.bodyEmphasis)
-                    .foregroundStyle(MLColor.onHero)
-                    .padding(.top, MLSpacing.s12)
-                PassDeskHeroOutlineButton(title: PassDeskCopy.tryAgain) { flow.reset() }
-                    .padding(.top, MLSpacing.s12)
-            }
-        }
-        .padding(.horizontal, MLSpacing.s20)
-        .padding(.top, 18)
-        .padding(.bottom, MLSpacing.s16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).fill(MLColor.heroBackground))
-    }
-}
-
-/// The four boxes of PD-1 at the frame's 53 pt; the same colours and accessibility as the shared `DigitBoxes`.
-struct PassDeskHomeDigitBoxes: View {
-    let entry: DigitEntry
-
-    var body: some View {
-        HStack(spacing: MLSpacing.s12) {
-            ForEach(0..<entry.length, id: \.self) { index in
-                Text(index < entry.digits.count ? String(entry.digits[index]) : " ")
-                    .font(MLType.title2.monospaced())
-                    .foregroundStyle(MLColor.onHero)
-                    .frame(maxWidth: .infinity, minHeight: PassDeskLayout.homeBoxHeight)
-                    .background(RoundedRectangle(cornerRadius: MLRadius.compact, style: .continuous)
-                        .fill(MLColor.onHero.opacity(0.15)))
-            }
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(PassDeskCopy.lastFourDigits)
-        .accessibilityValue(entry.spokenValue)
     }
 }
 
