@@ -69,7 +69,7 @@ struct StudentSearchView: View {
         case .dish(let dish, let day, let slot):
             StudentDishDetailView(load: { try await meals.dishDetail(dish, day: day, slot: slot) }, timeZone: model.timeZone,
                                   onRate: { path.append(.comingSoon(MealsCopy.rateDish)) }) { path.removeLast() }
-        case .pass, .comingSoon:
+        case .pass, .report, .comingSoon:
             StudentComingSoonView(title: MealsCopy.rateDish) { path.removeLast() }
         }
     }

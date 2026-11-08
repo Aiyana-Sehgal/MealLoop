@@ -4,6 +4,8 @@ import SwiftUI
 enum StudentMealsRoute: Hashable {
     case dish(DishID, day: Date, slot: MealSlot)
     case pass
+    /// Report · What's wrong (221:63480), from the Meals error card.
+    case report
     case comingSoon(String)
 }
 
@@ -81,6 +83,8 @@ struct StudentMealsView: View {
                                   onRate: { path.append(.comingSoon(MealsCopy.rateDish)) }) { path.removeLast() }
         case .pass:
             StudentPassScreen(session: session) { path.removeLast() }
+        case .report:
+            StudentReportScreen(session: session) { path.removeLast() }
         case .comingSoon(let title):
             StudentComingSoonView(title: title) { path.removeLast() }
         }
@@ -104,7 +108,7 @@ struct StudentMealsView: View {
                 MealsStateCard(title: failure.message, detail: "")
             } else {
                 MealsErrorCard(onRetry: { Task { await model.load() } },
-                               onReport: { path.append(.comingSoon(StudentCopy.reportIssue)) })
+                               onReport: { path.append(.report) })
             }
         }
     }
