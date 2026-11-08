@@ -236,5 +236,20 @@ final class StudentFinalScreenshotTests: XCTestCase {
                 .mlSheet(isPresented: .constant(true)) { CommunityInfoSheet {} }
         }
     }
+
+    // MARK: - Standards: pages moved to MLScreen
+
+    func testCaptureStandardsPages() async throws {
+        let world = World()
+        try await shot("notifications_mlscreen", world, tab: .home) { StudentNotificationsView(model: world.you) {} }
+        try await shot("notifications_collapsed", world, tab: .home, scrolledToEnd: true) {
+            StudentNotificationsView(model: world.you) {}
+        }
+        try await shot("attendance_mlscreen", world, tab: .you) { StudentAttendanceView(model: world.you) {} }
+        try await shot("attendance_largest_text", world, tab: .you, largestText: true) { StudentAttendanceView(model: world.you) {} }
+        try await shot("credits_history_mlscreen", world, tab: .you) {
+            StudentCreditsHistoryView(model: world.you, rewards: world.rewards) {}
+        }
+    }
 }
 #endif

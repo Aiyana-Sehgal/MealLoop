@@ -24,7 +24,7 @@ enum StudentHomeRoute: Hashable {
     /// Pages built on `MLScreen`: the system bar, its back button and the swipe-back gesture.
     var usesSystemBar: Bool {
         switch self {
-        case .credits, .rewardTicket, .rateMeal: true
+        case .credits, .creditsHistory, .rewardTicket, .rateMeal, .notifications: true
         default: false
         }
     }

@@ -22,7 +22,7 @@ enum StudentYouRoute: Hashable {
     /// Pages built on `MLScreen`: the system bar, its back button and the swipe-back gesture.
     var usesSystemBar: Bool {
         switch self {
-        case .spending, .credits, .rewardTicket: true
+        case .spending, .credits, .creditsHistory, .rewardTicket, .attendance: true
         default: false
         }
     }
@@ -508,19 +508,12 @@ struct StudentCreditsHistoryView: View {
     let onBack: () -> Void
     @State private var asksBalance = false
 
+    /// On `MLScreen`: the system back button and swipe-back pop the page; `onBack` stays for callers.
     var body: some View {
-        ZStack {
-            OrbitBackground()
-            ScrollView {
-                VStack(alignment: .leading, spacing: MLSpacing.s16) {
-                    MealsCompactHeader(title: YouCopy.creditsHistory, onBack: onBack)
-                    content
-                }
-                .padding(.horizontal, MLSpacing.margin)
-                .padding(.top, MLSpacing.s8)
-                .padding(.bottom, StudentMetric.scrollBottom)
+        MLScreen(YouCopy.creditsHistory, bottomClearance: .tabBar) {
+            VStack(alignment: .leading, spacing: MLSpacing.s16) {
+                content
             }
-            StudentScrollFade()
         }
         .task { await model.loadCredits() }
         .mlSheet(isPresented: $asksBalance, isWorking: rewards?.balanceSend == .sending) {
@@ -603,21 +596,14 @@ struct StudentAttendanceView: View {
     @State var model: StudentYouViewModel
     let onBack: () -> Void
 
+    /// On `MLScreen`: the system back button and swipe-back pop the page; `onBack` stays for callers.
     var body: some View {
-        ZStack {
-            OrbitBackground()
-            ScrollView {
-                VStack(alignment: .leading, spacing: MLSpacing.s16) {
-                    YouLargeHeader(title: YouCopy.attendance, subtitle: YouCopy.attendanceSubtitle, onBack: onBack)
-                    content
-                }
-                .padding(.horizontal, MLSpacing.margin)
-                .padding(.top, MLSpacing.s8)
-                .padding(.bottom, StudentMetric.scrollBottom)
+        MLScreen(YouCopy.attendance, subtitle: YouCopy.attendanceSubtitle, bottomClearance: .tabBar) {
+            VStack(alignment: .leading, spacing: MLSpacing.s16) {
+                content
             }
-            .refreshable { await model.loadAttendance() }
-            StudentScrollFade()
         }
+        .refreshable { await model.loadAttendance() }
         .task { await model.loadAttendance() }
     }
 

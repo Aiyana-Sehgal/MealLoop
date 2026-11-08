@@ -6,21 +6,14 @@ struct StudentNotificationsView: View {
     @State var model: StudentYouViewModel
     let onBack: () -> Void
 
+    /// On `MLScreen`: the system back button and swipe-back pop the page; `onBack` stays for callers.
     var body: some View {
-        ZStack {
-            OrbitBackground()
-            ScrollView {
-                VStack(alignment: .leading, spacing: MLSpacing.s16) {
-                    YouLargeHeader(title: YouCopy.notifications, subtitle: nil, onBack: onBack)
-                    content
-                }
-                .padding(.horizontal, MLSpacing.margin)
-                .padding(.top, MLSpacing.s8)
-                .padding(.bottom, StudentMetric.scrollBottom)
+        MLScreen(YouCopy.notifications, bottomClearance: .tabBar) {
+            VStack(alignment: .leading, spacing: MLSpacing.s16) {
+                content
             }
-            .refreshable { await model.loadNotifications() }
-            StudentScrollFade()
         }
+        .refreshable { await model.loadNotifications() }
         .task { await model.loadNotifications() }
     }
 
