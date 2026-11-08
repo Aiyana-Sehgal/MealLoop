@@ -174,4 +174,6 @@ struct Repositories: Sendable {
     var passUse: any PassUseRepository = UnavailablePassUse()
     /// Defaulted, so every existing caller stays as it was. The student's private spending ledger.
     var studentSpending: any StudentSpendingRepository = UnavailableStudentSpending()
+    /// Defaulted, so every existing caller stays as it was. Reward tickets got with credits.
+    var studentRewards: any StudentRewardsRepository = UnavailableStudentRewards()
 }

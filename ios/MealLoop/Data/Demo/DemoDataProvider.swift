@@ -172,6 +172,7 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
     private nonisolated let studentYouStore = DemoStudentYouStore()
     private nonisolated let studentRecordsStore = DemoStudentRecordsStore()
     private nonisolated let studentSpendingStore = DemoStudentSpendingStore()
+    private nonisolated let studentRewardsStore = DemoStudentRewardsStore()
     /// The instant the live pass code is read at, shared by the Student pass and the Pass Desk.
     nonisolated let passCodeTicker = PassCodeTicker()
     private nonisolated let peopleStore = DemoPeopleStore()
@@ -198,11 +199,14 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
                             shortages: self, wasteReports: self, sos: self, auth: self, specialPasses: self,
                             studentExtras: self, studentMeals: self, studentCommunity: self, adminResults: admin, adminStudents: admin, adminMore: admin,
                             adminMesses: DemoAdminMesses(core: self, store: adminMessStore), staffDirectory: self,
-                            studentYou: DemoStudentYou(core: self, store: studentYouStore),
+                            studentYou: DemoStudentYou(core: self, store: studentYouStore, rewards: studentRewardsStore),
                             studentRecords: DemoStudentRecords(core: self, store: studentRecordsStore),
                             livePassCodes: self, superAdmin: DemoSuperAdmin(core: self, store: superAdminStore),
                             passUse: self,
-                            studentSpending: DemoStudentSpending(core: self, store: studentSpendingStore))
+                            studentSpending: DemoStudentSpending(core: self, store: studentSpendingStore),
+                            studentRewards: DemoStudentRewards(core: self, store: studentRewardsStore,
+                                                               you: DemoStudentYou(core: self, store: studentYouStore,
+                                                                                   rewards: studentRewardsStore)))
     }
 
     /// For repositories that live outside this actor: throws exactly as the others do with no connection.

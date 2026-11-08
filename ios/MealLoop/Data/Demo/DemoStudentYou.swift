@@ -14,6 +14,9 @@ actor DemoStudentYouStore {
 struct DemoStudentYou: StudentYouRepository {
     let core: DemoDataProvider
     let store: DemoStudentYouStore
+    /// Reward tickets got in this run. Their cost comes off the balance and each one is a history line. Nil keeps the
+    /// balance as it was before reward tickets existed.
+    var rewards: DemoStudentRewardsStore?
 
     /// Today's meals a student can answer, in the order the day serves them.
     private static let todaysMeals = [DemoSeed.breakfast.id, DemoSeed.lunch.id, DemoSeed.dinner.id]
@@ -62,9 +65,14 @@ struct DemoStudentYou: StudentYouRepository {
             guard points > 0 else { continue }
             earned.append(StudentCreditEntry(id: "run-\(meal.rawValue)", title: Self.answeredTitle(meal), day: at, points: points))
         }
-        let balance = DemoSeed.sampleCredits + earned.reduce(0) { $0 + $1.points }
+        // Credits history (221:64443): "Juice redeemed · Mon 12 Aug · -50 pts".
+        let redeemed = (await rewards?.list(for: student) ?? []).map {
+            StudentCreditEntry(id: "reward-\($0.id.rawValue)", title: "\($0.name) redeemed", day: $0.gotAt, points: -$0.cost)
+        }
+        let lines = earned + redeemed
+        let balance = DemoSeed.sampleCredits + lines.reduce(0) { $0 + $1.points }
         return StudentCredits(balance: balance, tickets: DemoSeed.sampleCreditTickets,
-                              history: earned.sorted { $0.day > $1.day } + DemoSeed.sampleCreditHistory)
+                              history: lines.sorted { $0.day > $1.day } + DemoSeed.sampleCreditHistory)
     }
 
     func attendance(for student: StudentID, at mess: MessID) async throws -> StudentAttendanceMonth {
