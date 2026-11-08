@@ -9,7 +9,7 @@ struct StudentSearchScreen: View {
     var body: some View {
         if let model = StudentSearchViewModel(session: session, repositories: environment.repositories),
            let meals = StudentMealsViewModel(session: session, repositories: environment.repositories, clock: environment.clock) {
-            StudentSearchView(model: model, meals: meals, onBack: onBack)
+            StudentSearchView(model: model, meals: meals, session: session, onBack: onBack)
         } else {
             NotImplementedView(title: MLFormat.roleName(session.account.role))
         }
@@ -18,15 +18,18 @@ struct StudentSearchScreen: View {
 
 /// Search · No results (430:80333), and the list of matches for a typed name.
 struct StudentSearchView: View {
+    @Environment(AppEnvironment.self) private var environment
     @State private var model: StudentSearchViewModel
     @State private var meals: StudentMealsViewModel
     @State private var path: [StudentMealsRoute] = []
     @FocusState private var focused: Bool
+    let session: Session
     let onBack: () -> Void
 
-    init(model: StudentSearchViewModel, meals: StudentMealsViewModel, onBack: @escaping () -> Void) {
+    init(model: StudentSearchViewModel, meals: StudentMealsViewModel, session: Session, onBack: @escaping () -> Void) {
         _model = State(initialValue: model)
         _meals = State(initialValue: meals)
+        self.session = session
         self.onBack = onBack
     }
 
@@ -50,8 +53,7 @@ struct StudentSearchView: View {
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: StudentMealsRoute.self) { route in
                 destination(route)
-                    .toolbar(.hidden, for: .navigationBar)
-                    .navigationBarBackButtonHidden(true)
+                    .studentPushedPage(usesSystemBar: route.usesSystemBar)
             }
         }
         .task(id: model.text) {
@@ -68,9 +70,19 @@ struct StudentSearchView: View {
         switch route {
         case .dish(let dish, let day, let slot):
             StudentDishDetailView(load: { try await meals.dishDetail(dish, day: day, slot: slot) }, timeZone: model.timeZone,
-                                  onRate: { path.append(.comingSoon(MealsCopy.rateDish)) }) { path.removeLast() }
-        case .pass, .report, .comingSoon:
-            StudentComingSoonView(title: MealsCopy.rateDish) { path.removeLast() }
+                                  onRate: { path.append(.rateDish(dish, day: day, slot: slot)) }) { path.removeLast() }
+        case .rateDish(let dish, let day, let slot):
+            if let rating = StudentRatingViewModel(session: session, repositories: environment.repositories, day: day,
+                                                   slot: slot, dish: dish) {
+                StudentRateDishView(model: rating, loadDish: { try await meals.dishDetail(dish, day: day, slot: slot) },
+                                    onNotGood: { path.append(.report($0)) }) { path.removeLast() }
+            }
+        case .report(let subject):
+            StudentReportScreen(session: session, subject: subject) { path.removeLast() }
+        case .pass:
+            StudentPassScreen(session: session) { path.removeLast() }
+        case .comingSoon(let title):
+            StudentComingSoonView(title: title) { path.removeLast() }
         }
     }
 

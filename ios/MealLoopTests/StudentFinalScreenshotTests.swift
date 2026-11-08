@@ -155,5 +155,55 @@ final class StudentFinalScreenshotTests: XCTestCase {
             StudentRewardTicketView(model: world.rewards, id: id)
         }
     }
+
+    // MARK: - B2b Feedback ratings
+
+    func testCaptureRatings() async throws {
+        let world = World(.afterMeal)
+        let matches = try await world.environment.repositories.studentMeals.findDishes("Steamed Rice", mess: DemoSeed.mess.id)
+        let match = try XCTUnwrap(matches.first { $0.slot == .lunch && $0.day >= DemoSeed.time(0, 0) && $0.day <= DemoSeed.time(23, 59) })
+        let rice = match.dish
+        func rating(_ dish: DishID? = nil) -> StudentRatingViewModel {
+            StudentRatingViewModel(session: world.session, repositories: world.environment.repositories,
+                                   day: DemoSeed.lunch.startsAt, slot: .lunch, dish: dish)!
+        }
+        try await shot("rate_meal_how_was_lunch", world, tab: .home) {
+            StudentRateMealView(model: rating(), onNotGood: { _ in }) {}
+        }
+        let meals = StudentMealsViewModel(session: world.session, repositories: world.environment.repositories,
+                                          clock: world.clock)!
+        try await shot("rate_dish", world, tab: .meals) {
+            StudentRateDishView(model: rating(rice.id),
+                                loadDish: { try await meals.dishDetail(rice.id, day: match.day, slot: .lunch) },
+                                onNotGood: { _ in }) {}
+        }
+        let good = rating(rice.id)
+        _ = await good.rate(.good)
+        try await shot("rate_dish_good", world, tab: .meals) {
+            StudentRateDishView(model: good,
+                                loadDish: { try await meals.dishDetail(rice.id, day: match.day, slot: .lunch) },
+                                onNotGood: { _ in }) {}
+        }
+        try await shot("rate_dish_largest_text", world, tab: .meals, largestText: true) {
+            StudentRateDishView(model: rating(rice.id),
+                                loadDish: { try await meals.dishDetail(rice.id, day: match.day, slot: .lunch) },
+                                onNotGood: { _ in }) {}
+        }
+        try await shot("report_from_not_good", world, tab: .meals) {
+            StudentReportScreen(session: world.session,
+                                subject: StudentReportSubject(slot: .lunch, day: DemoSeed.lunch.startsAt, dishName: rice.name)) {}
+                .studentPushedPage(usesSystemBar: false)
+        }
+        let early = World()
+        try await shot("rate_meal_not_yet", early, tab: .home) {
+            StudentRateMealView(model: StudentRatingViewModel(session: early.session, repositories: early.environment.repositories,
+                                                              day: DemoSeed.lunch.startsAt, slot: .lunch)!,
+                                onNotGood: { _ in }) {}
+        }
+        let home = World(at: DemoSeed.time(10, 0))
+        try await shot("home_how_was_breakfast_card", home, tab: .home, pushed: false) {
+            StudentHomeScreen(session: home.session)
+        }
+    }
 }
 #endif

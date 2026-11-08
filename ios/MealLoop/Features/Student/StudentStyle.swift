@@ -238,3 +238,11 @@ extension View {
         }
     }
 }
+
+extension View {
+    /// A pinned primary action on a Student page: `MLScreen` pins it to the bottom safe area, and the Student tab bar
+    /// floats over that area, so the action keeps the bar's height and gap clear.
+    func studentAboveTabBar() -> some View {
+        padding(.bottom, MLScreenMetrics.floatingTabBarHeight + MLSpacing.s8)
+    }
+}

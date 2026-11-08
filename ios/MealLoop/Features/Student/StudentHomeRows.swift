@@ -242,41 +242,7 @@ struct StudentCrowdRow: View {
     }
 }
 
-/// Home · After a meal: "How was breakfast?" with Good and Not good.
-struct StudentMealFeedbackCard: View {
-    let slot: MealSlot
-    let onAnswer: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: MLSpacing.s12) {
-            Text(StudentCopy.howWas(slot))
-                .font(StudentType.bodySemibold)
-                .foregroundStyle(MLColor.ink)
-            HStack(spacing: 10) {
-                Button(action: onAnswer) {
-                    Text(StudentCopy.good)
-                        .font(StudentType.bodySemibold)
-                        .foregroundStyle(MLColor.onHero)
-                        .frame(maxWidth: .infinity, minHeight: 48)
-                        .background(Capsule().fill(MLColor.ink))
-                }
-                .buttonStyle(.plain)
-                Button(action: onAnswer) {
-                    Text(StudentCopy.notGood)
-                        .font(StudentType.bodySemibold)
-                        .foregroundStyle(MLColor.ink)
-                        .frame(maxWidth: .infinity, minHeight: 48)
-                        .background(Capsule().strokeBorder(MLColor.ink, lineWidth: 1.5))
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(MLSpacing.s20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: StudentMetric.rowRadius, style: .continuous).fill(MLColor.surface))
-        .overlay(RoundedRectangle(cornerRadius: StudentMetric.rowRadius, style: .continuous).strokeBorder(MLColor.border, lineWidth: 1))
-    }
-}
+// Home · After a meal: the How was … card is `StudentHowWasCard` (StudentRatingsViews.swift).
 
 /// The follow-up on the student's own feedback (Feedback row 2147:620).
 struct StudentRecheckRow: View {

@@ -102,6 +102,10 @@ final class StudentCommunityViewModel {
 @MainActor
 @Observable
 final class StudentReportViewModel {
+    /// What the report is about when it comes from a rating's Not good: the meal, and the dish when there is one.
+    /// Nil for a report started from the feedback icon.
+    var subject: StudentReportSubject?
+
     enum SendState: Equatable {
         case idle
         case sending
@@ -139,7 +143,11 @@ final class StudentReportViewModel {
     func load() async {
         isDeskStaffed = (try? await community.isReportDeskStaffed(at: context.mess.id)) ?? true
         let meals = (try? await mealState.meals(for: context.mess.id)) ?? []
-        meal = (meals.first { $0.state == .inService } ?? meals.first { $0.state == .notStarted } ?? meals.last)?.meal
+        if let subject, let rated = meals.first(where: { $0.meal.slot == subject.slot }) {
+            meal = rated.meal
+        } else {
+            meal = (meals.first { $0.state == .inService } ?? meals.first { $0.state == .notStarted } ?? meals.last)?.meal
+        }
     }
 
     /// A new category is a new report.
@@ -161,7 +169,8 @@ final class StudentReportViewModel {
         let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
         let request = StudentReportRequest(student: context.student.id, messID: context.mess.id, category: category,
                                            note: trimmed.isEmpty ? nil : trimmed, place: context.mess.name,
-                                           meal: meal?.slot, idempotencyKey: reportKey)
+                                           meal: subject?.slot ?? meal?.slot, idempotencyKey: reportKey,
+                                           dish: subject?.dishName)
         do {
             receipt = try await community.submitReport(request)
             send = .idle
@@ -182,4 +191,12 @@ final class StudentReportViewModel {
             return false
         }
     }
+}
+
+/// What a report from a rating is about (Not good on How was lunch? or Rate a dish).
+struct StudentReportSubject: Hashable, Sendable {
+    let slot: MealSlot
+    let day: Date
+    /// Nil for the whole meal.
+    let dishName: String?
 }

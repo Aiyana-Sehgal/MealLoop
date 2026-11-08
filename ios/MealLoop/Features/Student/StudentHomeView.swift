@@ -12,13 +12,19 @@ enum StudentHomeRoute: Hashable {
     case creditsHistory
     /// Ticket · Juice (1529:1901), after Get on Credits.
     case rewardTicket(StudentRewardTicketID)
+    /// How was lunch? (image student_feedback_01_how_was_lunch).
+    case rateMeal(day: Date, slot: MealSlot)
+    /// Report · What's wrong with the meal already selected, from Not good.
+    case reportAbout(StudentReportSubject)
+    /// My feedback, from the follow-up row on the student's own feedback.
+    case myFeedback
     /// A page another Student part builds. Until then it says Coming soon.
     case comingSoon(String)
 
     /// Pages built on `MLScreen`: the system bar, its back button and the swipe-back gesture.
     var usesSystemBar: Bool {
         switch self {
-        case .credits, .rewardTicket: true
+        case .credits, .rewardTicket, .rateMeal: true
         default: false
         }
     }
@@ -44,6 +50,8 @@ struct StudentHomeView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var model: StudentHomeViewModel
     @State private var path: [StudentHomeRoute] = []
+    /// Meals whose How was … card was answered Good or skipped in this run. Skip for now records nothing.
+    @State private var skippedRatings: Set<String> = []
     @State private var skipping: MealID?
     /// For the pages that build their own view models: Special pass and Crowd.
     private let session: Session?
@@ -153,6 +161,23 @@ struct StudentHomeView: View {
             } else {
                 StudentComingSoonView(title: YouCopy.creditsHistory) { path.removeLast() }
             }
+        case .rateMeal(let day, let slot):
+            if let session, let rating = StudentRatingViewModel(session: session, repositories: environment.repositories,
+                                                                day: day, slot: slot) {
+                StudentRateMealView(model: rating, onNotGood: { path.append(.reportAbout($0)) }) {
+                    skippedRatings.insert(Self.ratingKey(day, slot))
+                    path.removeLast()
+                }
+            }
+        case .reportAbout(let subject):
+            if let session {
+                StudentReportScreen(session: session, subject: subject) { path.removeLast() }
+            }
+        case .myFeedback:
+            if let session, let records = StudentRecordsViewModel(session: session, repositories: environment.repositories,
+                                                                  clock: environment.clock) {
+                StudentMyFeedbackView(model: records, onReports: {}) { path.removeLast() }
+            }
         case .rewardTicket(let id):
             if let session, let rewards = StudentRewardsViewModel(session: session, repositories: environment.repositories,
                                                                   clock: environment.clock) {
@@ -162,6 +187,33 @@ struct StudentHomeView: View {
             }
         case .comingSoon(let title):
             StudentComingSoonView(title: title) { path.removeLast() }
+        }
+    }
+
+    static func ratingKey(_ day: Date, _ slot: MealSlot) -> String {
+        "\(Int(day.timeIntervalSince1970 / 86_400))-\(slot.rawValue)"
+    }
+
+    /// The How was … card: Good records and hides the card, Not good records nothing and opens the report form with
+    /// the meal selected, Skip for now hides the card and records nothing.
+    private func rating(_ meal: Meal, _ action: StudentHomeRatingAction) {
+        let key = Self.ratingKey(meal.startsAt, meal.slot)
+        switch action {
+        case .open:
+            path.append(.rateMeal(day: meal.startsAt, slot: meal.slot))
+        case .skip:
+            skippedRatings.insert(key)
+        case .good, .notGood:
+            guard let session, let rating = StudentRatingViewModel(session: session, repositories: environment.repositories,
+                                                                   day: meal.startsAt, slot: meal.slot) else { return }
+            Task {
+                guard await rating.rate(action == .good ? .good : .notGood) else { return }
+                if action == .good {
+                    skippedRatings.insert(key)
+                } else {
+                    path.append(.reportAbout(rating.reportSubject))
+                }
+            }
         }
     }
 
@@ -194,7 +246,10 @@ struct StudentHomeView: View {
                             onOpenAnswer: { path.append(.answer($0)) },
                             onOpenPass: { path.append(.pass) },
                             onOpenCrowd: { path.append(.crowd) },
-                            onComingSoon: { path.append(.comingSoon($0)) })
+                            onComingSoon: { path.append(.comingSoon($0)) },
+                            showsRating: { !skippedRatings.contains(Self.ratingKey($0.startsAt, $0.slot)) },
+                            onRating: rating,
+                            onOpenMyFeedback: { path.append(.myFeedback) })
         } else if model.isLoadingHome {
             StudentHomeLoading()
         } else {
@@ -272,6 +327,10 @@ struct StudentHomeBody: View {
     var onOpenPass: () -> Void = {}
     var onOpenCrowd: () -> Void = {}
     let onComingSoon: (String) -> Void
+    /// Whether the How was … card shows for a closed meal (hidden after Good or Skip for now).
+    var showsRating: (Meal) -> Bool = { _ in true }
+    var onRating: (Meal, StudentHomeRatingAction) -> Void = { _, _ in }
+    var onOpenMyFeedback: () -> Void = {}
 
     private var extras: StudentHomeExtras? { content.extras }
 
@@ -282,8 +341,11 @@ struct StudentHomeBody: View {
             }
             StudentHomeHero(content: content, mess: mess, timeZone: timeZone, isOffline: isOffline, answerState: heroAnswerState,
                             onAnswer: onAnswer, onShowEntry: onShowEntry)
-            if let closed = content.lastClosedMeal, content.heroCase == .nextMeal {
-                StudentMealFeedbackCard(slot: closed.slot) { onComingSoon(StudentCopy.howWas(closed.slot)) }
+            if let closed = content.lastClosedMeal, content.heroCase == .nextMeal, showsRating(closed) {
+                StudentHowWasCard(slot: closed.slot, onOpen: { onRating(closed, .open) },
+                                  onGood: { onRating(closed, .good) }, onNotGood: { onRating(closed, .notGood) },
+                                  onSkip: { onRating(closed, .skip) })
+                    .mlTransition(.fade)
             }
             Group {
                 if let row = content.answerRow {
@@ -303,7 +365,7 @@ struct StudentHomeBody: View {
             .accessibilityAddTraits(.isButton)
             if let recheck = extras?.recheck {
                 Rectangle().fill(MLColor.border).frame(height: 1)
-                StudentRecheckRow(recheck: recheck) { onComingSoon(StudentCopy.reportIssue) }
+                StudentRecheckRow(recheck: recheck, onOpen: onOpenMyFeedback)
             }
         }
     }
@@ -474,4 +536,9 @@ struct StudentHomeEmpty: View {
         .frame(maxWidth: .infinity)
         .background(RoundedRectangle(cornerRadius: StudentMetric.heroRadius, style: .continuous).fill(MLColor.surface))
     }
+}
+
+/// What the How was … card on Home asks for.
+enum StudentHomeRatingAction: Equatable {
+    case open, good, notGood, skip
 }

@@ -42,11 +42,13 @@ struct StudentReportScreen: View {
     @Environment(AppEnvironment.self) private var environment
     let session: Session
     var onShowIssue: ((CommunityIssueID) -> Void)?
+    /// The meal or dish a rating's Not good hands over, already selected on the form.
+    var subject: StudentReportSubject?
     let onClose: () -> Void
 
     var body: some View {
         if let model = StudentReportViewModel(session: session, repositories: environment.repositories, clock: environment.clock) {
-            StudentReportView(model: model, onShowIssue: onShowIssue, onClose: onClose)
+            StudentReportView(model: model, subject: subject, onShowIssue: onShowIssue, onClose: onClose)
         } else {
             NotImplementedView(title: MLFormat.roleName(session.account.role))
         }
@@ -70,7 +72,9 @@ struct StudentReportView: View {
     let onShowIssue: ((CommunityIssueID) -> Void)?
     let onClose: () -> Void
 
-    init(model: StudentReportViewModel, onShowIssue: ((CommunityIssueID) -> Void)?, onClose: @escaping () -> Void) {
+    init(model: StudentReportViewModel, subject: StudentReportSubject? = nil, onShowIssue: ((CommunityIssueID) -> Void)?,
+         onClose: @escaping () -> Void) {
+        if let subject { model.subject = subject }
         _model = State(initialValue: model)
         self.onShowIssue = onShowIssue
         self.onClose = onClose
@@ -188,7 +192,7 @@ struct StudentReportView: View {
     }
 
     private func chips(sentAt: Date?) -> [String] {
-        var chips = [model.context.mess.name]
+        var chips = [model.subject?.dishName, model.context.mess.name].compactMap { $0 }
         if let meal = model.meal {
             chips.append("\(MLFormat.mealSlot(meal.slot)) · \(StudentFormat.mediumDay(meal.startsAt, in: model.timeZone))")
         }

@@ -4,9 +4,20 @@ import SwiftUI
 enum StudentMealsRoute: Hashable {
     case dish(DishID, day: Date, slot: MealSlot)
     case pass
-    /// Report · What's wrong (221:63480), from the Meals error card.
-    case report
+    /// Report · What's wrong (221:63480), from the Meals error card, or from Not good on Rate a dish with the dish
+    /// already selected.
+    case report(StudentReportSubject?)
+    /// Rate a dish (image student_feedback_02_rate_a_dish).
+    case rateDish(DishID, day: Date, slot: MealSlot)
     case comingSoon(String)
+
+    /// Pages built on `MLScreen`: the system bar, its back button and the swipe-back gesture.
+    var usesSystemBar: Bool {
+        switch self {
+        case .rateDish: true
+        default: false
+        }
+    }
 }
 
 /// Builds the view model from the environment.
@@ -63,8 +74,7 @@ struct StudentMealsView: View {
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: StudentMealsRoute.self) { route in
                 destination(route)
-                    .toolbar(.hidden, for: .navigationBar)
-                    .navigationBarBackButtonHidden(true)
+                    .studentPushedPage(usesSystemBar: route.usesSystemBar)
             }
         }
         .task(id: environment.dataRevision) {
@@ -80,11 +90,17 @@ struct StudentMealsView: View {
         switch route {
         case .dish(let dish, let day, let slot):
             StudentDishDetailView(load: { try await model.dishDetail(dish, day: day, slot: slot) }, timeZone: model.timeZone,
-                                  onRate: { path.append(.comingSoon(MealsCopy.rateDish)) }) { path.removeLast() }
+                                  onRate: { path.append(.rateDish(dish, day: day, slot: slot)) }) { path.removeLast() }
         case .pass:
             StudentPassScreen(session: session) { path.removeLast() }
-        case .report:
-            StudentReportScreen(session: session) { path.removeLast() }
+        case .report(let subject):
+            StudentReportScreen(session: session, subject: subject) { path.removeLast() }
+        case .rateDish(let dish, let day, let slot):
+            if let rating = StudentRatingViewModel(session: session, repositories: environment.repositories, day: day,
+                                                   slot: slot, dish: dish) {
+                StudentRateDishView(model: rating, loadDish: { try await model.dishDetail(dish, day: day, slot: slot) },
+                                    onNotGood: { path.append(.report($0)) }) { path.removeLast() }
+            }
         case .comingSoon(let title):
             StudentComingSoonView(title: title) { path.removeLast() }
         }
@@ -108,7 +124,7 @@ struct StudentMealsView: View {
                 MealsStateCard(title: failure.message, detail: "")
             } else {
                 MealsErrorCard(onRetry: { Task { await model.load() } },
-                               onReport: { path.append(.report) })
+                               onReport: { path.append(.report(nil)) })
             }
         }
     }
