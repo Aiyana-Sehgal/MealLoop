@@ -224,3 +224,17 @@ struct StudentComingSoonView: View {
             }
     }
 }
+
+extension View {
+    /// A pushed Student page. A page built on `MLScreen` keeps the system bar, so the back button and the swipe-back
+    /// gesture work (docs/SWIFTUI_STANDARDS.md). A page that still draws its own back circle hides the bar.
+    @ViewBuilder
+    func studentPushedPage(usesSystemBar: Bool) -> some View {
+        if usesSystemBar {
+            self
+        } else {
+            self.toolbar(.hidden, for: .navigationBar)
+                .navigationBarBackButtonHidden(true)
+        }
+    }
+}

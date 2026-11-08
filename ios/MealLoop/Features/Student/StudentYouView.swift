@@ -16,6 +16,14 @@ enum StudentYouRoute: Hashable {
     case help
     case privacy
     case comingSoon(String)
+
+    /// Pages built on `MLScreen`: the system bar, its back button and the swipe-back gesture.
+    var usesSystemBar: Bool {
+        switch self {
+        case .spending: true
+        default: false
+        }
+    }
 }
 
 /// Builds the view model from the environment.
@@ -68,8 +76,7 @@ struct StudentYouView: View {
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: StudentYouRoute.self) { route in
                 destination(route)
-                    .toolbar(.hidden, for: .navigationBar)
-                    .navigationBarBackButtonHidden(true)
+                    .studentPushedPage(usesSystemBar: route.usesSystemBar)
             }
         }
         .task(id: environment.dataRevision) {
@@ -111,7 +118,7 @@ struct StudentYouView: View {
         case .attendance:
             StudentAttendanceView(model: model) { path.removeLast() }
         case .spending:
-            records { StudentSpendingView(model: $0) { path.removeLast() } }
+            StudentSpendingScreen(session: session)
         case .myFeedback:
             records { StudentMyFeedbackView(model: $0, onReports: { path.append(.myReports) }) { path.removeLast() } }
         case .myReports:

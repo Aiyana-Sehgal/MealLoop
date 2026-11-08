@@ -21,7 +21,7 @@ private extension View {
     }
 }
 
-private enum RecordsFormat {
+enum RecordsFormat {
     static func day(_ date: Date, in timeZone: TimeZone) -> String { YouFormat.shortDay(date, in: timeZone) }
     static func weekday(_ date: Date, in timeZone: TimeZone) -> String {
         let formatter = DateFormatter()
@@ -619,130 +619,7 @@ struct StudentMyFeedbackView: View {
     }
 }
 
-// MARK: - Spending
-
-/// Spending (221:63988) and its states: Empty (221:65727), Loading (221:65739), Offline (221:65753), Error (221:65828).
-/// "Add spending" is not built: no operation adds an entry.
-struct StudentSpendingView: View {
-    @State var model: StudentRecordsViewModel
-    let onBack: () -> Void
-
-    var body: some View {
-        RecordsPage(content: {
-            YouLargeHeader(title: YouCopy.spending, subtitle: nil, onBack: onBack)
-            content
-        }, onRefresh: { await model.loadSpending() })
-        .task { await model.loadSpending() }
-    }
-
-    @ViewBuilder
-    private var content: some View {
-        switch model.spending {
-        case .idle, .loading:
-            YouSkeleton(heights: [40, 259, 216], label: YouCopy.spending)
-        case .failed(let failure):
-            MealsStateCard(symbol: "exclamationmark.circle", title: failure.message, detail: "")
-        case .empty:
-            privateChip
-            MealsStateCard(title: RecordsCopy.noSpendingTitle, detail: RecordsCopy.noSpendingDetail)
-        case .loaded(let spending), .stale(let spending, _):
-            page(spending)
-        case .offline(let spending, _):
-            StudentOfflineBanner(text: RecordsCopy.spendingOffline)
-            if let spending { page(spending) }
-        }
-    }
-
-    private var privateChip: some View {
-        HStack(spacing: MLSpacing.s8) {
-            Image(systemName: "lock").font(.system(size: 14, weight: .medium)).accessibilityHidden(true)
-            Text(RecordsCopy.privateChip).font(StudentType.secondaryMedium)
-        }
-        .foregroundStyle(MLColor.ink)
-        .padding(.horizontal, MLSpacing.s16)
-        .frame(height: 40)
-        .overlay(Capsule().strokeBorder(MLColor.ink, lineWidth: 1.5))
-    }
-
-    @ViewBuilder
-    private func page(_ spending: StudentSpending) -> some View {
-        privateChip
-        if spending.weeks.isEmpty && spending.recent.isEmpty {
-            MealsStateCard(title: RecordsCopy.noSpendingTitle, detail: RecordsCopy.noSpendingDetail)
-        } else {
-            hero(spending)
-            if !spending.recent.isEmpty {
-                Text(RecordsCopy.recent).font(StudentType.secondaryMedium).foregroundStyle(MLColor.inkSecondary)
-                    .accessibilityAddTraits(.isHeader)
-                VStack(spacing: 0) {
-                    ForEach(spending.recent) { entry in
-                        Rectangle().fill(MLColor.border).frame(height: 1)
-                        HStack(alignment: .center) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(entry.title).font(StudentType.bodySemibold).foregroundStyle(MLColor.ink)
-                                Text([RecordsFormat.day(entry.day, in: model.timeZone), entry.note].compactMap { $0 }
-                                    .joined(separator: " · "))
-                                    .font(StudentType.secondary).foregroundStyle(MLColor.inkSecondary)
-                            }
-                            Spacer(minLength: MLSpacing.s8)
-                            Text(RecordsCopy.rupees(entry.amount)).font(StudentType.mono).foregroundStyle(MLColor.ink)
-                        }
-                        .padding(.vertical, MLSpacing.s12)
-                        .accessibilityElement(children: .combine)
-                    }
-                }
-            }
-        }
-    }
-
-    private func hero(_ spending: StudentSpending) -> some View {
-        let maxAmount = max(spending.weeks.compactMap(\.amount).max() ?? 1, 1)
-        return VStack(alignment: .leading, spacing: MLSpacing.s12) {
-            Text(RecordsCopy.monthSoFar).font(StudentType.secondary).foregroundStyle(MLColor.onHeroSecondary)
-            if let total = spending.monthTotal {
-                HStack(alignment: .firstTextBaseline, spacing: MLSpacing.s12) {
-                    Text(RecordsCopy.rupees(total))
-                        .font(.system(size: 48, weight: .medium, design: .monospaced))
-                        .foregroundStyle(MLColor.onHero)
-                        .lineLimit(1).minimumScaleFactor(0.6)
-                    if let week = spending.thisWeek {
-                        Text(RecordsCopy.thisWeek(week)).font(StudentType.secondary).foregroundStyle(MLColor.onHeroSecondary)
-                    }
-                }
-                .accessibilityElement(children: .combine)
-            } else {
-                Text(RecordsCopy.totalMissing).font(StudentType.bodySemibold).foregroundStyle(MLColor.onHero)
-            }
-            HStack(alignment: .bottom, spacing: MLSpacing.s16) {
-                ForEach(spending.weeks) { week in
-                    VStack(spacing: MLSpacing.s8) {
-                        Spacer(minLength: 0)
-                        if let amount = week.amount {
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(week.isCurrent ? MLColor.lime : Color(hex: 0xD9D9D9))
-                                .frame(height: max(16, 88 * CGFloat(amount) / CGFloat(maxAmount)))
-                        } else {
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .strokeBorder(MLColor.onHeroSecondary, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
-                                .frame(height: 16)
-                        }
-                        Text(RecordsCopy.weekRange(RecordsFormat.dayNumber(week.start, in: model.timeZone),
-                                                   RecordsFormat.dayNumber(week.end, in: model.timeZone) + " "
-                                                       + RecordsFormat.monthShort(week.end, in: model.timeZone)))
-                            .font(StudentType.footnote)
-                            .foregroundStyle(week.isCurrent ? MLColor.onHero : MLColor.onHeroSecondary)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .accessibilityElement(children: .combine)
-                }
-            }
-            .frame(height: 118)
-        }
-        .padding(MLSpacing.s20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: StudentMetric.heroRadius, style: .continuous).fill(MLColor.heroBackground))
-    }
-}
+// Spending is in StudentSpendingViews.swift, on the private ledger.
 
 // MARK: - Help
 
