@@ -77,12 +77,13 @@ struct StudentPassView: View {
                 await model.tick()
             }
         }
-        .mlSheet(isPresented: $confirming) {
-            PassConfirmSheet(phase: model.phase, onHold: {
+        // Redrawn use flow (StudentPassUseFlow.swift): two explicit buttons, no press-and-hold.
+        .mlSheet(isPresented: $confirming, isWorking: model.phase == .sending) {
+            PassUseNowSheet(phase: model.phase, refusal: model.holdError, onUse: {
                 Task {
                     if await model.confirmHold() { confirming = false }
                 }
-            }, onCancel: { confirming = false })
+            }, onNotYet: { confirming = false })
         }
     }
 
@@ -107,6 +108,7 @@ struct StudentPassView: View {
         case .available(let ticket):
             MealsCompactHeader(title: MealsCopy.specialPass, onBack: onBack)
             PassAvailableCard(ticket: ticket, timeZone: model.timeZone)
+            PassHowItWorks(ticket: ticket, timeZone: model.timeZone)
             Text(MealsCopy.oneUse)
                 .font(StudentType.secondary)
                 .foregroundStyle(MLColor.inkSecondary)

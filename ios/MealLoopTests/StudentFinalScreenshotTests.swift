@@ -205,5 +205,26 @@ final class StudentFinalScreenshotTests: XCTestCase {
             StudentHomeScreen(session: home.session)
         }
     }
+
+    // MARK: - B2e Special pass use flow (redrawn)
+
+    func testCapturePassUseFlow() async throws {
+        let world = World(at: DemoSeed.time(12, 32))
+        try await shot("pass_available_redrawn", world, tab: .home) {
+            StudentPassScreen(session: world.session) {}
+                .studentPushedPage(usesSystemBar: false)
+        }
+        try await shot("pass_use_now_sheet", world, tab: .home, wait: 2) {
+            StudentPassScreen(session: world.session) {}
+                .studentPushedPage(usesSystemBar: false)
+                .mlSheet(isPresented: .constant(true)) {
+                    PassUseNowSheet(phase: .holding, refusal: nil, onUse: {}, onNotYet: {})
+                }
+        }
+        try await shot("pass_available_largest_text", world, tab: .home, largestText: true) {
+            StudentPassScreen(session: world.session) {}
+                .studentPushedPage(usesSystemBar: false)
+        }
+    }
 }
 #endif
