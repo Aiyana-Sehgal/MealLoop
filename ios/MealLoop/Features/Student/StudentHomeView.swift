@@ -10,8 +10,18 @@ enum StudentHomeRoute: Hashable {
     case notifications
     case credits
     case creditsHistory
+    /// Ticket · Juice (1529:1901), after Get on Credits.
+    case rewardTicket(StudentRewardTicketID)
     /// A page another Student part builds. Until then it says Coming soon.
     case comingSoon(String)
+
+    /// Pages built on `MLScreen`: the system bar, its back button and the swipe-back gesture.
+    var usesSystemBar: Bool {
+        switch self {
+        case .credits, .rewardTicket: true
+        default: false
+        }
+    }
 }
 
 /// Builds the view model from the environment and reloads whenever the shared data changes.
@@ -76,8 +86,7 @@ struct StudentHomeView: View {
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: StudentHomeRoute.self) { route in
                 destination(route)
-                    .toolbar(.hidden, for: .navigationBar)
-                    .navigationBarBackButtonHidden(true)
+                    .studentPushedPage(usesSystemBar: route.usesSystemBar)
             }
         }
         .task(id: environment.dataRevision) {
@@ -128,18 +137,28 @@ struct StudentHomeView: View {
             }
         case .credits:
             if let session, let you = StudentYouViewModel(session: session, repositories: environment.repositories,
-                                                          clock: environment.clock) {
-                StudentCreditsView(model: you, onHistory: { path.append(.creditsHistory) },
-                                   onGet: { path.append(.comingSoon($0)) }) { path.removeLast() }
+                                                          clock: environment.clock),
+               let rewards = StudentRewardsViewModel(session: session, repositories: environment.repositories,
+                                                     clock: environment.clock) {
+                StudentCreditsView(model: you, rewards: rewards, onHistory: { path.append(.creditsHistory) },
+                                   onTicket: { path.append(.rewardTicket($0)) })
             } else {
                 StudentComingSoonView(title: StudentCopy.rewards) { path.removeLast() }
             }
         case .creditsHistory:
             if let session, let you = StudentYouViewModel(session: session, repositories: environment.repositories,
                                                           clock: environment.clock) {
-                StudentCreditsHistoryView(model: you) { path.removeLast() }
+                StudentCreditsHistoryView(model: you, rewards: StudentRewardsViewModel(
+                    session: session, repositories: environment.repositories, clock: environment.clock)) { path.removeLast() }
             } else {
                 StudentComingSoonView(title: YouCopy.creditsHistory) { path.removeLast() }
+            }
+        case .rewardTicket(let id):
+            if let session, let rewards = StudentRewardsViewModel(session: session, repositories: environment.repositories,
+                                                                  clock: environment.clock) {
+                StudentRewardTicketView(model: rewards, id: id)
+            } else {
+                StudentComingSoonView(title: YouCopy.credits) { path.removeLast() }
             }
         case .comingSoon(let title):
             StudentComingSoonView(title: title) { path.removeLast() }

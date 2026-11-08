@@ -75,7 +75,11 @@ final class StudentYouScreenshotTests: XCTestCase {
         try await shot("notifications_64480", world, tab: .home) { StudentNotificationsView(model: world.youModel) {} }
         try await shot("you_64576", world, tab: .you) { StudentYouView(model: world.youModel, session: world.session) {} }
         try await shot("credits_64313", world, tab: .you) {
-            StudentCreditsView(model: world.youModel, onHistory: {}, onGet: { _ in }) {}
+            StudentCreditsView(model: world.youModel,
+                               rewards: StudentRewardsViewModel(session: world.session,
+                                                                repositories: world.environment.repositories,
+                                                                clock: world.clock)!,
+                               onHistory: {}, onTicket: { _ in })
         }
         try await shot("credits_history_64443", world, tab: .you) { StudentCreditsHistoryView(model: world.youModel) {} }
         try await shot("attendance_64717", world, tab: .you) { StudentAttendanceView(model: world.youModel) {} }

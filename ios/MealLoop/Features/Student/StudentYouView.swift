@@ -8,6 +8,8 @@ enum StudentYouRoute: Hashable {
     case outing(OutingRequestID)
     case credits
     case creditsHistory
+    /// Ticket · Juice (1529:1901), after Get on Credits.
+    case rewardTicket(StudentRewardTicketID)
     case attendance
     case spending
     case myFeedback
@@ -20,7 +22,7 @@ enum StudentYouRoute: Hashable {
     /// Pages built on `MLScreen`: the system bar, its back button and the swipe-back gesture.
     var usesSystemBar: Bool {
         switch self {
-        case .spending: true
+        case .spending, .credits, .rewardTicket: true
         default: false
         }
     }
@@ -111,10 +113,16 @@ struct StudentYouView: View {
                 StudentOutingDetailView(model: outingsModel, id: id) { path.removeLast() }
             }
         case .credits:
-            StudentCreditsView(model: model, onHistory: { path.append(.creditsHistory) },
-                               onGet: { path.append(.comingSoon($0)) }) { path.removeLast() }
+            if let rewards {
+                StudentCreditsView(model: model, rewards: rewards, onHistory: { path.append(.creditsHistory) },
+                                   onTicket: { path.append(.rewardTicket($0)) })
+            }
         case .creditsHistory:
-            StudentCreditsHistoryView(model: model) { path.removeLast() }
+            StudentCreditsHistoryView(model: model, rewards: rewards) { path.removeLast() }
+        case .rewardTicket(let id):
+            if let rewards {
+                StudentRewardTicketView(model: rewards, id: id)
+            }
         case .attendance:
             StudentAttendanceView(model: model) { path.removeLast() }
         case .spending:
@@ -132,6 +140,10 @@ struct StudentYouView: View {
         case .comingSoon(let title):
             StudentComingSoonView(title: title) { path.removeLast() }
         }
+    }
+
+    private var rewards: StudentRewardsViewModel? {
+        StudentRewardsViewModel(session: session, repositories: environment.repositories, clock: environment.clock)
     }
 
     /// A page backed by `StudentRecordsRepository`, with its own view model.
@@ -290,28 +302,21 @@ struct YouRow: View {
 
 // MARK: - Credits
 
-/// Credits (221:64313) and its states: Empty (221:65843), Loading (221:65904), Offline (221:65917), Error (221:65941).
+/// Credits (221:64313) and its states: Getting a ticket (221:64396), Failed (221:65873), Empty (221:65843),
+/// Loading (221:65904), Offline (221:65917), Error (221:65941). Get runs: Getting… → the ticket → Used after use.
 struct StudentCreditsView: View {
     @State var model: StudentYouViewModel
+    @State var rewards: StudentRewardsViewModel
     let onHistory: () -> Void
-    let onGet: (String) -> Void
-    let onBack: () -> Void
+    let onTicket: (StudentRewardTicketID) -> Void
 
     var body: some View {
-        ZStack {
-            OrbitBackground()
-            ScrollView {
-                VStack(alignment: .leading, spacing: MLSpacing.s16) {
-                    YouLargeHeader(title: YouCopy.credits, subtitle: YouCopy.creditsSubtitle, onBack: onBack)
-                    content
-                }
-                .padding(.horizontal, MLSpacing.margin)
-                .padding(.top, MLSpacing.s8)
-                .padding(.bottom, StudentMetric.scrollBottom)
+        MLScreen(YouCopy.credits, subtitle: YouCopy.creditsSubtitle, bottomClearance: .tabBar) {
+            VStack(alignment: .leading, spacing: MLSpacing.s16) {
+                content
             }
-            .refreshable { await model.loadCredits() }
-            StudentScrollFade()
         }
+        .refreshable { await model.loadCredits() }
         .task { await model.loadCredits() }
     }
 
@@ -339,8 +344,30 @@ struct StudentCreditsView: View {
             .font(StudentType.section)
             .foregroundStyle(MLColor.ink)
             .accessibilityAddTraits(.isHeader)
+        if let failed = rewards.failedReward, let name = credits.tickets.first(where: { $0.id == failed })?.name {
+            HStack(alignment: .top, spacing: MLSpacing.s8) {
+                Image(systemName: "exclamationmark.triangle").accessibilityHidden(true)
+                Text(RewardsCopy.couldNotGet(name)).font(StudentType.bodySemibold)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(MLColor.danger)
+            .padding(MLSpacing.s16)
+            .background(RoundedRectangle(cornerRadius: StudentMetric.rowRadius, style: .continuous).fill(StudentTint.errorFill))
+            .overlay(RoundedRectangle(cornerRadius: StudentMetric.rowRadius, style: .continuous).strokeBorder(MLColor.danger))
+            .mlTransition(.fromTop)
+        }
         ForEach(credits.tickets) { ticket in
-            CreditTicketCard(ticket: ticket, balance: credits.balance, enabled: !offline) { onGet(ticket.name) }
+            CreditTicketCard(ticket: ticket, balance: credits.balance, enabled: !offline && rewards.getting == nil,
+                             state: rewards.getting == ticket.id ? .getting
+                                 : (rewards.failedReward == ticket.id ? .failed : .idle)) {
+                Task {
+                    if let id = await rewards.get(ticket.id) {
+                        await model.loadCredits()
+                        onTicket(id)
+                    }
+                }
+            }
         }
         YouCard {
             YouRow(symbol: "clock", title: YouCopy.history, action: onHistory)
@@ -354,6 +381,7 @@ struct StudentCreditsView: View {
                     Text("\(balance)")
                         .font(.system(size: 56, weight: .medium, design: .monospaced))
                         .foregroundStyle(MLColor.onHero)
+                        .mlNumericText(balance)
                     Text(YouCopy.pts)
                         .font(StudentType.section)
                         .foregroundStyle(MLColor.onHeroSecondary)
@@ -387,13 +415,23 @@ struct StudentCreditsView: View {
 
 /// A ticket with its notch and the cost stub (Ticket 221:64313). A ticket not offered yet is dashed.
 struct CreditTicketCard: View {
+    enum GetState { case idle, getting, failed }
+
     let ticket: StudentCreditTicket
     let balance: Int?
     let enabled: Bool
+    var state: GetState = .idle
     let onGet: () -> Void
 
     private var notYet: Bool { if case .notYet = ticket.availability { return true } else { return false } }
     private var canGet: Bool { !notYet && enabled && (balance ?? 0) >= ticket.cost && balance != nil }
+    private var buttonTitle: String {
+        switch state {
+        case .idle: YouCopy.get
+        case .getting: RewardsCopy.getting
+        case .failed: RewardsCopy.tryAgain
+        }
+    }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -416,15 +454,18 @@ struct CreditTicketCard: View {
                         .overlay(Capsule().strokeBorder(MLColor.inkSecondary, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])))
                 } else {
                     Button(action: onGet) {
-                        Text(YouCopy.get)
+                        Text(buttonTitle)
                             .font(StudentType.dishName)
                             .foregroundStyle(MLColor.onHero)
-                            .frame(width: 72, height: 44)
+                            .lineLimit(1)
+                            .padding(.horizontal, MLSpacing.s16)
+                            .frame(minWidth: 72, minHeight: 44)
                             .background(Capsule().fill(MLColor.heroBackground))
                     }
                     .buttonStyle(.plain)
                     .disabled(!canGet)
-                    .opacity(canGet ? 1 : 0.4)
+                    .opacity(canGet || state == .getting ? 1 : 0.4)
+                    .sensoryFeedback(.success, trigger: state == .getting)
                 }
             }
             .padding(.horizontal, MLSpacing.s16)
@@ -462,7 +503,10 @@ struct CreditTicketCard: View {
 /// Credits history (221:64443).
 struct StudentCreditsHistoryView: View {
     @State var model: StudentYouViewModel
+    /// Rewards · Balance issue (221:64463). Nil hides the question.
+    var rewards: StudentRewardsViewModel?
     let onBack: () -> Void
+    @State private var asksBalance = false
 
     var body: some View {
         ZStack {
@@ -479,11 +523,31 @@ struct StudentCreditsHistoryView: View {
             StudentScrollFade()
         }
         .task { await model.loadCredits() }
+        .mlSheet(isPresented: $asksBalance, isWorking: rewards?.balanceSend == .sending) {
+            if let rewards {
+                BalanceIssueSheet(model: rewards) { asksBalance = false }
+            }
+        }
     }
 
     @ViewBuilder
     private var content: some View {
         if let credits = model.credits.value {
+            historyBody(credits)
+            if rewards != nil {
+                YouCard {
+                    YouRow(symbol: "questionmark.circle", title: RewardsCopy.balanceQuestion) { asksBalance = true }
+                }
+            }
+        } else if case .failed(let failure) = model.credits {
+            MealsStateCard(symbol: "exclamationmark.circle", title: failure.message, detail: "")
+        } else {
+            YouSkeleton(heights: [146, 240], label: YouCopy.creditsHistory)
+        }
+    }
+
+    @ViewBuilder
+    private func historyBody(_ credits: StudentCredits) -> some View {
             VStack(alignment: .leading, spacing: MLSpacing.s4) {
                 Text(YouCopy.balance)
                     .font(StudentType.eyebrow)
@@ -529,11 +593,6 @@ struct StudentCreditsHistoryView: View {
                     }
                 }
             }
-        } else if case .failed(let failure) = model.credits {
-            MealsStateCard(symbol: "exclamationmark.circle", title: failure.message, detail: "")
-        } else {
-            YouSkeleton(heights: [146, 240], label: YouCopy.creditsHistory)
-        }
     }
 }
 

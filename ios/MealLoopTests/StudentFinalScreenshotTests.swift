@@ -31,6 +31,14 @@ final class StudentFinalScreenshotTests: XCTestCase {
             store.signIn(session)
         }
 
+        var you: StudentYouViewModel {
+            StudentYouViewModel(session: session, repositories: environment.repositories, clock: clock)!
+        }
+
+        var rewards: StudentRewardsViewModel {
+            StudentRewardsViewModel(session: session, repositories: environment.repositories, clock: clock)!
+        }
+
         var spending: StudentSpendingViewModel {
             StudentSpendingViewModel(session: session, repositories: environment.repositories, clock: clock)!
         }
@@ -119,6 +127,33 @@ final class StudentFinalScreenshotTests: XCTestCase {
         try await shot("spending_largest_text", world, tab: .you, largestText: true) { StudentSpendingView(model: world.spending) }
         let offline = World(.offline)
         try await shot("spending_offline_65753", offline, tab: .you) { StudentSpendingView(model: offline.spending) }
+    }
+
+    // MARK: - B2d Credits Get to the ticket
+
+    func testCaptureCreditsAndTicket() async throws {
+        let world = World()
+        try await shot("credits_64313", world, tab: .you) {
+            StudentCreditsView(model: world.you, rewards: world.rewards, onHistory: {}, onTicket: { _ in })
+        }
+        let failed = world.rewards
+        _ = await failed.get("biryani-coupon")
+        try await shot("credits_failed_65873", world, tab: .you) {
+            StudentCreditsView(model: world.you, rewards: failed, onHistory: {}, onTicket: { _ in })
+        }
+        let rewards = world.rewards
+        let got = await rewards.get("juice")
+        let id = try XCTUnwrap(got)
+        try await shot("ticket_juice_1529-1901", world, tab: .you) { StudentRewardTicketView(model: world.rewards, id: id) }
+        try await shot("credits_history_after_juice_64443", world, tab: .you) {
+            StudentCreditsHistoryView(model: world.you, rewards: world.rewards) {}
+        }
+        world.clock.set(DemoSeed.time(12, 32))
+        _ = try await world.environment.repositories.studentRewards.recordCounterUse(of: id, for: DemoSeed.sampleStudent.id)
+        try await shot("ticket_juice_used_1529-2180", world, tab: .you) { StudentRewardTicketView(model: world.rewards, id: id) }
+        try await shot("ticket_juice_used_largest_text", world, tab: .you, largestText: true) {
+            StudentRewardTicketView(model: world.rewards, id: id)
+        }
     }
 }
 #endif
