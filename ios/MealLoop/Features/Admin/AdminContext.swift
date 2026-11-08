@@ -5,9 +5,11 @@ import Foundation
 struct AdminContext: Equatable, Sendable {
     let account: Account
     let mess: Mess
+    var allMesses: Bool { account.role == .superAdmin }
+    var canManagePeople: Bool { allMesses }
 
     init?(session: Session) {
-        guard session.account.role == .admin,
+        guard session.account.role == .admin || session.account.role == .superAdmin,
               case .mess(let messID) = session.account.scope,
               let mess = AdminMessLookup.mess(messID) else { return nil }
         self.account = session.account

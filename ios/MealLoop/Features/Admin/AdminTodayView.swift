@@ -41,7 +41,7 @@ struct AdminTodayView: View {
                                      emptyMessage: AdminCopy.noMealDetail,
                                      timeZone: model.context.mess.timeZone,
                                      retry: { await model.load() }) { content in
-                        AdminTodayBody(content: content, displayName: model.context.account.displayName,
+                        AdminTodayBody(content: content, displayName: model.context.account.displayName, allMesses: model.context.allMesses,
                                        onSelect: { slot in Task { await model.select(slot) } },
                                        open: { path.append($0) },
                                        openCase: { safetyCase in
@@ -78,6 +78,7 @@ struct AdminTodayView: View {
 struct AdminTodayBody: View {
     let content: AdminTodayContent
     let displayName: String
+    var allMesses = true
     let onSelect: (MealSlot) -> Void
     let open: (AdminRoute) -> Void
     let openCase: (SOSCase) -> Void
@@ -106,7 +107,11 @@ struct AdminTodayBody: View {
                     .font(MLType.bodyEmphasis)
                     .foregroundStyle(MLColor.ink)
             }
-            AdminMessGrid(content: content, open: open)
+            if allMesses {
+                AdminMessGrid(content: content, open: open)
+            } else {
+                AdminMessTile(content: content, openHeadcount: { open(.headcount) }, openLive: { open(.live) })
+            }
             needsYou
             VStack(alignment: .leading, spacing: MLSpacing.s8) {
                 AdminLabel(text: AdminCopy.headcountSection(mealName))

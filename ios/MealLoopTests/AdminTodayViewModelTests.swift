@@ -280,7 +280,7 @@ final class AdminTodayViewModelTests: XCTestCase {
     // MARK: Access
 
     func testNoOtherRoleCanReachTheAdminRole() async throws {
-        for account in DemoSeed.accounts where account.role != .admin {
+        for account in DemoSeed.accounts where account.role != .admin && account.role != .superAdmin {
             XCTAssertNotEqual(RoleRoot.destination(for: account.role), .admin, "\(account.role)")
             XCTAssertNil(AdminContext(session: Session(account: account, staff: nil)), "\(account.role)")
         }

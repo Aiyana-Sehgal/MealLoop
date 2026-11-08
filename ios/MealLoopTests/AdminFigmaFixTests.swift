@@ -10,9 +10,14 @@ final class AdminFigmaFixTests: XCTestCase {
         return try XCTUnwrap(AdminContext(session: session))
     }
 
-    private func today(_ scenario: DemoScenario = .storyStart) async throws -> (DemoDataProvider, AdminTodayViewModel) {
+    private func today(_ scenario: DemoScenario = .storyStart, allMesses: Bool = false) async throws -> (DemoDataProvider, AdminTodayViewModel) {
         let demo = DemoDataProvider(scenario: scenario)
-        let model = AdminTodayViewModel(context: try await foodHead(demo), repositories: demo.makeRepositories(), clock: demo.clock)
+        let context: AdminContext
+        if allMesses {
+            let session = try await demo.signInStaff(email: "superadmin@mealloop.example", password: DemoSeed.prototypePassword)
+            context = try XCTUnwrap(AdminContext(session: session))
+        } else { context = try await foodHead(demo) }
+        let model = AdminTodayViewModel(context: context, repositories: demo.makeRepositories(), clock: demo.clock)
         await model.load()
         return (demo, model)
     }
@@ -82,8 +87,8 @@ final class AdminFigmaFixTests: XCTestCase {
 
     // Today
 
-    func testTheGridHoldsTheOtherMessesWithoutTouchingTheSixValues() async throws {
-        let (_, model) = try await today()
+    func testSuperAdminGridHoldsOtherMessesWithoutTouchingTheSixValues() async throws {
+        let (_, model) = try await today(allMesses: true)
         let content = try XCTUnwrap(model.state.value)
         XCTAssertEqual(content.otherMesses?.messes.map(\.name), ["North", "South", "Annexe"])
         XCTAssertEqual(content.values.count, 6)

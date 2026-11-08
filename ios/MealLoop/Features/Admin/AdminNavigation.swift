@@ -17,6 +17,7 @@ enum AdminPage: Hashable {
     case editDay(Date)
     case people
     case peopleRole(String)
+    case accessPerson(AccountID)
     case announce
     case passes
     case votes

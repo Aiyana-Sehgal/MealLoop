@@ -244,12 +244,13 @@ final class AdminResultsMoreTests: XCTestCase {
 
     // MARK: Who can reach it
 
-    func testOnlyAFoodHeadSessionMakesAnAdminContext() throws {
-        for role in Role.allCases where role != .admin {
+    func testOnlyFoodHeadAndSuperAdminSessionsMakeAdminContexts() throws {
+        for role in Role.allCases where role != .admin && role != .superAdmin {
             guard let account = DemoSeed.accounts.first(where: { $0.role == role }) else { continue }
             XCTAssertNil(AdminContext(session: Session(account: account, staff: nil, student: nil)), "\(role)")
         }
         XCTAssertNotNil(AdminContext(session: try session(.admin)))
+        XCTAssertNotNil(AdminContext(session: try session(.superAdmin)))
     }
 
     // MARK: Each tab loads its states

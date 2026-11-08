@@ -21,7 +21,9 @@ struct AdminMoreScreen: View {
                         AdminHubRow(title: AdminScreenCopy.spareFood, value: AdminScreenCopy.pickups(hub.pickups), isLast: true) { nav.push(.spareFood) }
                     }
                     group {
-                        AdminHubRow(title: AdminScreenCopy.peopleAndAccess, value: AdminScreenCopy.invited(hub.invited)) { nav.push(.people) }
+                        if nav.context.canManagePeople {
+                            AdminHubRow(title: AdminScreenCopy.peopleAndAccess, value: AdminScreenCopy.invited(hub.invited)) { nav.push(.people) }
+                        }
                         AdminHubRow(title: AdminScreenCopy.announceToStudents) { nav.push(.announce) }
                         AdminHubRow(title: AdminScreenCopy.history) { nav.push(.history) }
                         AdminHubRow(title: AdminScreenCopy.signOut, isLast: true) {

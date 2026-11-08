@@ -63,7 +63,7 @@ final class AdminTodayViewModel {
             let selected = chosenSlot ?? current?.meal.slot ?? day[0].meal.slot
             let meal = try await loadMeal(day.first { $0.meal.slot == selected })
             // Neither may stop Today: a source without them still shows the Food Head's own mess.
-            let others = try? await messes.messDay(for: selected)
+            let others = context.allMesses ? try? await messes.messDay(for: selected) : nil
             // A meal still to come has nothing to review.
             let reviews = ((try? await results.overview())?.toReview ?? []).filter(\.meal.isClosed)
             guard thisLoad == latestLoad else { return }

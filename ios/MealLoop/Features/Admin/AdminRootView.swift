@@ -2,11 +2,13 @@ import SwiftUI
 
 /// The Admin root: Today, Students, Results, More and the round Search (A01).
 struct AdminRootView: View {
+    @Environment(AppEnvironment.self) private var environment
     let session: Session
 
     var body: some View {
         if let context = AdminContext(session: session) {
             AdminTabsView(context: context)
+                .environment(AppEnvironment(kind: environment.kind, repositories: environment.repositories.scopedAdmin(session, mess: context.mess), clock: environment.clock, demoControls: environment.demoControls))
         } else {
             PlaceholderRootView(root: .admin, role: .admin)
         }
@@ -43,11 +45,17 @@ private struct AdminTabsView: View {
             } else if selectedTab == RoleRoot.searchTab {
                 SearchPlaceholderView(prompt: root.searchPrompt)
             } else if selectedTab == studentsTab {
-                tab($studentsPath) { AdminStudentsScreen(nav: $0) }
+                tab($studentsPath) { nav in
+                    if context.allMesses { AdminStudentsScreen(nav: nav) } else { AdminSingleMessStudentsScreen(nav: nav) }
+                }
             } else if selectedTab == resultsTab {
-                tab($resultsPath) { AdminResultsScreen(nav: $0) }
+                tab($resultsPath) { nav in
+                    if context.allMesses { AdminResultsScreen(nav: nav) } else { AdminScopedResultsScreen(nav: nav) }
+                }
             } else {
-                tab($morePath) { AdminMoreScreen(nav: $0) }
+                tab($morePath) { nav in
+                    if context.allMesses { AdminMoreScreen(nav: nav) } else { AdminSingleMessMoreScreen(nav: nav) }
+                }
             }
             if !isEditingDay {
                 // Scroll edge fade (2262:22): rows dissolve before they reach the tab bar.
@@ -114,15 +122,17 @@ struct AdminPageDestination: View {
             case .findMeal: AdminFindMealScreen(nav: nav)
             case .safetyCases: AdminSafetyCasesScreen(nav: nav)
             case .safetyCase(let id): AdminSafetyCaseScreen(id: id, nav: nav)
-            case .weeklyReport: AdminWeeklyReportScreen(nav: nav)
+            case .weeklyReport:
+                if nav.context.allMesses { AdminWeeklyReportScreen(nav: nav) } else { AdminSingleMessReportScreen(nav: nav) }
             case .feedback(let id): AdminFeedbackScreen(id: id, nav: nav)
             case .community(let id): AdminCommunityScreen(id: id, nav: nav)
             case .skipReasons: AdminSkipReasonsScreen(nav: nav)
             case .weeklyMenu: AdminMenuScreen(nav: nav)
             case .checkDay(let date): AdminCheckDayScreen(date: date, nav: nav)
             case .editDay(let date): AdminEditDayScreen(date: date, nav: nav)
-            case .people: AdminPeopleScreen(nav: nav)
-            case .peopleRole(let id): AdminRoleScreen(id: id, nav: nav)
+            case .people: AdminAccessScreen(nav: nav)
+            case .peopleRole(let id): AdminAccessScreen(nav: nav, role: Role(rawValue: id))
+            case .accessPerson(let id): AdminAccessScreen(nav: nav, personID: id)
             case .announce: AdminAnnounceScreen(nav: nav)
             case .passes: AdminPassesScreen(nav: nav)
             case .votes: AdminVotesScreen(nav: nav)
