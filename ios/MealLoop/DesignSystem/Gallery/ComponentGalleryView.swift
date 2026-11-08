@@ -37,6 +37,7 @@ enum GalleryPage: String, CaseIterable, Identifiable, Hashable {
     case outcomeAlreadyScanned, outcomeOffline
     case answerPage, answerLocked, answerHero
     case heroChips, statusRows, stateBlocks, listRows, facts, keypads, progress, controls, feedback
+    case screenScaffold, screenScaffoldLegacy
 
     var id: String { rawValue }
 
@@ -70,6 +71,8 @@ enum GalleryPage: String, CaseIterable, Identifiable, Hashable {
         case .progress: "Progress"
         case .controls: "Pills, chips, segmented, link"
         case .feedback: "Toast and inline error"
+        case .screenScaffold: "Screen · MLScreen scaffold"
+        case .screenScaffoldLegacy: "Screen · MLScreen, iOS 17 scroll reader"
         }
     }
 }
@@ -155,6 +158,10 @@ struct GalleryPageView: View {
         case .dialogStartMeal, .dialogCloseMeal, .dialogWorking, .sheetShortage, .sheetDigits, .sheetQuantity,
              .sosNotTaken, .sosClaimed, .sosChecked:
             GalleryModalPage(page: page)
+        case .screenScaffold:
+            MLScreenGalleryView()
+        case .screenScaffoldLegacy:
+            MLScreenGalleryView(scrollTracking: .legacy)
         default:
             ZStack {
                 OrbitBackground()
