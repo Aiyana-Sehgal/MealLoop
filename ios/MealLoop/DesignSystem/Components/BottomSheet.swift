@@ -45,8 +45,19 @@ struct SheetHeader: View {
     }
 }
 
+/// The sizing rule of `mlSheet`, kept apart so tests can check it.
+enum MLSheetSizing {
+    /// A sheet is exactly as tall as its measured content (`.height(measured)`), never a fixed fraction with empty
+    /// space under the content. If the content is taller than the screen, the system caps the sheet and it scrolls.
+    /// Before the first measurement (one layout pass) it falls back to `.medium`.
+    static func detents(forMeasuredHeight height: CGFloat) -> Set<PresentationDetent> {
+        height > 0 ? [.height(height.rounded(.up))] : [.medium]
+    }
+}
+
 /// Sizes a sheet to its content, and scrolls when the content is taller than the screen.
 private struct SheetContainer<Content: View>: View {
+    var isWorking: Bool = false
     @ViewBuilder let content: Content
     @State private var height: CGFloat = 0
 
@@ -64,10 +75,12 @@ private struct SheetContainer<Content: View>: View {
         }
         .scrollBounceBehavior(.basedOnSize)
         .onPreferenceChange(SheetHeightKey.self) { height = $0 }
-        .presentationDetents(height > 0 ? [.height(height)] : [.medium])
+        .presentationDetents(MLSheetSizing.detents(forMeasuredHeight: height))
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(MLRadius.card)
         .presentationBackground(MLColor.surface)
+        // Only while a send is in flight (docs/SWIFTUI_STANDARDS.md, section 2).
+        .interactiveDismissDisabled(isWorking)
     }
 }
 
@@ -88,3 +101,30 @@ extension View {
         }
     }
 }
+
+extension View {
+    /// `mlSheet` that cannot be swiped away while `isWorking` (a send in flight), with an optional `onDismiss`.
+    func mlSheet<Content: View>(
+        isPresented: Binding<Bool>,
+        isWorking: Bool,
+        onDismiss: (() -> Void)? = nil,
+        @ViewBuilder content: @escaping () -> Content
+    ) -> some View {
+        sheet(isPresented: isPresented, onDismiss: onDismiss) {
+            SheetContainer(isWorking: isWorking, content: content)
+        }
+    }
+
+    /// `mlSheet` for an optional item: shown while `item` is not nil, sized to its content.
+    func mlSheet<Item: Identifiable, Content: View>(
+        item: Binding<Item?>,
+        isWorking: Bool = false,
+        onDismiss: (() -> Void)? = nil,
+        @ViewBuilder content: @escaping (Item) -> Content
+    ) -> some View {
+        sheet(item: item, onDismiss: onDismiss) { value in
+            SheetContainer(isWorking: isWorking) { content(value) }
+        }
+    }
+}
+

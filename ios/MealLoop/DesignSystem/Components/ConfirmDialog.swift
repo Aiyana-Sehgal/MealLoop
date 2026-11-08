@@ -110,3 +110,60 @@ extension View {
         .transaction { $0.disablesAnimations = true }
     }
 }
+
+/// The compact confirmation sheet: the title, what it applies to, what will happen, and two explicit buttons side by
+/// side. It is as tall as its wording (`mlSheet` sizing) and cannot be swiped away while the action is in flight.
+/// Use it where a confirmation belongs at the bottom of the screen; use `mlConfirmDialog` for the centred card.
+struct ConfirmSheet: View {
+    let content: ConfirmDialogContent
+    var isWorking: Bool = false
+    let onCancel: () -> Void
+    let onConfirm: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: MLSpacing.s24) {
+            VStack(alignment: .leading, spacing: MLSpacing.s8) {
+                Text(content.title)
+                    .mlFont(.title2)
+                    .foregroundStyle(MLColor.ink)
+                    .accessibilityAddTraits(.isHeader)
+                if let subject = content.subject {
+                    Text(subject)
+                        .mlFont(.staffBody)
+                        .foregroundStyle(MLColor.ink)
+                }
+                if let detail = content.detail {
+                    Text(detail)
+                        .mlFont(.body)
+                        .foregroundStyle(MLColor.inkSecondary)
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: MLSpacing.s12) {
+                OutlineActionButton(title: content.cancelTitle, action: onCancel)
+                    .disabled(isWorking)
+                InkActionButton(title: content.actionTitle, isLoading: isWorking, action: onConfirm)
+            }
+        }
+    }
+}
+
+extension View {
+    /// Shows `ConfirmSheet` in a sheet sized to its content. Cancel closes it. `onConfirm` leaves it open, so the
+    /// caller can show `isWorking` and close it when the write ends.
+    func mlConfirmSheet(
+        isPresented: Binding<Bool>,
+        content: ConfirmDialogContent,
+        isWorking: Bool = false,
+        onConfirm: @escaping () -> Void
+    ) -> some View {
+        mlSheet(isPresented: isPresented, isWorking: isWorking) {
+            ConfirmSheet(
+                content: content,
+                isWorking: isWorking,
+                onCancel: { isPresented.wrappedValue = false },
+                onConfirm: onConfirm
+            )
+        }
+    }
+}
