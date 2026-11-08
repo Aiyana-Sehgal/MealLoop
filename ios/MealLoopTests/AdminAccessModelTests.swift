@@ -16,6 +16,22 @@ import XCTest
         await access.load()
         XCTAssertNil(access.state.value)
     }
+    func testInvitedFoodHeadGetsAssignedMessWithoutMainFallback() async throws {
+        let core = DemoDataProvider()
+        let people = core.makeRepositories().people
+        let directory = try await people.directory(by: session(.superAdmin))
+        let north = directory.messes[1]
+        let given = try await people.invite(name: "Sample name", contact: "new-head@mealloop.example", role: .admin, mess: north.id, by: session(.superAdmin))
+        let signedIn = try await core.signInStaff(email: given.person.account.email, password: given.value)
+        let context = try XCTUnwrap(AdminContext(session: signedIn))
+        XCTAssertEqual(context.mess.id, north.id)
+        XCTAssertFalse(context.allMesses)
+        let repos = core.makeRepositories().scopedAdmin(signedIn, mess: north)
+        let today = AdminTodayViewModel(context: context, repositories: repos, clock: core.clock)
+        await today.load()
+        XCTAssertNil(today.state.value, "No North live data must not become Main data")
+        do { _ = try await repos.headcount.headcount(for: DemoSeed.lunch.id); XCTFail("Main leak") } catch {}
+    }
     func testSuperAdminAllMessContextAndPasswordDismissal() async throws {
         let core = DemoDataProvider()
         let context = try XCTUnwrap(AdminContext(session: session(.superAdmin)))

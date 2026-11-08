@@ -1,7 +1,6 @@
 import Foundation
 
-/// Who is using the Admin app, and the mess they work in. It can only be made from a Food Head / Admin session,
-/// so no other role can reach these screens even if something routed it here.
+/// The two Admin presentation roles and the account's assigned mess. Other roles cannot construct this context.
 struct AdminContext: Equatable, Sendable {
     let account: Account
     let mess: Mess
@@ -22,14 +21,12 @@ extension Account {
     var firstName: String { displayName.split(separator: " ").first.map(String.init) ?? displayName }
 }
 
-/// TEMPORARY. `Session` gives an admin a `MessID` only, and no repository returns a `Mess`, so the name and the
-/// time zone have no other source. This is the one place that reads them, and it goes when the shared-file owner
-/// adds a source (docs/verification/admin-today/REPORT.md, "Shared changes needed"). A build without seeded data
-/// finds nothing, so the role falls back to its Coming soon placeholder.
+/// Temporary registry of the four approved prototype mess names. Recognizing an assignment does not
+/// imply that live meal data exists for it; repositories keep missing data unavailable.
 private enum AdminMessLookup {
     static func mess(_ id: MessID) -> Mess? {
         #if DEMO_DATA || REVIEW_DATA
-        return id == DemoSeed.mess.id ? DemoSeed.mess : nil
+        return DemoPeopleStore.messes.first { $0.id == id }
         #else
         return nil
         #endif
