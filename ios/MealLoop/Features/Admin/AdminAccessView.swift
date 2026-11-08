@@ -186,6 +186,7 @@ struct AdminAccessView: View {
                         Text(person.passwordRevoked ? "○ Password revoked" : "● Password set")
                             .font(MLType.bodyEmphasis).foregroundStyle(person.passwordRevoked ? MLColor.onHero : MLColor.onLime)
                             .padding(MLSpacing.s8).background(Capsule().fill(person.passwordRevoked ? MLColor.heroBackground : MLColor.lime))
+                            .overlay { if person.passwordRevoked { Capsule().strokeBorder(MLColor.onHeroSecondary, lineWidth: 1) } }
                         Spacer()
                         Text(AdminAccessCopy.personRole(person.account.role)).font(MLType.body).foregroundStyle(MLColor.onHeroSecondary)
                     }
@@ -265,7 +266,7 @@ struct AdminAccessView: View {
             if let id = personID, let person = model.person(id) {
                 Text("\(person.account.displayName) · \(AdminAccessCopy.personRole(person.account.role))").font(MLType.body).foregroundStyle(MLColor.inkSecondary)
                 ForEach(model.state.value?.messes ?? []) { mess in
-                    accessRow(mess.name, symbol: selectedMess == mess.id ? "checkmark.circle.fill" : "circle") { selectedMess = mess.id }
+                    accessRow(mess.name, detail: person.account.scope == .mess(mess.id) ? "Where \(person.account.displayName) is allotted now" : nil, symbol: selectedMess == mess.id ? "checkmark.circle.fill" : "circle") { selectedMess = mess.id }
                 }
                 Text(AdminAccessCopy.pastRecords).font(MLType.body).foregroundStyle(MLColor.inkSecondary)
                 InkActionButton(title: "Save allotment") {
