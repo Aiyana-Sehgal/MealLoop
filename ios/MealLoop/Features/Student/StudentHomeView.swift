@@ -246,7 +246,6 @@ struct StudentHomeView: View {
                             onOpenAnswer: { path.append(.answer($0)) },
                             onOpenPass: { path.append(.pass) },
                             onOpenCrowd: { path.append(.crowd) },
-                            onComingSoon: { path.append(.comingSoon($0)) },
                             showsRating: { !skippedRatings.contains(Self.ratingKey($0.startsAt, $0.slot)) },
                             onRating: rating,
                             onOpenMyFeedback: { path.append(.myFeedback) })
@@ -326,7 +325,6 @@ struct StudentHomeBody: View {
     let onOpenAnswer: (MealID) -> Void
     var onOpenPass: () -> Void = {}
     var onOpenCrowd: () -> Void = {}
-    let onComingSoon: (String) -> Void
     /// Whether the How was … card shows for a closed meal (hidden after Good or Skip for now).
     var showsRating: (Meal) -> Bool = { _ in true }
     var onRating: (Meal, StudentHomeRatingAction) -> Void = { _, _ in }

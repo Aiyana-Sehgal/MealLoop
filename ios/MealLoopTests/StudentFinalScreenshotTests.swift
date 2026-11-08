@@ -226,5 +226,15 @@ final class StudentFinalScreenshotTests: XCTestCase {
                 .studentPushedPage(usesSystemBar: false)
         }
     }
+
+    // MARK: - B7 Community info
+
+    func testCaptureCommunityInfo() async throws {
+        let world = World()
+        try await shot("community_info_sheet_1535-114372", world, tab: .community, pushed: false, wait: 2) {
+            StudentCommunityScreen(session: world.session)
+                .mlSheet(isPresented: .constant(true)) { CommunityInfoSheet {} }
+        }
+    }
 }
 #endif

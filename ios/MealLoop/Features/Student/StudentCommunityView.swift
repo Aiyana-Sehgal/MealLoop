@@ -79,6 +79,8 @@ struct StudentCommunityView: View {
     @State private var model: StudentCommunityViewModel
     @State private var path: [StudentCommunityRoute] = []
     @State private var showsFixed = false
+    /// Community · Info sheet (1535:114372).
+    @State private var showsInfo = false
     let session: Session
 
     init(model: StudentCommunityViewModel, session: Session) {
@@ -113,6 +115,9 @@ struct StudentCommunityView: View {
         .task(id: environment.dataRevision) {
             await model.load()
         }
+        .mlSheet(isPresented: $showsInfo) {
+            CommunityInfoSheet { showsInfo = false }
+        }
     }
 
     @ViewBuilder
@@ -132,7 +137,7 @@ struct StudentCommunityView: View {
     private var header: some View {
         HStack(alignment: .top) {
             MealsLargeHeader(title: CommunityCopy.title, subtitle: CommunityCopy.subtitle, onBack: nil)
-            StudentGlassButton(symbol: "info.circle", label: CommunityCopy.about) { path.append(.comingSoon(CommunityCopy.about)) }
+            StudentGlassButton(symbol: "info.circle", label: CommunityCopy.about) { showsInfo = true }
         }
     }
 
@@ -495,5 +500,30 @@ struct StudentIssueView: View {
         .background(RoundedRectangle(cornerRadius: StudentMetric.highlightRadius, style: .continuous).fill(MLColor.surface))
         .accessibilityElement(children: .combine)
         .accessibilityHint(MealsCopy.estimateSpoken)
+    }
+}
+
+/// Community · Info sheet (1535:114372): How Community works, in three short items. Sized to its content.
+struct CommunityInfoSheet: View {
+    let onClose: () -> Void
+
+    private static let items: [(title: String, detail: String)] = [
+        ("Who sees it", "Your mess food head and the mess team. Others see how many back a report, never who."),
+        ("What to write", "The dish or the place, not a person."),
+        ("Same problem?", "Tap Me too instead of a new report. You can undo it."),
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: MLSpacing.s16) {
+            SheetHeader(title: "How Community works", onClose: onClose)
+            ForEach(Self.items, id: \.title) { item in
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.title).font(StudentType.bodySemibold).foregroundStyle(MLColor.ink)
+                    Text(item.detail).font(StudentType.secondary).foregroundStyle(MLColor.inkSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .accessibilityElement(children: .combine)
+            }
+        }
     }
 }
