@@ -173,6 +173,7 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
     private nonisolated let studentRecordsStore = DemoStudentRecordsStore()
     /// The instant the live pass code is read at, shared by the Student pass and the Pass Desk.
     nonisolated let passCodeTicker = PassCodeTicker()
+    private nonisolated let peopleStore = DemoPeopleStore()
     private nonisolated let superAdminStore = DemoSuperAdminStore()
 
     /// A new provider is a relaunch: in-memory state and the clock go back to the scenario's start.
@@ -192,7 +193,7 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
 
     nonisolated func makeRepositories() -> Repositories {
         let admin = DemoAdminRepositories(core: self, store: adminStore)
-        return Repositories(meals: self, mealState: self, headcount: self, entries: self, intentions: self,
+        return Repositories(people: DemoPeople(core: self, store: peopleStore), meals: self, mealState: self, headcount: self, entries: self, intentions: self,
                             shortages: self, wasteReports: self, sos: self, auth: self, specialPasses: self,
                             studentExtras: self, studentMeals: self, studentCommunity: self, adminResults: admin, adminStudents: admin, adminMore: admin,
                             adminMesses: DemoAdminMesses(core: self, store: adminMessStore), staffDirectory: self,
@@ -686,11 +687,7 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
     func signInStaff(email: String, password: String) async throws -> Session {
         try failIfOffline()
         let wanted = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard let account = DemoSeed.accounts.first(where: { $0.email.lowercased() == wanted }),
-              account.role != .student,
-              password == DemoSeed.prototypePassword else {
-            throw RepositoryError.invalidCredentials
-        }
+        let account = try await peopleStore.authenticate(email: wanted, password: password)
         return session(for: account)
     }
 
@@ -706,8 +703,10 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
     }
 
     private func session(for account: Account) -> Session {
+        let assignedMess: Mess?
+        if case .mess(let id) = account.scope { assignedMess = DemoPeopleStore.messes.first { $0.id == id } } else { assignedMess = nil }
         let staff = account.role.isMessStaff
-            ? StaffSession(role: account.role, mess: DemoSeed.mess, staffInitials: DemoSeed.staffInitials(for: account.role),
+            ? StaffSession(role: account.role, mess: assignedMess ?? DemoSeed.mess, staffInitials: DemoSeed.staffInitials(for: account.role),
                            supervisorName: DemoSeed.supervisorName)
             : nil
         let student = account.role == .student ? StudentContext(student: DemoSeed.sampleStudent, mess: DemoSeed.mess) : nil

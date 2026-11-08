@@ -140,6 +140,7 @@ protocol IntelligenceService: Sendable {}
 
 /// The set of repositories the app runs with. Exactly one source (demo or api) per running app; never mixed.
 struct Repositories: Sendable {
+    var people: any PeopleRepository = UnavailablePeople()
     let meals: any MealRepository
     let mealState: any MealStateRepository
     let headcount: any HeadcountRepository
