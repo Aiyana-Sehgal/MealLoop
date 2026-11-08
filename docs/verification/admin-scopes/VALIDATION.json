@@ -1,0 +1,309 @@
+{
+  "prepush": {
+    "bundle": "/tmp/mealloop-admin-scopes-prepush.xcresult",
+    "result": "Passed",
+    "total": 697,
+    "passed": 675,
+    "failed": 0,
+    "skipped": 22,
+    "devices": [
+      {
+        "device": {
+          "architecture": "arm64",
+          "deviceId": "52D13036-EB53-4149-A22F-CD480026C61B",
+          "deviceName": "iPhone 18 Pro",
+          "modelName": "iPhone 18 Pro",
+          "osBuildNumber": "24A434",
+          "osVersion": "27.0",
+          "platform": "iOS Simulator"
+        },
+        "expectedFailures": 0,
+        "failedTests": 0,
+        "passedTests": 675,
+        "skippedTests": 22,
+        "testPlanConfiguration": {
+          "configurationId": "1",
+          "configurationName": "Test Scheme Action"
+        }
+      }
+    ]
+  },
+  "ui-fix": {
+    "bundle": "/tmp/mealloop-admin-scopes-ui-fix.xcresult",
+    "result": "Passed",
+    "total": 697,
+    "passed": 675,
+    "failed": 0,
+    "skipped": 22,
+    "devices": [
+      {
+        "device": {
+          "architecture": "arm64",
+          "deviceId": "52D13036-EB53-4149-A22F-CD480026C61B",
+          "deviceName": "iPhone 18 Pro",
+          "modelName": "iPhone 18 Pro",
+          "osBuildNumber": "24A434",
+          "osVersion": "27.0",
+          "platform": "iOS Simulator"
+        },
+        "expectedFailures": 0,
+        "failedTests": 0,
+        "passedTests": 675,
+        "skippedTests": 22,
+        "testPlanConfiguration": {
+          "configurationId": "1",
+          "configurationName": "Test Scheme Action"
+        }
+      }
+    ]
+  },
+  "review-verified": {
+    "bundle": "/tmp/mealloop-admin-scopes-review-verified.xcresult",
+    "result": "Passed",
+    "total": 696,
+    "passed": 675,
+    "failed": 0,
+    "skipped": 21,
+    "devices": [
+      {
+        "device": {
+          "architecture": "arm64",
+          "deviceId": "52D13036-EB53-4149-A22F-CD480026C61B",
+          "deviceName": "iPhone 18 Pro",
+          "modelName": "iPhone 18 Pro",
+          "osBuildNumber": "24A434",
+          "osVersion": "27.0",
+          "platform": "iOS Simulator"
+        },
+        "expectedFailures": 0,
+        "failedTests": 0,
+        "passedTests": 675,
+        "skippedTests": 21,
+        "testPlanConfiguration": {
+          "configurationId": "1",
+          "configurationName": "Test Scheme Action"
+        }
+      }
+    ],
+    "warnings": [
+      "Two AppIntents metadata-extraction warnings; no Swift warning in final Review log."
+    ]
+  },
+  "se-verified": {
+    "bundle": "/tmp/mealloop-admin-scopes-se-verified.xcresult",
+    "result": "Passed",
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "devices": [
+      {
+        "device": {
+          "architecture": "arm64",
+          "deviceId": "1001B885-6FB4-4E60-9AED-0D808FA0EDDA",
+          "deviceName": "Vendor-iPhoneSE",
+          "modelName": "iPhone SE (3rd generation)",
+          "osBuildNumber": "24B8117",
+          "osVersion": "27.2",
+          "platform": "iOS Simulator"
+        },
+        "expectedFailures": 0,
+        "failedTests": 0,
+        "passedTests": 1,
+        "skippedTests": 0,
+        "testPlanConfiguration": {
+          "configurationId": "1",
+          "configurationName": "Test Scheme Action"
+        }
+      }
+    ],
+    "sourceRevision": "2828abb",
+    "note": "Before assignment-registry-only change; captured Main views are unchanged. Final full Review re-renders Main on the final source."
+  },
+  "release": {
+    "bundle": "/tmp/mealloop-admin-scopes-release.xcresult",
+    "result": "BUILD SUCCEEDED",
+    "exit": 0,
+    "warnings": [
+      "Metadata extraction skipped, no AppIntents.framework dependency found"
+    ]
+  },
+  "sourceRevision": "73c2680d47d88c99d99b6107d8078ada6245c8ff",
+  "assignment": {
+    "bundle": "/tmp/mealloop-admin-scopes-assignment.xcresult",
+    "result": "Passed",
+    "total": 698,
+    "passed": 676,
+    "failed": 0,
+    "skipped": 22,
+    "devices": [
+      {
+        "device": {
+          "architecture": "arm64",
+          "deviceId": "52D13036-EB53-4149-A22F-CD480026C61B",
+          "deviceName": "iPhone 18 Pro",
+          "modelName": "iPhone 18 Pro",
+          "osBuildNumber": "24A434",
+          "osVersion": "27.0",
+          "platform": "iOS Simulator"
+        },
+        "expectedFailures": 0,
+        "failedTests": 0,
+        "passedTests": 676,
+        "skippedTests": 22,
+        "testPlanConfiguration": {
+          "configurationId": "1",
+          "configurationName": "Test Scheme Action"
+        }
+      }
+    ]
+  },
+  "review-final-source": {
+    "bundle": "/tmp/mealloop-admin-scopes-review-final-source.xcresult",
+    "result": "Passed",
+    "total": 697,
+    "passed": 676,
+    "failed": 0,
+    "skipped": 21,
+    "devices": [
+      {
+        "device": {
+          "architecture": "arm64",
+          "deviceId": "52D13036-EB53-4149-A22F-CD480026C61B",
+          "deviceName": "iPhone 18 Pro",
+          "modelName": "iPhone 18 Pro",
+          "osBuildNumber": "24A434",
+          "osVersion": "27.0",
+          "platform": "iOS Simulator"
+        },
+        "expectedFailures": 0,
+        "failedTests": 0,
+        "passedTests": 676,
+        "skippedTests": 21,
+        "testPlanConfiguration": {
+          "configurationId": "1",
+          "configurationName": "Test Scheme Action"
+        }
+      }
+    ]
+  },
+  "release-final-source": {
+    "bundle": "/tmp/mealloop-admin-scopes-release-final-source.xcresult",
+    "result": "BUILD SUCCEEDED",
+    "exit": 0,
+    "warnings": [
+      "Metadata extraction skipped, no AppIntents.framework dependency found"
+    ]
+  },
+  "live-scope": {
+    "bundle": "/tmp/mealloop-admin-scopes-live-scope.xcresult",
+    "result": "Passed",
+    "total": 698,
+    "passed": 676,
+    "failed": 0,
+    "skipped": 22,
+    "devices": [
+      {
+        "device": {
+          "architecture": "arm64",
+          "deviceId": "52D13036-EB53-4149-A22F-CD480026C61B",
+          "deviceName": "iPhone 18 Pro",
+          "modelName": "iPhone 18 Pro",
+          "osBuildNumber": "24A434",
+          "osVersion": "27.0",
+          "platform": "iOS Simulator"
+        },
+        "expectedFailures": 0,
+        "failedTests": 0,
+        "passedTests": 676,
+        "skippedTests": 22,
+        "testPlanConfiguration": {
+          "configurationId": "1",
+          "configurationName": "Test Scheme Action"
+        }
+      }
+    ],
+    "sourceRevision": "working tree committed as 69f6751"
+  },
+  "review-shipping": {
+    "bundle": "/tmp/mealloop-admin-scopes-review-shipping.xcresult",
+    "result": "Passed",
+    "total": 697,
+    "passed": 676,
+    "failed": 0,
+    "skipped": 21,
+    "devices": [
+      {
+        "device": {
+          "architecture": "arm64",
+          "deviceId": "52D13036-EB53-4149-A22F-CD480026C61B",
+          "deviceName": "iPhone 18 Pro",
+          "modelName": "iPhone 18 Pro",
+          "osBuildNumber": "24A434",
+          "osVersion": "27.0",
+          "platform": "iOS Simulator"
+        },
+        "expectedFailures": 0,
+        "failedTests": 0,
+        "passedTests": 676,
+        "skippedTests": 21,
+        "testPlanConfiguration": {
+          "configurationId": "1",
+          "configurationName": "Test Scheme Action"
+        }
+      }
+    ],
+    "sourceRevision": "69f6751"
+  },
+  "se-shipping": {
+    "bundle": "/tmp/mealloop-admin-scopes-se-shipping.xcresult",
+    "result": "Passed",
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "devices": [
+      {
+        "device": {
+          "architecture": "arm64",
+          "deviceId": "1001B885-6FB4-4E60-9AED-0D808FA0EDDA",
+          "deviceName": "Vendor-iPhoneSE",
+          "modelName": "iPhone SE (3rd generation)",
+          "osBuildNumber": "24B8117",
+          "osVersion": "27.2",
+          "platform": "iOS Simulator"
+        },
+        "expectedFailures": 0,
+        "failedTests": 0,
+        "passedTests": 1,
+        "skippedTests": 0,
+        "testPlanConfiguration": {
+          "configurationId": "1",
+          "configurationName": "Test Scheme Action"
+        }
+      }
+    ],
+    "sourceRevision": "69f6751"
+  },
+  "release-shipping": {
+    "bundle": "/tmp/mealloop-admin-scopes-release-shipping.xcresult",
+    "result": "BUILD SUCCEEDED",
+    "exit": 0,
+    "sourceRevision": "69f6751",
+    "warningCount": 1
+  },
+  "codeCI": {
+    "runId": 42447799431,
+    "conclusion": "success",
+    "sourceRevision": "543f09f"
+  },
+  "report-prepush": {
+    "bundle": "/tmp/mealloop-admin-scopes-report-prepush.xcresult",
+    "result": "Passed",
+    "total": 698,
+    "passed": 676,
+    "failed": 0,
+    "skipped": 22,
+    "sourceRevision": "73c2680d47d88c99d99b6107d8078ada6245c8ff"
+  }
+}

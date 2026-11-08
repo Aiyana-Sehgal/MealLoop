@@ -1,0 +1,30 @@
+ios/MealLoop/Data/Demo/DemoDataProvider.swift
+ios/MealLoop/Data/Demo/DemoPeople.swift
+ios/MealLoop/Data/Repositories/AdminDataScope.swift
+ios/MealLoop/Data/Repositories/PeopleRepository.swift
+ios/MealLoop/Data/Repositories/Repositories.swift
+ios/MealLoop/Features/Admin/AdminAccessView.swift
+ios/MealLoop/Features/Admin/AdminContext.swift
+ios/MealLoop/Features/Admin/AdminMoreView.swift
+ios/MealLoop/Features/Admin/AdminNavigation.swift
+ios/MealLoop/Features/Admin/AdminRootView.swift
+ios/MealLoop/Features/Admin/AdminScopedResultsView.swift
+ios/MealLoop/Features/Admin/AdminSingleMessViews.swift
+ios/MealLoop/Features/Admin/AdminTodayView.swift
+ios/MealLoop/Features/Admin/AdminTodayViewModel.swift
+ios/MealLoop/Features/SuperAdmin/SuperAdminRootView.swift
+ios/MealLoop/Features/Supervisor/SupervisorHomeViewModel.swift
+ios/MealLoopTests/AdminAccessModelTests.swift
+ios/MealLoopTests/AdminDataScopeTests.swift
+ios/MealLoopTests/AdminFigmaFixTests.swift
+ios/MealLoopTests/AdminResultsMoreTests.swift
+ios/MealLoopTests/AdminScopeScreenshotTests.swift
+ios/MealLoopTests/AdminTodayViewModelTests.swift
+ios/MealLoopTests/PeopleAccessTests.swift
+docs/verification/admin-scopes/REPORT.md
+docs/verification/admin-scopes/VALIDATION.json
+docs/verification/admin-scopes/comparison.html
+docs/verification/admin-scopes/CHANGED_FILES.txt
+docs/verification/admin-scopes/captures/ (15 PNGs)
+docs/verification/admin-scopes/captures-se/ (15 PNGs)
+docs/verification/admin-scopes/reference/ (9 PNGs)
