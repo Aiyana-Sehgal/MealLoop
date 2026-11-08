@@ -51,6 +51,9 @@ struct StudentReportRequest: Codable, Sendable, Hashable {
     let place: String
     let meal: MealSlot?
     let idempotencyKey: IdempotencyKey
+    /// The dish the report is about, when it came from Rate a dish (Not good). Defaulted, so every existing caller
+    /// stays as it was.
+    var dish: String?
 }
 
 /// What happened to a non-urgent report after the deterministic checks. No AI decides this.

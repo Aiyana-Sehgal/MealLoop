@@ -176,4 +176,6 @@ struct Repositories: Sendable {
     var studentSpending: any StudentSpendingRepository = UnavailableStudentSpending()
     /// Defaulted, so every existing caller stays as it was. Reward tickets got with credits.
     var studentRewards: any StudentRewardsRepository = UnavailableStudentRewards()
+    /// Defaulted, so every existing caller stays as it was. Good / Not good on a meal or a dish.
+    var feedbackRatings: any FeedbackRatingRepository = UnavailableFeedbackRatings()
 }
