@@ -1,6 +1,8 @@
 import SwiftUI
 
 /// Everything before sign-in: Welcome, with Staff sign in and Sign in with SRM pushed on top.
+/// Welcome and Staff sign in are `MLScreen`s: Staff sign in keeps the navigation bar, so the system back button and
+/// the swipe-back gesture work on it. Sign in with SRM still hides the bar (not migrated in this change).
 struct EntryFlowView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(AppRouter.self) private var router
@@ -9,206 +11,241 @@ struct EntryFlowView: View {
         @Bindable var router = router
         NavigationStack(path: $router.entryPath) {
             WelcomeView()
-                .toolbar(.hidden, for: .navigationBar)
                 .navigationDestination(for: EntryRoute.self) { route in
-                    Group {
-                        switch route {
-                        case .staffSignIn:
-                            StaffSignInView(model: StaffSignInViewModel(auth: environment.repositories.auth))
-                        case .srmSignIn:
-                            SRMSignInView(model: SRMSignInViewModel(auth: environment.repositories.auth))
-                        }
+                    switch route {
+                    case .staffSignIn:
+                        StaffSignInView(model: StaffSignInViewModel(auth: environment.repositories.auth))
+                    case .srmSignIn:
+                        SRMSignInView(model: SRMSignInViewModel(auth: environment.repositories.auth))
+                            .toolbar(.hidden, for: .navigationBar)
+                            .navigationBarBackButtonHidden(true)
                     }
-                    .toolbar(.hidden, for: .navigationBar)
-                    .navigationBarBackButtonHidden(true)
                 }
         }
     }
 }
 
-/// 01_sign_in, plus the Staff sign in action. The brand sits at the optical centre of the space above the buttons,
-/// and the buttons and footnote stay together at the bottom. It scrolls only if larger text no longer fits.
+/// Onboarding · Sign in (221:62499), plus the Staff sign in action. The brand sits in the middle of the space above
+/// the actions, and the actions and the terms are pinned to the bottom safe area. It scrolls at large text sizes.
 struct WelcomeView: View {
     @Environment(AppRouter.self) private var router
-    // Onboarding · Sign in (221:62499): wordmark 34 pt semibold, mark 44 pt.
-    @ScaledMetric(relativeTo: .largeTitle) private var wordmarkSize: CGFloat = 34
-    @ScaledMetric(relativeTo: .body) private var taglineSize: CGFloat = 17
-    @ScaledMetric(relativeTo: .caption) private var termsSize: CGFloat = 12
 
     var body: some View {
-        ZStack {
-            OrbitBackground()
-            GeometryReader { proxy in
-                ScrollView {
-                    VStack(spacing: 0) {
-                        Spacer(minLength: MLSpacing.s32)
-                        brand
-                            // Sits a little above true centre, where the eye reads it as centred.
-                            .padding(.bottom, MLSpacing.s32)
-                        Spacer(minLength: MLSpacing.s16)
-                        actions
-                    }
-                    .frame(minHeight: proxy.size.height)
-                    .padding(.horizontal, MLSpacing.margin)
-                }
-                .scrollBounceBehavior(.basedOnSize)
-            }
+        MLScreen(nil, showsNavigationBar: false, fillsViewport: true) {
+            brand
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.vertical, MLSpacing.s32)
+        } bottom: {
+            actions
         }
     }
 
     private var brand: some View {
         VStack(spacing: MLSpacing.s12) {
-            OrbitMarkView(size: 44)
+            // OrbitMark 2144:56770 is 48 pt: the 40 pt icon square plus 8.
+            OrbitMarkView(size: MLSize.iconSquare + MLSpacing.s8)
             Text(EntryCopy.wordmark)
-                .font(.system(size: wordmarkSize, weight: .semibold))
+                .mlFont(.largeTitle)
                 .foregroundStyle(MLColor.ink)
                 // A brand name never wraps; at the largest text sizes it shrinks to fit.
                 .lineLimit(1)
                 .minimumScaleFactor(0.4)
             Text(EntryCopy.tagline)
-                .font(.system(size: taglineSize))
+                .mlFont(.staffBody)
                 .foregroundStyle(MLColor.inkSecondary)
                 .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
     }
 
+    @ViewBuilder
     private var actions: some View {
-        VStack(spacing: MLSpacing.s12) {
-            InkActionButton(title: EntryCopy.signInWithSRM) {
-                router.entryPath.append(.srmSignIn)
-            }
-            OutlineActionButton(title: EntryCopy.staffSignIn) {
-                router.entryPath.append(.staffSignIn)
-            }
-            VStack(spacing: 2) {
-                Text(EntryCopy.termsLead)
-                Text(EntryCopy.termsLink).underline()
-            }
-            .font(.system(size: termsSize, weight: .medium))
-            .foregroundStyle(MLColor.inkSecondary)
-            .multilineTextAlignment(.center)
-            .padding(.top, MLSpacing.s4)
-            .accessibilityElement(children: .combine)
+        InkActionButton(title: EntryCopy.signInWithSRM) {
+            router.entryPath.append(.srmSignIn)
         }
-        .padding(.bottom, MLSpacing.s16)
+        OutlineActionButton(title: EntryCopy.staffSignIn) {
+            router.entryPath.append(.staffSignIn)
+        }
+        VStack(spacing: MLSpacing.s4) {
+            Text(EntryCopy.termsLead)
+            Text(EntryCopy.termsLink).underline()
+        }
+        .mlFont(.meta)
+        .foregroundStyle(MLColor.inkSecondary)
+        .multilineTextAlignment(.center)
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityElement(children: .combine)
     }
 }
 
-/// Staff sign in. No reference image exists; it follows the Orbit language and the entry brief.
+/// Staff sign in, laid out as a standard iOS sign-in on the proportions of MS-0 (1508:45): the brand row at the top,
+/// the title and the form in the upper middle with "Forgot password?" beside the password, and the Sign in button
+/// with its helper line pinned to the bottom safe area, above the keyboard.
+/// It keeps the email and password form; whether staff use SRM sign-in is open question P-FINAL-2.
 struct StaffSignInView: View {
     @Environment(AppRouter.self) private var router
     @Environment(SessionStore.self) private var sessionStore
     @State private var model: StaffSignInViewModel
     @State private var isPasswordVisible = false
+    @FocusState private var focus: Field?
+
+    enum Field: Hashable {
+        case email, password
+    }
 
     init(model: StaffSignInViewModel) {
         _model = State(initialValue: model)
     }
 
     var body: some View {
-        @Bindable var model = model
-        ZStack {
-            OrbitBackground()
-            ScrollView {
-                VStack(alignment: .leading, spacing: MLSpacing.s16) {
-                    BackButton { router.entryPath.removeLast() }
-                    VStack(alignment: .leading, spacing: MLSpacing.s4) {
-                        Text(EntryCopy.staffSignIn)
-                            .font(MLType.largeTitle)
-                            .foregroundStyle(MLColor.ink)
-                        Text(EntryCopy.staffSubtitle)
-                            .font(MLType.body)
-                            .foregroundStyle(MLColor.inkSecondary)
-                    }
-                    SignInField(label: EntryCopy.emailLabel) {
-                        TextField(EntryCopy.emailLabel, text: $model.email, prompt: nil)
-                            .keyboardType(.emailAddress)
-                            .textContentType(.username)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                    }
-                    SignInField(label: EntryCopy.passwordLabel) {
-                        HStack(spacing: MLSpacing.s8) {
-                            Group {
-                                if isPasswordVisible {
-                                    TextField(EntryCopy.passwordLabel, text: $model.password, prompt: nil)
-                                } else {
-                                    SecureField(EntryCopy.passwordLabel, text: $model.password, prompt: nil)
-                                }
-                            }
-                            .textContentType(.password)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                            Button {
-                                isPasswordVisible.toggle()
-                            } label: {
-                                Image(systemName: isPasswordVisible ? "eye.slash" : "eye")
-                                    .foregroundStyle(MLColor.inkSecondary)
-                                    .frame(width: MLSize.hit, height: MLSize.hit)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel(isPasswordVisible ? EntryCopy.hidePassword : EntryCopy.showPassword)
-                        }
-                    }
-                    forgotPassword
-                    if let message = model.errorMessage {
-                        InlineErrorText(message: message)
-                    }
-                    InkActionButton(title: EntryCopy.signIn, isLoading: model.isSubmitting) {
-                        Task {
-                            if let session = await model.submit() {
-                                router.reset()
-                                sessionStore.signIn(session)
-                            }
-                        }
-                    }
-                    .disabled(!model.canSubmit && !model.isSubmitting)
-                    Text(EntryCopy.accountsNote)
-                        .font(MLType.secondary)
-                        .foregroundStyle(MLColor.inkSecondary)
-                        .frame(maxWidth: .infinity)
-                }
-                .padding(.horizontal, MLSpacing.margin)
-                .padding(.top, MLSpacing.s8)
-            }
-            .scrollDismissesKeyboard(.interactively)
+        MLScreen(EntryCopy.staffSignIn, subtitle: EntryCopy.staffSubtitle, placement: .upperMiddle) {
+            brandRow
+        } trailing: {
+            EmptyView()
+        } content: {
+            form
+        } bottom: {
+            InkActionButton(title: EntryCopy.signIn, isLoading: model.isSubmitting, action: submit)
+                .disabled(!model.canSubmit && !model.isSubmitting)
+            Text(EntryCopy.accountsNote)
+                .mlFont(.secondary)
+                .foregroundStyle(MLColor.inkSecondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
-    @ViewBuilder
-    private var forgotPassword: some View {
+    /// The App wordmark of MS-0 (1508:47): the mark and the name, 44 pt tall.
+    private var brandRow: some View {
+        HStack(spacing: MLSpacing.s8) {
+            OrbitMarkView(size: MLSize.avatar)
+            Text(EntryCopy.wordmark)
+                .mlFont(.heroTitle)
+                .foregroundStyle(MLColor.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var form: some View {
+        @Bindable var model = model
+        return VStack(alignment: .leading, spacing: MLSpacing.s16) {
+            SignInField(label: EntryCopy.emailLabel) {
+                TextField(EntryCopy.emailLabel, text: $model.email, prompt: nil)
+                    .keyboardType(.emailAddress)
+                    .textContentType(.username)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .focused($focus, equals: .email)
+                    .submitLabel(.next)
+                    .onSubmit { focus = .password }
+            }
+            .mlKeepsVisible(id: Field.email, when: focus == .email)
+            SignInField(label: EntryCopy.passwordLabel) {
+                forgotPasswordButton
+            } field: {
+                HStack(spacing: MLSpacing.s8) {
+                    Group {
+                        if isPasswordVisible {
+                            TextField(EntryCopy.passwordLabel, text: $model.password, prompt: nil)
+                        } else {
+                            SecureField(EntryCopy.passwordLabel, text: $model.password, prompt: nil)
+                        }
+                    }
+                    .textContentType(.password)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .focused($focus, equals: .password)
+                    .submitLabel(.go)
+                    .onSubmit(submit)
+                    Button {
+                        isPasswordVisible.toggle()
+                    } label: {
+                        Image(systemName: isPasswordVisible ? "eye.slash" : "eye")
+                            .foregroundStyle(MLColor.inkSecondary)
+                            .frame(width: MLSize.hit, height: MLSize.hit)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(isPasswordVisible ? EntryCopy.hidePassword : EntryCopy.showPassword)
+                }
+            }
+            .mlKeepsVisible(id: Field.password, when: focus == .password)
+            if model.showsForgotPasswordMessage {
+                Text(EntryCopy.forgotPasswordMessage)
+                    .mlFont(.body)
+                    .foregroundStyle(MLColor.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .mlTransition(.fromTop)
+            }
+            if let message = model.errorMessage {
+                InlineErrorText(message: message)
+                    .mlTransition(.fromTop)
+            }
+        }
+        .mlAnimation(.snappy, value: model.errorMessage)
+        .mlAnimation(.snappy, value: model.showsForgotPasswordMessage)
+        .mlHaptic(.warning, trigger: model.errorMessage) { _, new in new != nil }
+    }
+
+    private var forgotPasswordButton: some View {
         Button {
             model.showForgotPasswordMessage()
         } label: {
             Text(EntryCopy.forgotPassword)
-                .font(MLType.body)
+                .mlFont(.body)
                 .underline()
                 .foregroundStyle(MLColor.ink)
+                .fixedSize()
                 .frame(minHeight: MLSize.hit)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        if model.showsForgotPasswordMessage {
-            Text(EntryCopy.forgotPasswordMessage)
-                .font(MLType.body)
-                .foregroundStyle(MLColor.inkSecondary)
+    }
+
+    private func submit() {
+        guard model.canSubmit else { return }
+        focus = nil
+        Task {
+            if let session = await model.submit() {
+                router.reset()
+                sessionStore.signIn(session)
+            }
         }
     }
 }
 
-/// A labelled field on a white surface.
-private struct SignInField<Content: View>: View {
+/// A labelled field on a white surface, with an optional control at the end of the label row.
+private struct SignInField<Accessory: View, Field: View>: View {
     let label: String
-    @ViewBuilder let content: Content
+    let accessory: Accessory
+    let field: Field
+
+    init(label: String, @ViewBuilder accessory: () -> Accessory, @ViewBuilder field: () -> Field) {
+        self.label = label
+        self.accessory = accessory()
+        self.field = field()
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: MLSpacing.s4) {
-            Text(label)
-                .font(MLType.bodyEmphasis)
-                .foregroundStyle(MLColor.ink)
-                .accessibilityHidden(true)
-            content
-                .font(MLType.staffBody)
+            // Side by side while both fit on one line; at the largest text sizes the control drops under the label.
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .lastTextBaseline, spacing: MLSpacing.s8) {
+                    labelText
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    accessory
+                }
+                VStack(alignment: .leading, spacing: 0) {
+                    labelText
+                    accessory
+                }
+            }
+            field
+                .mlFont(.staffBody)
                 .foregroundStyle(MLColor.ink)
                 .padding(.horizontal, MLSpacing.s16)
                 .frame(minHeight: MLSize.button)
@@ -218,15 +255,31 @@ private struct SignInField<Content: View>: View {
     }
 }
 
+private extension SignInField {
+    var labelText: some View {
+        Text(label)
+            .mlFont(.bodyEmphasis)
+            .foregroundStyle(MLColor.ink)
+            .accessibilityHidden(true)
+    }
+}
+
+extension SignInField where Accessory == EmptyView {
+    init(label: String, @ViewBuilder field: () -> Field) {
+        self.init(label: label, accessory: { EmptyView() }, field: field)
+    }
+}
+
 /// An error under a form. It has an icon as well as colour, so it does not rely on colour alone.
 private struct InlineErrorText: View {
     let message: String
 
     var body: some View {
         Label(message, systemImage: "exclamationmark.circle")
-            .font(MLType.body)
+            .mlFont(.body)
             .foregroundStyle(MLColor.danger)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 
@@ -291,3 +344,40 @@ struct SRMSignInView: View {
         .padding(MLSpacing.margin)
     }
 }
+
+#if DEMO_DATA
+/// Previews only: the local demo sign-in, never shown in Review or Release.
+private struct EntryPreviewHost<Content: View>: View {
+    @State private var router = AppRouter()
+    @State private var store = SessionStore()
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        NavigationStack { content() }
+            .environment(router)
+            .environment(store)
+            .environment(AppEnvironment.make())
+    }
+}
+
+#Preview("Welcome") {
+    EntryPreviewHost { WelcomeView() }
+}
+
+#Preview("Staff sign in · empty") {
+    EntryPreviewHost { StaffSignInView(model: StaffSignInViewModel(auth: DemoDataProvider())) }
+}
+
+#Preview("Staff sign in · filled") {
+    let model = StaffSignInViewModel(auth: DemoDataProvider())
+    model.email = "supervisor@mealloop.example"
+    model.password = "password"
+    return EntryPreviewHost { StaffSignInView(model: model) }
+}
+
+#Preview("Staff sign in · forgot password") {
+    let model = StaffSignInViewModel(auth: DemoDataProvider())
+    model.showForgotPasswordMessage()
+    return EntryPreviewHost { StaffSignInView(model: model) }
+}
+#endif
