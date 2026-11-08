@@ -1,15 +1,22 @@
 import Foundation
 
 /// Session-bound prototype access. The requested mess is checked before any underlying read or write.
+protocol AdminDataOrigin: Sendable { var adminSourceMess: Mess { get } }
+
 struct AdminDataScope: Sendable {
     let session: Session
     let mess: Mess
+    var sourceMess: Mess? = nil
     var allMesses: Bool { session.account.role == .superAdmin }
     var name: String { mess.name.replacingOccurrences(of: " Mess", with: "") }
     func require() throws {
         guard allMesses || (session.account.role == .admin && session.account.scope == .mess(mess.id)) else {
             throw RepositoryError.notAllowed(reason: "This mess is outside your account's scope.")
         }
+    }
+    func requireSource() throws {
+        try require()
+        guard allMesses || sourceMess?.id == mess.id else { throw RepositoryError.notImplemented(feature: "Data for the assigned mess") }
     }
     func requireName(_ name: String) throws {
         try require()
@@ -93,7 +100,8 @@ struct ScopedAdminStudentsRepository: AdminStudentsRepository {
     let base: any AdminStudentsRepository
     let scope: AdminDataScope
     func studentsOverview() async throws -> AdminStudentsOverview {
-        try scope.require()
+        try scope.requireSource()
+        guard scope.allMesses else { throw RepositoryError.notImplemented(feature: "This source has no per-mess breakdown") }
         let value = try await base.studentsOverview()
         return AdminStudentsOverview(mealTitle: value.mealTitle, mealLongTitle: value.mealLongTitle, totalStudents: value.totalStudents, yes: value.yes, no: value.no, notSure: value.notSure, reminderMessage: value.reminderMessage, reminderSentAt: value.reminderSentAt, feedback: value.feedback.filter { scope.allMesses || $0.mess == scope.name }, community: value.community.filter { scope.allMesses || $0.context.hasPrefix(scope.mess.name + " · ") })
     }
@@ -110,15 +118,17 @@ struct ScopedAdminStudentsRepository: AdminStudentsRepository {
         return value
     }
     func skipReasons() async throws -> StudentSkipReasons {
-        try scope.require()
+        try scope.requireSource()
+        guard scope.allMesses else { throw RepositoryError.notImplemented(feature: "This source has no per-mess breakdown") }
         return try await base.skipReasons()
     }
     func ownerChoices() async throws -> [String] {
-        try scope.require()
+        try scope.requireSource()
         return try await base.ownerChoices()
     }
     func remind(key: IdempotencyKey, by role: Role) async throws -> AdminStudentsOverview {
-        try scope.require()
+        try scope.requireSource()
+        guard scope.allMesses else { throw RepositoryError.notImplemented(feature: "This source has no per-mess breakdown") }
         let value = try await base.remind(key: key, by: try scope.legacyRole(role))
         return AdminStudentsOverview(mealTitle: value.mealTitle, mealLongTitle: value.mealLongTitle, totalStudents: value.totalStudents, yes: value.yes, no: value.no, notSure: value.notSure, reminderMessage: value.reminderMessage, reminderSentAt: value.reminderSentAt, feedback: value.feedback.filter { scope.allMesses || $0.mess == scope.name }, community: value.community.filter { scope.allMesses || $0.context.hasPrefix(scope.mess.name + " · ") })
     }
@@ -140,27 +150,28 @@ struct ScopedAdminMoreRepository: AdminMoreRepository {
     let base: any AdminMoreRepository
     let scope: AdminDataScope
     func hub() async throws -> AdminMoreHub {
-        try scope.require()
+        try scope.requireSource()
+        guard scope.allMesses else { throw RepositoryError.notImplemented(feature: "This source has no per-mess breakdown") }
         return try await base.hub()
     }
     func weekMenu() async throws -> WeekMenu {
-        try scope.require()
+        try scope.requireSource()
         return try await base.weekMenu()
     }
     func copySource(for day: Date, slot: MealSlot) async throws -> [MenuDish] {
-        try scope.require()
+        try scope.requireSource()
         return try await base.copySource(for: day, slot: slot)
     }
     func earlierDishes() async throws -> [String] {
-        try scope.require()
+        try scope.requireSource()
         return try await base.earlierDishes()
     }
     func saveDay(_ day: MenuDay, by role: Role) async throws -> WeekMenu {
-        try scope.require()
+        try scope.requireSource()
         return try await base.saveDay(day, by: try scope.legacyRole(role))
     }
     func applyToTodaysDinner(_ change: QuickChange, by role: Role) async throws -> WeekMenu {
-        try scope.require()
+        try scope.requireSource()
         return try await base.applyToTodaysDinner(change, by: try scope.legacyRole(role))
     }
     func people() async throws -> AdminPeople {
@@ -180,34 +191,47 @@ struct ScopedAdminMoreRepository: AdminMoreRepository {
     }
     func announcementDraft() async throws -> AnnouncementDraft {
         try scope.require()
-        return try await base.announcementDraft()
+        let value = try await base.announcementDraft()
+        if scope.allMesses { return value }
+        try scope.requireSource()
+        let audiences = value.audiences.filter { $0.confirmName == scope.mess.name }
+        return AnnouncementDraft(audiences: audiences, defaultAudience: audiences.first?.id ?? "", sampleMessage: value.sampleMessage, maxCharacters: value.maxCharacters)
     }
     func announce(_ message: String, to audience: String, by role: Role) async throws {
         try scope.require()
+        if !scope.allMesses {
+            try scope.requireSource()
+            let allowed = try await base.announcementDraft().audiences.filter { $0.confirmName == scope.mess.name }.map(\.id)
+            guard allowed.contains(audience) else { throw RepositoryError.notAllowed(reason: "This audience is outside your mess.") }
+        }
         try await base.announce(message, to: audience, by: try scope.legacyRole(role))
     }
     func passes() async throws -> PassesPage {
-        try scope.require()
+        try scope.requireSource()
         return try await base.passes()
     }
     func votes() async throws -> VotesPage {
-        try scope.require()
+        try scope.requireSource()
+        guard scope.allMesses else { throw RepositoryError.notImplemented(feature: "This source has no per-mess breakdown") }
         return try await base.votes()
     }
     func rewards() async throws -> RewardsPage {
-        try scope.require()
+        try scope.requireSource()
+        guard scope.allMesses else { throw RepositoryError.notImplemented(feature: "This source has no per-mess breakdown") }
         return try await base.rewards()
     }
     func spareFood() async throws -> SpareFoodPage {
-        try scope.require()
+        try scope.requireSource()
         return try await base.spareFood()
     }
     func history() async throws -> HistoryPage {
-        try scope.require()
+        try scope.requireSource()
+        guard scope.allMesses else { throw RepositoryError.notImplemented(feature: "This source has no per-mess breakdown") }
         return try await base.history()
     }
     func outings() async throws -> OutingsPage {
-        try scope.require()
+        try scope.requireSource()
+        guard scope.allMesses else { throw RepositoryError.notImplemented(feature: "This source has no per-mess breakdown") }
         return try await base.outings()
     }
 }
@@ -249,7 +273,7 @@ extension Repositories {
     /// The Admin subtree gets session-bound adapters; other roles keep their own repositories.
     func scopedAdmin(_ session: Session, mess: Mess) -> Repositories {
         var value = self
-        let scope = AdminDataScope(session: session, mess: mess)
+        let scope = AdminDataScope(session: session, mess: mess, sourceMess: (auth as? any AdminDataOrigin)?.adminSourceMess)
         value.headcount = ScopedAdminHeadcount(base: headcount, meals: mealState, scope: scope)
         value.adminResults = ScopedAdminResultsRepository(base: adminResults, scope: scope)
         value.adminStudents = ScopedAdminStudentsRepository(base: adminStudents, scope: scope)
@@ -300,5 +324,38 @@ extension MealStateRepository {
             throw RepositoryError.notAllowed(reason: "Only the Supervisor of this mess can close its meal.")
         }
         return try await closeMeal(meal, by: session.role)
+    }
+}
+
+struct SingleMessWeeklyReport: Sendable {
+    let period: ReportPeriod
+    let dates: String
+    let line: ReportMessLine?
+}
+protocol SingleMessReportRepository: Sendable {
+    func singleMessReport(_ period: ReportPeriod) async throws -> SingleMessWeeklyReport
+}
+extension ScopedAdminResultsRepository: SingleMessReportRepository {
+    func singleMessReport(_ period: ReportPeriod) async throws -> SingleMessWeeklyReport {
+        try scope.requireSource()
+        let value = try await base.weeklyReport(period)
+        return SingleMessWeeklyReport(period: period, dates: value.fullRange.components(separatedBy: " · ").first ?? "Dates unavailable",
+                                      line: value.pages?.byMess.first { $0.mess == scope.name })
+    }
+}
+
+struct SingleMessStudents: Sendable {
+    let feedback: [FeedbackItem]
+    let community: [AdminCommunityIssue]
+}
+protocol SingleMessStudentsRepository: Sendable {
+    func singleMessStudents() async throws -> SingleMessStudents
+}
+extension ScopedAdminStudentsRepository: SingleMessStudentsRepository {
+    func singleMessStudents() async throws -> SingleMessStudents {
+        try scope.requireSource()
+        let value = try await base.studentsOverview()
+        return SingleMessStudents(feedback: value.feedback.filter { scope.allMesses || $0.mess == scope.name },
+                                  community: value.community.filter { scope.allMesses || $0.context.hasPrefix(scope.mess.name + " · ") })
     }
 }

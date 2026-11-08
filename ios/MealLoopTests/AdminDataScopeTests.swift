@@ -17,7 +17,10 @@ final class AdminDataScopeTests: XCTestCase {
     func testFoodHeadHasNoAccountPowersAndNoNorthCommunity() async throws {
         let repos = DemoDataProvider().makeRepositories().scopedAdmin(session(.admin), mess: DemoSeed.mess)
         do { _ = try await repos.adminMore.people(); XCTFail("People") } catch {}
-        let overview = try await repos.adminStudents.studentsOverview()
+        let source = try XCTUnwrap(repos.adminStudents as? any SingleMessStudentsRepository)
+        let overview = try await source.singleMessStudents()
+        do { _ = try await repos.adminStudents.studentsOverview(); XCTFail("Global answer totals") } catch {}
+        do { _ = try await repos.adminMore.hub(); XCTFail("Global More counts") } catch {}
         XCTAssertTrue(overview.feedback.allSatisfy { $0.mess == "Main" })
         XCTAssertTrue(overview.community.allSatisfy { $0.context.hasPrefix("Main Mess · ") })
     }
@@ -28,6 +31,17 @@ final class AdminDataScopeTests: XCTestCase {
         let adjusted = try await repos.adminMesses.adjustHeadcount(mess: "North", slot: .lunch, to: 701, reason: "Review", by: .superAdmin)
         XCTAssertEqual(adjusted.expected, 701)
         _ = try await repos.adminResults.overview()
+    }
+    func testReportAndAnnouncementsNeverExposeOtherMesses() async throws {
+        let repos = DemoDataProvider().makeRepositories().scopedAdmin(session(.admin), mess: DemoSeed.mess)
+        let draft = try await repos.adminMore.announcementDraft()
+        XCTAssertEqual(draft.audiences.map(\.confirmName), ["Main Mess"])
+        do { try await repos.adminMore.announce("Test", to: "all", by: .admin); XCTFail("All messes") } catch {}
+        let source = try XCTUnwrap(repos.adminResults as? any SingleMessReportRepository)
+        let report = try await source.singleMessReport(.thisWeek)
+        XCTAssertEqual(report.line?.mess, "Main")
+        let missing = try await source.singleMessReport(.lastWeek)
+        XCTAssertNil(missing.line)
     }
     func testScopeRejectsOtherRolesAndMismatchedAssignedMess() throws {
         for role in Role.allCases where role != .admin && role != .superAdmin {

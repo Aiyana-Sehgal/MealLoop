@@ -105,6 +105,10 @@ actor DemoPeopleStore {
     func audit(by session: Session) throws -> [AccessAudit] { try require(session); return events }
 }
 
+extension DemoDataProvider: AdminDataOrigin {
+    nonisolated var adminSourceMess: Mess { DemoSeed.mess }
+}
+
 struct DemoPeople: PeopleRepository {
     let core: DemoDataProvider
     let store: DemoPeopleStore
