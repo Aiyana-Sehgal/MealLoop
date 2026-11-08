@@ -99,6 +99,9 @@ struct DemoState: Sendable {
     /// Students who chose "Hold to use" on their special-meal pass, keyed by the request that did it.
     var passStarts: [StudentID: Date] = [:]
     var passStartResults: [IdempotencyKey: StudentPassStanding] = [:]
+    /// Owner ruling (Prompt 2B): when each student held "Use pass", on the pass-code clock.
+    var passUses: [StudentID: Date] = [:]
+    var passUseResults: [IdempotencyKey: PassUseState] = [:]
     /// Student Community: the stored problems, who backed which (each student once) and the report receipts.
     var studentIssues = DemoSeed.sampleIssues
     var issueBackers: [CommunityIssueID: Set<StudentID>] = [:]
@@ -195,7 +198,8 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
                             adminMesses: DemoAdminMesses(core: self, store: adminMessStore), staffDirectory: self,
                             studentYou: DemoStudentYou(core: self, store: studentYouStore),
                             studentRecords: DemoStudentRecords(core: self, store: studentRecordsStore),
-                            livePassCodes: self, superAdmin: DemoSuperAdmin(core: self, store: superAdminStore))
+                            livePassCodes: self, superAdmin: DemoSuperAdmin(core: self, store: superAdminStore),
+                            passUse: self)
     }
 
     /// For repositories that live outside this actor: throws exactly as the others do with no connection.
@@ -1228,6 +1232,71 @@ extension DemoDataProvider: LivePassCodeRepository {
         let result = SpecialPassEntryResult.recorded(entry, count: specialRecordedCount)
         state.specialEntryResults[request.idempotencyKey] = result
         return result
+    }
+}
+// SIMULATED pass use (owner ruling, Prompt 2B). The hold of "Use pass" records the entry (recordedBy .student) at the
+// pass-code instant and starts `PassUsePolicy.validity`; after it the pass is Used for good. The desk records nothing.
+// `startPass`, `recordPassEntry` and the rest above are unchanged.
+extension DemoDataProvider: PassUseRepository {
+    private func useState(_ student: StudentID, at instant: Date) -> PassUseState {
+        if let usedAt = state.passUses[student] {
+            let validUntil = usedAt.addingTimeInterval(PassUsePolicy.validity)
+            guard instant < validUntil else { return .used(usedAt: usedAt) }
+            let left = max(1, Int(validUntil.timeIntervalSince(instant).rounded(.up)))
+            return .inUse(usedAt: usedAt, validUntil: validUntil, secondsLeft: left)
+        }
+        if let entry = state.specialEntries[student] { return .used(usedAt: entry.recordedAt) }
+        return .notUsed
+    }
+
+    func usePass(of student: StudentID, meal: MealID, key: IdempotencyKey) async throws -> PassUseState {
+        try failIfOffline()
+        try requireKnownMeal(meal)
+        if let first = state.passUseResults[key] { return first }
+        guard state.passUses[student] == nil, state.specialEntries[student] == nil else {
+            throw RepositoryError.notAllowed(reason: "Already used")
+        }
+        guard DemoSeed.samplePasses[student] == state.mealStatus.meal.slot,
+              let sample = DemoSeed.sampleStudents.first(where: { $0.ref.id == student }) else {
+            throw RepositoryError.notAllowed(reason: "This pass can't be used now.")
+        }
+        guard state.mealStatus.state != .closed else {
+            throw RepositoryError.notAllowed(reason: "This pass can't be used now.")
+        }
+        let instant = passCodeTicker.instant(story: clock.now())
+        if state.passStarts[student] == nil { state.passStarts[student] = clock.now() }
+        state.passUses[student] = instant
+        state.specialEntries[student] = SpecialPassEntry(mealID: meal, student: sample.ref, recordedAt: clock.now(),
+                                                         recordedBy: .student)
+        let result = useState(student, at: instant)
+        state.passUseResults[key] = result
+        return result
+    }
+
+    func passUseState(of student: StudentID, meal: MealID, at instant: Date) async throws -> PassUseState {
+        try failIfOffline()
+        try requireKnownMeal(meal)
+        return useState(student, at: instant)
+    }
+
+    func checkLastFour(_ lastFour: String, meal: MealID, at instant: Date) async throws -> PassDigitCheck {
+        try failIfOffline()
+        try requireKnownMeal(meal)
+        guard let sample = DemoSeed.sampleStudents.first(where: { $0.entryCode.lastFour == lastFour }) else { return .notFound }
+        let holder = SpecialPassHolder(student: sample.ref, name: sample.name)
+        guard let slot = DemoSeed.samplePasses[sample.ref.id] else { return .noPass(holder) }
+        guard slot == state.mealStatus.meal.slot else { return .wrongMeal(holder, passFor: slot) }
+        switch useState(sample.ref.id, at: instant) {
+        case .notUsed: return .validNotUsed(holder, meal: slot)
+        case .inUse(_, _, let left): return .inUse(holder, secondsLeft: left)
+        case .used(let at): return .used(holder, usedAt: at)
+        }
+    }
+
+    func deskCode(for meal: MealID, at instant: Date) async throws -> CurrentPassCode {
+        try failIfOffline()
+        try requireKnownMeal(meal)
+        return windowCode(at: instant)
     }
 }
 #endif

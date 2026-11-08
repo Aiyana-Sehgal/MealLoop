@@ -169,4 +169,6 @@ struct Repositories: Sendable {
     var livePassCodes: any LivePassCodeRepository = UnavailableLivePassCodes()
     /// Defaulted, so every existing caller stays as it was. The Super Admin's accounts list (simulated actions).
     var superAdmin: any SuperAdminRepository = UnavailableSuperAdmin()
+    /// Defaulted, so every existing caller stays as it was. The student's hold is the entry; 30 s of validity.
+    var passUse: any PassUseRepository = UnavailablePassUse()
 }
