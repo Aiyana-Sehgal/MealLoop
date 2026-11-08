@@ -145,7 +145,7 @@ struct AdminAccessView: View {
     }
     private var subtitle: String {
         if let id = personID, let person = model.person(id) { return "\(person.account.displayName) · \(model.messName(person.account))" }
-        if let role { let count = model.people(role).count; return "\(count) \(count == 1 ? "person" : "people") · all messes" }
+        if let role { guard model.state.value != nil else { return AdminAccessCopy.allMesses }; let count = model.people(role).count; return "\(count) \(count == 1 ? "person" : "people") · all messes" }
         return AdminAccessCopy.allMesses
     }
     private func rolesPage(_ directory: AccessDirectory) -> some View {
