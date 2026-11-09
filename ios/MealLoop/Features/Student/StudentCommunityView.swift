@@ -1,5 +1,10 @@
 import SwiftUI
 
+// Coverage (student-all G4): Community · Issue · Backed (221:63679), Issue · Sending (1403:14739), Issue · Offline
+// (1403:15023) and Me too failed (1403:14942) are states of the issue page below. Community · Fixed (1403:14841, "Fixed
+// problems stay here for 30 days.") and the Comments frames (221:63691, 221:63752, 221:63775, 221:63799, 221:63823,
+// 221:63846, 221:63871, 221:65532, 221:65555) are not built: they carry policy (retention, comment moderation).
+
 /// Words of the Community and Report frames (page 07). This is wording, not data.
 enum CommunityCopy {
     static let title = "Community"

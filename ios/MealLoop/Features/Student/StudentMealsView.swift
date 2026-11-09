@@ -1,5 +1,11 @@
 import SwiftUI
 
+// Coverage (student-all G4): the restyled Meals week frames are this view drawn from the menu data, one per day and
+// meal: Breakfast 2150:133459, 2150:133656, 2150:134025, 2150:134240, 2150:134431, 2150:134630; Lunch 2150:134818,
+// 2150:135047, 2150:135265, 2150:135483, 2150:135673, 2150:135902; Snacks 2150:136140, 2150:136302, 2150:136637,
+// 2150:136815, 2150:136989, 2150:137163; Dinner 2150:137337, 2150:137573, 2150:138040, 2150:138273, 2150:138484,
+// 2150:138693 ("Curries" and "Comes with it" come from `StudentMealMenu`).
+
 /// Pushed screens on the Meals tab. The tab bar stays, as the frames draw it.
 enum StudentMealsRoute: Hashable {
     case dish(DishID, day: Date, slot: MealSlot)

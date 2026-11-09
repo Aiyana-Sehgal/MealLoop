@@ -1,5 +1,8 @@
 import SwiftUI
 
+// Coverage (student-all G4): Sign out (221:64761) is the Sign out row of You. Request deletion (221:64693) is the
+// deletion request of Privacy & data; its list of what is deleted carries policy and is not drawn.
+
 /// Pushed screens on the You tab.
 enum StudentYouRoute: Hashable {
     case outings

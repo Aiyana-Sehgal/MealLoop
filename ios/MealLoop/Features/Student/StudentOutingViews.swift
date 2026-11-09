@@ -1,5 +1,11 @@
 import SwiftUI
 
+// Coverage (student-all G4): New outing · Tue (1915:130980), Thu (1915:131344), Fri (1915:131532) and Sat
+// (1915:131720) are the New outing page for that day. Outing pass · Out (1848:22943), Returned (1848:22961) and Cancel
+// pass (sheet) (1848:23037) are the pass states below. Not built, because they carry policy the student stages do not
+// have: Outing pass · Overdue (1848:22979), Revoked (1848:22998), Expired unused (1848:23019) and Outing · Expired
+// (1848:22815, "Your guardian didn't reply by Fri 11 PM").
+
 /// Words of the Student outing frames (page 07, "O · Outings · new"). Wording, not data: places, times, codes and
 /// stages come from `StudentOutingRepository`.
 enum OutingStudentCopy {

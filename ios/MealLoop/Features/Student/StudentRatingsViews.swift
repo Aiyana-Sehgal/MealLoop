@@ -5,6 +5,8 @@ import SwiftUI
 // owner's design of 7 November 2026; no Figma frame. Proportions and wording from the images, colours and sizes from
 // the tokens. Rules are in `StudentRatings.swift` (owner to confirm).
 
+// Report · From feedback (221:63738) is superseded: Not good opens the dish feedback sheets (owner, 9 November).
+
 /// Words of the rating images. Wording only.
 enum RatingCopy {
     static let good = "Good"

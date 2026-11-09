@@ -1,5 +1,9 @@
 import SwiftUI
 
+// Coverage (student-all G4): Crowd · Main Mess · Busy (2220:158655), Closed (2220:158973), Breakfast (2220:159132),
+// Snacks (2220:159291) and Dinner (2220:159442) are this view with the crowd reading's level and meal. Packed
+// (2220:158814) is not built: `CrowdLevel` has no Packed level and where Busy ends is not decided.
+
 /// Builds the view model from the environment.
 struct StudentCrowdScreen: View {
     @Environment(AppEnvironment.self) private var environment
