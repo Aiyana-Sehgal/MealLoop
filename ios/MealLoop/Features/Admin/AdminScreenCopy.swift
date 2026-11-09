@@ -268,9 +268,9 @@ enum AdminScreenCopy {
     static let who = "Who"
     static let messageLabel = "Message"
     static func remindWho(_ count: String, meal: String) -> String { "\(count) students who haven't answered for \(meal), all messes." }
-    static let remindNote = "One notification, only to students who haven't answered. This prototype records it and sends nothing."
+    static let remindNote = "Sends one notification. Students who already answered get nothing."
     static func sendTo(_ count: String) -> String { "Send to \(count) students" }
-    static let reminderToast = "Reminder recorded"
+    static let reminderToast = "Reminder recorded. This prototype sends nothing."
 
     static func feedbackSubtitle(_ item: FeedbackItem, day: String) -> String {
         "\(item.mess) · \(day) \(MLFormat.mealSlot(item.slot).lowercased()) · \(item.students) \(students(item.students))"

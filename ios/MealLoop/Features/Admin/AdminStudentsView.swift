@@ -61,10 +61,12 @@ struct AdminStudentsView: View {
     @State private var model: AdminStudentsViewModel
     let nav: AdminNav
 
-    @State private var isReminding = false
+    @State private var isReminding: Bool
 
-    init(model: AdminStudentsViewModel, nav: AdminNav) {
+    /// - Parameter remindOpen: opens the Remind sheet at once (previews and the verification captures).
+    init(model: AdminStudentsViewModel, nav: AdminNav, remindOpen: Bool = false) {
         _model = State(initialValue: model)
+        _isReminding = State(initialValue: remindOpen)
         self.nav = nav
     }
 
@@ -79,7 +81,7 @@ struct AdminStudentsView: View {
         .task(id: environment.dataRevision) {
             await model.load()
         }
-        .mlSheet(isPresented: $isReminding) {
+        .mlSheet(isPresented: $isReminding, isWorking: model.isSending) {
             if let overview = model.state.value {
                 remindSheet(overview)
             }
@@ -181,17 +183,23 @@ struct AdminStudentsView: View {
         return VStack(alignment: .leading, spacing: MLSpacing.s12) {
             SheetHeader(title: AdminScreenCopy.remindStudents) { isReminding = false }
             AdminLabel(text: AdminScreenCopy.who)
+            // Remind sheet 2262:237: body-size text, the message in a white bubble, one helper line, the button below.
             Text(AdminScreenCopy.remindWho(count, meal: overview.mealLongTitle))
-                .font(MLType.staffBody)
+                .mlFont(.body)
                 .foregroundStyle(MLColor.ink)
+                .fixedSize(horizontal: false, vertical: true)
             AdminLabel(text: AdminScreenCopy.messageLabel)
             Text(overview.reminderMessage)
-                .font(MLType.staffBody)
+                .mlFont(.body)
                 .foregroundStyle(MLColor.ink)
                 .padding(MLSpacing.s16)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: MLRadius.compact, style: .continuous).fill(MLColor.surface))
-            AdminNote(text: AdminScreenCopy.remindNote)
+                // The shared sheet is white, so the bubble takes the canvas colour to keep the frame's contrast.
+                .background(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).fill(MLColor.canvas))
+            Text(AdminScreenCopy.remindNote)
+                .mlFont(.secondary)
+                .foregroundStyle(MLColor.inkSecondary)
+                .fixedSize(horizontal: false, vertical: true)
             if let error = model.errorText {
                 FieldErrorText(text: error)
             }

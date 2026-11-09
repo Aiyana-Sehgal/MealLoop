@@ -80,5 +80,14 @@ final class AdminPolishScreenshotTests: XCTestCase {
         let world = try await world(.storyStart)
         try await shot("today", world, pushed: false, bar: false) { AdminRootView(session: world.session) }
     }
+
+    func testCaptureRemind() async throws {
+        let world = try await world(.storyStart)
+        try await shot("remind_sheet_2262-237", world, pushed: false, tab: "Students", wait: 2) {
+            AdminStudentsView(model: AdminStudentsViewModel(students: world.env.repositories.adminStudents,
+                                                            role: world.context.account.role),
+                              nav: world.nav, remindOpen: true)
+        }
+    }
 }
 #endif
