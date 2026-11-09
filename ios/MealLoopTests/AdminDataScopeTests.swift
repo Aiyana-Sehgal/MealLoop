@@ -3,26 +3,22 @@ import XCTest
 
 final class AdminDataScopeTests: XCTestCase {
     private func session(_ role: Role) -> Session { Session(account: DemoSeed.accounts.first { $0.role == role }!, staff: nil) }
-    func testFoodHeadBackendRefusesOtherMessAndOtherMessMeal() async throws {
+    /// Owner decision (9 November): the Food Head reads and adjusts every mess, as the Super Admin does.
+    func testFoodHeadCanReadAndAdjustOtherMesses() async throws {
         let repos = DemoDataProvider().makeRepositories().scopedAdmin(session(.admin), mess: DemoSeed.mess)
-        do { _ = try await repos.adminMesses.messHeadcount("North", slot: .lunch); XCTFail("Read North") } catch { guard case RepositoryError.notAllowed = error else { return XCTFail("Wrong error") } }
-        do { _ = try await repos.adminMesses.adjustHeadcount(mess: "North", slot: .lunch, to: 700, reason: "Review", by: .admin); XCTFail("Write North") } catch {}
-        let all = try await repos.adminResults.findMeals(mess: nil, slot: .dinner)
-        XCTAssertTrue(all.allSatisfy { $0.mess == "Main" })
-        do { _ = try await repos.adminResults.findMeals(mess: "North", slot: .dinner); XCTFail("North filter") } catch {}
-        do { _ = try await repos.headcount.headcount(for: MealID("other-mess-meal")); XCTFail("Other meal") } catch { guard case RepositoryError.notAllowed = error else { return XCTFail("Wrong error") } }
+        let north = try await repos.adminMesses.messHeadcount("North", slot: .lunch)
+        XCTAssertEqual(north.name, "North")
+        let adjusted = try await repos.adminMesses.adjustHeadcount(mess: "North", slot: .lunch, to: 700, reason: "Review", by: .admin)
+        XCTAssertEqual(adjusted.expected, 700)
+        let northMeals = try await repos.adminResults.findMeals(mess: "North", slot: .dinner)
+        XCTAssertTrue(northMeals.allSatisfy { $0.mess == "North" })
         let own = try await repos.headcount.headcount(for: DemoSeed.lunch.id)
         XCTAssertEqual(own.mealID, DemoSeed.lunch.id)
     }
-    func testFoodHeadHasNoAccountPowersAndNoNorthCommunity() async throws {
+    func testFoodHeadGetsTheGlobalTotalsTheSuperAdminGets() async throws {
         let repos = DemoDataProvider().makeRepositories().scopedAdmin(session(.admin), mess: DemoSeed.mess)
-        do { _ = try await repos.adminMore.people(); XCTFail("People") } catch {}
-        let source = try XCTUnwrap(repos.adminStudents as? any SingleMessStudentsRepository)
-        let overview = try await source.singleMessStudents()
-        do { _ = try await repos.adminStudents.studentsOverview(); XCTFail("Global answer totals") } catch {}
-        do { _ = try await repos.adminMore.hub(); XCTFail("Global More counts") } catch {}
-        XCTAssertTrue(overview.feedback.allSatisfy { $0.mess == "Main" })
-        XCTAssertTrue(overview.community.allSatisfy { $0.context.hasPrefix("Main Mess · ") })
+        _ = try await repos.adminStudents.studentsOverview()
+        _ = try await repos.adminMore.hub()
     }
     func testSuperAdminCanReadAndAdjustOtherMesses() async throws {
         let repos = DemoDataProvider().makeRepositories().scopedAdmin(session(.superAdmin), mess: DemoSeed.mess)
@@ -32,11 +28,10 @@ final class AdminDataScopeTests: XCTestCase {
         XCTAssertEqual(adjusted.expected, 701)
         _ = try await repos.adminResults.overview()
     }
-    func testReportAndAnnouncementsNeverExposeOtherMesses() async throws {
+    func testFoodHeadAnnouncesToEveryMessAsTheAdmin() async throws {
         let repos = DemoDataProvider().makeRepositories().scopedAdmin(session(.admin), mess: DemoSeed.mess)
         let draft = try await repos.adminMore.announcementDraft()
-        XCTAssertEqual(draft.audiences.map(\.confirmName), ["Main Mess"])
-        do { try await repos.adminMore.announce("Test", to: "all", by: .admin); XCTFail("All messes") } catch {}
+        XCTAssertTrue(draft.audiences.count > 1, "All messes, as the Super Admin sees them.")
         let source = try XCTUnwrap(repos.adminResults as? any SingleMessReportRepository)
         let report = try await source.singleMessReport(.thisWeek)
         XCTAssertEqual(report.line?.mess, "Main")
@@ -48,7 +43,7 @@ final class AdminDataScopeTests: XCTestCase {
             XCTAssertThrowsError(try AdminDataScope(session: session(role), mess: DemoSeed.mess).require())
         }
         let other = Mess(id: MessID("other-mess"), name: "Other Mess", timeZoneIdentifier: "Asia/Kolkata")
-        XCTAssertThrowsError(try AdminDataScope(session: session(.admin), mess: other).require())
+        XCTAssertNoThrow(try AdminDataScope(session: session(.admin), mess: other).require(), "The Food Head has every mess.")
     }
     func testSupervisorOfOtherMessCannotStartOrCloseStoryMeal() async throws {
         let core = DemoDataProvider(scenario: .beforeMeal)

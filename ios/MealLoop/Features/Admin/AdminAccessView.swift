@@ -52,7 +52,7 @@ final class AdminAccessModel {
     let session: Session
     private let repository: any PeopleRepository
     init(session: Session, repository: any PeopleRepository) { self.session = session; self.repository = repository }
-    var canAccess: Bool { session.account.role == .superAdmin }
+    var canAccess: Bool { session.account.role == .superAdmin || session.account.role == .admin }
     func load() async {
         guard canAccess else { state = .failed(LoadFailure(RepositoryError.notAllowed(reason: "Only the Super Admin manages people and access."))); return }
         if state.value == nil { state = .loading }

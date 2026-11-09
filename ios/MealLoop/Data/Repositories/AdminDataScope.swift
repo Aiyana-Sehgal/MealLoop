@@ -7,7 +7,8 @@ struct AdminDataScope: Sendable {
     let session: Session
     let mess: Mess
     var sourceMess: Mess? = nil
-    var allMesses: Bool { session.account.role == .superAdmin }
+    /// Owner decision (9 November): the Food Head (admin) has the Super Admin's all-mess scope. Other roles stay per mess.
+    var allMesses: Bool { session.account.role == .superAdmin || session.account.role == .admin }
     var name: String { mess.name.replacingOccurrences(of: " Mess", with: "") }
     func require() throws {
         guard allMesses || (session.account.role == .admin && session.account.scope == .mess(mess.id)) else {
