@@ -138,3 +138,7 @@ screens were rebuilt in the Admin design language, from this mess's data only:
 | Passes | | 6% | Requests for next week list only this mess's requests |
 
 Also fixed while measuring: Today › See all (71% → 19%, Jump to rows) and a proposal page (28% → 6%, the other votes).
+
+Note: commit `db687f4` (the Food Head revert) is titled `revert(admin): …`. `revert` is not one of the commit types the
+repository rules accept (feat, fix, docs, design, chore, refactor, test, spike), so the commit-rules job failed on that
+push; the build and tests passed. History on `main` is not rewritten; later reverts use `fix(...)`.
