@@ -1,26 +1,21 @@
 import SwiftUI
 
 // Language and Help for the Kitchen, Door Scanner, Pass Desk and Warden Me pages, pushed with the system back button.
-// Built from the mess staff frames MS-G4 Language (1520:122891) and MS-G5 Help (1520:122941). Two differences, both
-// owner to review: Tamil is shown but cannot be chosen, because the app has no Tamil text yet; and the Help answers
-// repeat each role's documented rules instead of the frame's Kitchen answers, which name a 9:00 AM plan, an 11:30
-// change cut-off and a "Waiting to send" queue that no record or screen in the app holds.
+// Built from the mess staff frames MS-G4 Language (1520:122891) and MS-G5 Help (1520:122941). Owner rulings
+// (9 November): only English is shown until translations exist (the frame's Tamil card is left out), and Help keeps
+// each role's documented rules instead of the frame's Kitchen answers, which name times no record holds.
 
 enum StaffMeCopy {
     static let language = "Language"
     static let languageNote = "Pick the language for this app. Dish names stay as on the menu."
     static let english = "English"
     static let englishInUse = "English · in use"
-    static let tamil = "தமிழ்"
-    static let tamilName = "Tamil"
-    static let notTranslated = "Not translated yet"
     static let changeAnyTime = "You can change this any time from Me."
     static let help = "Help"
     static func helpSubtitle(_ role: String, count: Int) -> String {
         let words = [1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six"]
         return "\(role) · \(words[count] ?? "\(count)") plain answers"
     }
-    static let notAvailableYet = "Not available yet"
 }
 
 /// Which Me page is pushed.
@@ -36,7 +31,7 @@ struct StaffHelpItem: Identifiable, Hashable {
     var id: String { question }
 }
 
-/// MS-G4 Language: the language in use on the black card, Tamil on a white card, then a note.
+/// MS-G4 Language: the language in use on the black card, then a note.
 struct StaffLanguagePage: View {
     var body: some View {
         ScrollView {
@@ -63,16 +58,6 @@ struct StaffLanguagePage: View {
                 .background(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).fill(MLColor.heroBackground))
                 .accessibilityElement(children: .combine)
                 .accessibilityAddTraits(.isSelected)
-                VStack(alignment: .leading, spacing: MLSpacing.s4) {
-                    Text(StaffMeCopy.tamil).font(MLType.heroTitle).foregroundStyle(MLColor.inkSecondary)
-                    Text("\(StaffMeCopy.tamilName) · \(StaffMeCopy.notTranslated)")
-                        .font(MLType.staffBody).foregroundStyle(MLColor.inkSecondary)
-                }
-                .padding(MLSpacing.s20)
-                .frame(maxWidth: .infinity, minHeight: 120, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).fill(MLColor.surface))
-                .overlay(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).stroke(MLColor.border, lineWidth: 1))
-                .accessibilityElement(children: .combine)
                 Label(StaffMeCopy.changeAnyTime, systemImage: "questionmark.circle")
                     .font(MLType.bodyEmphasis)
                     .foregroundStyle(MLColor.ink)

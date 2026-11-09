@@ -136,7 +136,6 @@ enum KitchenCopy {
     // Me (K13)
     static let me = "Me"
     static let onShift = "On shift"
-    static let switchRole = "Switch role"
     static let language = "Language"
     static let english = "English"
     static let help = "Help"

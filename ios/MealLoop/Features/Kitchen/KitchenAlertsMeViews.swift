@@ -155,7 +155,7 @@ struct KitchenAlertsView: View {
     }
 }
 
-/// Me (K13). Meal history, Language, Help and Sign out work; Switch role waits for a decision on who may hold two roles.
+/// Me (K13). Meal history, Language, Help and Sign out. No Switch role row (owner ruling, 7 November).
 struct KitchenMeView: View {
     @Environment(AppRouter.self) private var router
     @Environment(SessionStore.self) private var sessionStore
@@ -176,9 +176,6 @@ struct KitchenMeView: View {
                     VStack(spacing: 0) {
                         Rectangle().fill(MLColor.border).frame(height: 1)
                         QuietRow(title: KitchenCopy.historyTitle) { open(.history) }
-                        // Switch role needs a decision on who may hold two roles (Needs a decision); the row says so.
-                        QuietRow(title: KitchenCopy.switchRole, value: StaffMeCopy.notAvailableYet) {}
-                            .disabled(true)
                         QuietRow(title: KitchenCopy.language, value: KitchenCopy.english) { page = .language }
                         QuietRow(title: KitchenCopy.help) { page = .help }
                         signOutRow
