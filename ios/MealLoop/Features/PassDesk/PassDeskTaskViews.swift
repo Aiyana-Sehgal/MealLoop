@@ -298,7 +298,15 @@ struct PassDeskOpenProblemsView: View {
                 StateBlock(symbol: "checkmark", title: PassDeskCopy.noOpenProblems, message: PassDeskCopy.noOpenProblemsDetail)
                     .padding(.top, PassDeskLayout.noProblemsTop)
             } else {
+                StaffCountCard(eyebrow: PassDeskCopy.openProblems,
+                               time: log.problems.map(\.sentAt).min().map { MLFormat.time($0, in: session.mess.timeZone) },
+                               count: log.problems.count, caption: StaffSummaryCopy.reportedFromThisPhone)
+                StaffFactRows(facts: PassDeskProblemKind.allCases.map { kind in
+                    StaffFact(label: kind.title, value: String(log.problems.filter { $0.title == kind.title }.count))
+                } + [StaffFact(label: StaffSummaryCopy.sent, value: String(log.problems.filter(\.isDelivered).count)),
+                     StaffFact(label: StaffSummaryCopy.savedOnPhone, value: String(log.problems.filter { !$0.isDelivered }.count))])
                 VStack(spacing: 0) {
+                    SectionHeader(title: StaffSummaryCopy.reported)
                     ForEach(log.problems) { problem in
                         row(problem)
                     }

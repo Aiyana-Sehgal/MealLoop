@@ -81,8 +81,14 @@ struct DoorOpenProblemsView: View {
                 StateBlock(symbol: "checkmark", title: DoorScannerCopy.noOpenProblems, message: DoorScannerCopy.noOpenProblemsDetail)
                     .padding(.vertical, MLSpacing.s32)
             } else {
+                StaffCountCard(eyebrow: DoorScannerCopy.waiting,
+                               time: log.problems.map(\.sentAt).min().map { MLFormat.time($0, in: session.mess.timeZone) },
+                               count: log.problems.count, caption: StaffSummaryCopy.reportedFromThisPhone)
+                StaffFactRows(facts: DoorProblemKind.allCases.map { kind in
+                    StaffFact(label: kind.title, value: String(log.problems.filter { $0.kind == kind }.count))
+                })
                 VStack(spacing: 0) {
-                    Rectangle().fill(MLColor.border).frame(height: 1)
+                    SectionHeader(title: StaffSummaryCopy.reported)
                     ForEach(log.problems) { problem in
                         row(problem)
                     }
@@ -147,8 +153,17 @@ struct DoorWithoutVotingView: View {
                     .padding(.vertical, MLSpacing.s32)
             default:
                 AsyncContentView(state: model.state, timeZone: mess.timeZone, retry: { await model.load() }) { list in
+                    StaffCountCard(eyebrow: MLFormat.mealSlot(meal.slot),
+                                   time: MLFormat.timeRange(meal.startsAt, meal.endsAt, in: mess.timeZone),
+                                   count: list.count, caption: StaffSummaryCopy.enteredWithoutVotingCaption)
+                    StaffFactRows(facts: [
+                        StaffFact(label: StaffSummaryCopy.firstEntry,
+                                  value: list.map(\.enteredAt).min().map { MLFormat.time($0, in: mess.timeZone) }),
+                        StaffFact(label: StaffSummaryCopy.latestEntry,
+                                  value: list.map(\.enteredAt).max().map { MLFormat.time($0, in: mess.timeZone) }),
+                    ])
                     VStack(spacing: 0) {
-                        Rectangle().fill(MLColor.border).frame(height: 1)
+                        SectionHeader(title: StaffSummaryCopy.students)
                         ForEach(list, id: \.student.id) { entry in
                             row(entry)
                         }

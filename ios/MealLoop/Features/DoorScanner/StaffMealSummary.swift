@@ -19,6 +19,14 @@ enum StaffSummaryCopy {
     static let wasteRecorded = "Waste recorded"
     static let wasteNotRecorded = "Waste not recorded"
     static func entered(_ count: Int) -> String { "\(count) entered" }
+    static let reportedFromThisPhone = "reported from this phone"
+    static let reported = "Reported"
+    static let sent = "Sent"
+    static let savedOnPhone = "Saved on this phone"
+    static let enteredWithoutVotingCaption = "entered without voting"
+    static let firstEntry = "First entry"
+    static let latestEntry = "Latest entry"
+    static let students = "Students"
     static func title(_ slot: MealSlot, _ mess: String) -> String { "\(MLFormat.mealSlot(slot)) · \(mess)" }
 }
 
@@ -148,5 +156,22 @@ struct StaffEarlierMeals: View {
         formatter.timeZone = timeZone
         formatter.dateFormat = "EEE d"
         return formatter.string(from: date)
+    }
+}
+
+/// A black card with one count the page already holds ("2 problems reported from this phone").
+struct StaffCountCard: View {
+    let eyebrow: String
+    var time: String?
+    let count: Int?
+    let caption: String
+
+    var body: some View {
+        HeroCard {
+            HeroEyebrow(label: eyebrow, time: time)
+            HeroCount(value: count, caption: caption)
+                .padding(.top, MLSpacing.s12)
+        }
+        .accessibilityElement(children: .combine)
     }
 }
