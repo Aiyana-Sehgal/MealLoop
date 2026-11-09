@@ -122,6 +122,34 @@ final class StudentCommunityScreensTests: XCTestCase {
         XCTAssertEqual(count, 3)
     }
 
+    /// Report and SOS are pushed pages (S2): the category decides the next page, and Back to What's wrong keeps the
+    /// draft when the same category is picked again.
+    func testChoosingACategoryPicksThePageAndBackKeepsTheDraft() async throws {
+        let (_, _, repositories, clock) = try make()
+        let model = try XCTUnwrap(StudentReportViewModel(session: try session, repositories: repositories, clock: clock))
+        await model.load()
+        XCTAssertEqual(model.choose(.notClean), .details(.notClean))
+        model.note = "Plates at counter 2 were wet."
+        XCTAssertEqual(model.choose(.notClean), .details(.notClean), "Back, then the same category: same draft.")
+        XCTAssertEqual(model.note, "Plates at counter 2 were wet.")
+        XCTAssertEqual(model.choose(.foundInFood), .camera(.foundInFood), "Urgent ones open the SOS camera.")
+        XCTAssertEqual(model.note, "", "A different category is a new report.")
+        XCTAssertEqual(model.category, .foundInFood)
+    }
+
+    func testAReportSentStartsANewDraftNextTime() async throws {
+        let (_, _, repositories, clock) = try make()
+        let model = try XCTUnwrap(StudentReportViewModel(session: try session, repositories: repositories, clock: clock))
+        await model.load()
+        _ = model.choose(.notClean)
+        model.note = "Wet plates."
+        await model.sendReport(.notClean)
+        XCTAssertNotNil(model.receipt)
+        _ = model.choose(.notClean)
+        XCTAssertNil(model.receipt, "After a receipt the same category starts a new report.")
+        XCTAssertEqual(model.note, "")
+    }
+
     func testTheMealOnTheReportIsTheOneAtHand() async throws {
         let (_, _, repositories, clock) = try make()
         let model = try XCTUnwrap(StudentReportViewModel(session: try session, repositories: repositories, clock: clock))

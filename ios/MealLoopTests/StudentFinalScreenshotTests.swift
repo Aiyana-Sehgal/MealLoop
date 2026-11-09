@@ -359,6 +359,22 @@ final class StudentFinalScreenshotTests: XCTestCase {
                 StudentOutingSentView(outing: first, now: world.clock.now(), onSee: {}) {}
             }
         }
+        let report = try XCTUnwrap(StudentReportViewModel(session: world.session, repositories: world.environment.repositories,
+                                                          clock: world.clock))
+        await report.load()
+        _ = report.choose(.notClean)
+        try await shot("student_report_details", world, tab: .home) {
+            StudentReportDetailsPage(model: report, category: .notClean, onShowIssue: nil) {}
+        }
+        await report.sendReport(.notClean)
+        try await shot("student_report_receipt", world, tab: .home) {
+            StudentReportReceiptPage(model: report, onShowIssue: nil) {}
+        }
+        _ = report.choose(.foundInFood)
+        _ = await report.raiseSOS(.foundInFood)
+        try await shot("student_sos_sent", world, tab: .home) {
+            StudentSOSSentPage(model: report, category: .foundInFood) {}
+        }
         try await shot("student_meals_collapsed", world, tab: .meals, pushed: false, scrolledToEnd: true) {
             StudentMealsScreen(session: world.session)
         }

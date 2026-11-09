@@ -14,7 +14,7 @@ enum StudentMealsRoute: Hashable {
     /// Pages built on `MLScreen`: the system bar, its back button and the swipe-back gesture.
     var usesSystemBar: Bool {
         switch self {
-        case .comingSoon, .report: false
+        case .comingSoon: false
         default: true
         }
     }
@@ -141,55 +141,6 @@ struct StudentMealsView: View {
                             onHighlightInfo: { showsHighlightInfo = true },
                             onSpecial: { path.append(.pass) })
         }
-    }
-}
-
-// MARK: - Headers
-
-/// The large-title header of Meals and Crowd (Nav Header, 124 pt). Meals has no Back, but keeps its place.
-struct MealsLargeHeader: View {
-    let title: String
-    let subtitle: String
-    let onBack: (() -> Void)?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: MLSpacing.s8) {
-            if let onBack {
-                BackButton(action: onBack).padding(.leading, -MLSpacing.s4)
-            } else {
-                Color.clear.frame(height: MLSize.hit).accessibilityHidden(true)
-            }
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(MLType.largeTitle)
-                    .foregroundStyle(MLColor.ink)
-                    .accessibilityAddTraits(.isHeader)
-                Text(subtitle)
-                    .font(StudentType.secondary)
-                    .foregroundStyle(MLColor.inkSecondary)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-/// Back on the left and a small centred title: Dish, Search and the Special pass status frames.
-struct MealsCompactHeader: View {
-    let title: String
-    let onBack: () -> Void
-
-    var body: some View {
-        ZStack {
-            Text(title)
-                .font(StudentType.bodySemibold)
-                .foregroundStyle(MLColor.ink)
-                .accessibilityAddTraits(.isHeader)
-            HStack {
-                BackButton(action: onBack).padding(.leading, -MLSpacing.s4)
-                Spacer()
-            }
-        }
-        .frame(height: MLSize.hit)
     }
 }
 

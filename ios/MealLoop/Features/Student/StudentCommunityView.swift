@@ -61,8 +61,8 @@ enum StudentCommunityRoute: Hashable {
     /// Pages built on `MLScreen`: the system bar, its back button and the swipe-back gesture.
     var usesSystemBar: Bool {
         switch self {
-        case .issue: true
-        default: false
+        case .issue, .report: true
+        case .comingSoon: false
         }
     }
 }
@@ -129,7 +129,8 @@ struct StudentCommunityView: View {
                              records: StudentRecordsViewModel(session: session, repositories: environment.repositories,
                                                               clock: environment.clock)) { path.removeLast() }
         case .report:
-            StudentReportScreen(session: session, onShowIssue: { path.append(.issue($0)) }) { path.removeLast() }
+            // View report leaves the finished report for the issue, so Back from the issue returns to Community.
+            StudentReportScreen(session: session, onShowIssue: { path = [.issue($0)] }) { path.removeLast() }
         case .comingSoon(let title):
             StudentComingSoonView(title: title) { path.removeLast() }
         }

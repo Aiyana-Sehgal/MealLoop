@@ -150,6 +150,25 @@ final class StudentReportViewModel {
         }
     }
 
+    /// The category of the report being written. Kept here, with the note, so the pushed pages share one draft.
+    private(set) var category: StudentReportCategory?
+
+    /// The page a category opens: urgent ones the SOS camera, the others the details form (Report · Details).
+    enum NextPage: Equatable {
+        case details(StudentReportCategory)
+        case camera(StudentReportCategory)
+    }
+
+    /// Picking a category on What's wrong. Picking the same one again after Back keeps the draft (the typed note);
+    /// a different category, or one after a report was sent, starts a new report.
+    func choose(_ category: StudentReportCategory) -> NextPage {
+        if category != self.category || receipt != nil || sos != nil {
+            begin()
+            self.category = category
+        }
+        return category.isUrgent ? .camera(category) : .details(category)
+    }
+
     /// A new category is a new report.
     func begin() {
         reportKey = IdempotencyKey(UUID().uuidString)

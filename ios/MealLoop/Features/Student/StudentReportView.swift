@@ -57,18 +57,20 @@ struct StudentReportScreen: View {
 
 /// Report · What's wrong (221:63480), Details (221:63525), Sending (221:63541), Failed (221:65437), Receipt (221:63557),
 /// No one on duty (221:65454), SOS · Camera (221:63493) and SOS · Sent (221:63509).
+///
+/// Each step is its own pushed page, so the system Back goes one step: What's wrong → Details → Receipt, and
+/// What's wrong → SOS · Sent. The draft (category, note, send state) lives in `StudentReportViewModel`, shared by the
+/// pages. Sending and Failed are states of the Details page, not pages: Back is hidden while a send is in flight.
+/// The camera stays a full-screen cover, as its frame draws it over the tab bar; Close returns to What's wrong.
+/// Receipt and SOS · Sent end the flow: they have no Back, and Done closes the whole report.
 struct StudentReportView: View {
-    enum Step: Equatable {
-        case choose
-        case details(StudentReportCategory)
-        case camera(StudentReportCategory)
-        case sosSent(StudentReportCategory)
-        case receipt
-    }
-
     @Environment(AppEnvironment.self) private var environment
     @State private var model: StudentReportViewModel
-    @State private var step: Step = .choose
+    @State private var details: StudentReportCategory?
+    @State private var camera: StudentReportCategory?
+    @State private var sosSent: StudentReportCategory?
+    /// The SOS raised from the camera; pushed once the cover has gone.
+    @State private var raised: StudentReportCategory?
     let onShowIssue: ((CommunityIssueID) -> Void)?
     let onClose: () -> Void
 
@@ -81,164 +83,185 @@ struct StudentReportView: View {
     }
 
     var body: some View {
-        Group {
-            switch step {
-            default:
-                ZStack {
-                    OrbitBackground()
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: MLSpacing.s16) {
-                            page
-                        }
-                        .padding(.horizontal, MLSpacing.margin)
-                        .padding(.top, MLSpacing.s8)
-                        .padding(.bottom, StudentMetric.scrollBottom + 64)
-                    }
-                    bottomButtons
-                }
+        MLScreen(ReportCopy.whatsWrong, bottomClearance: .tabBar) {
+            VStack(alignment: .leading, spacing: MLSpacing.s16) {
+                choose
             }
         }
+        .navigationDestination(item: $details) { category in
+            StudentReportDetailsPage(model: model, category: category, onShowIssue: onShowIssue, onClose: onClose)
+        }
+        .navigationDestination(item: $sosSent) { category in
+            StudentSOSSentPage(model: model, category: category, onClose: onClose)
+        }
         // The camera covers the whole screen, tab bar included, as SOS · Camera (221:63493) draws it.
-        .fullScreenCover(isPresented: Binding(get: { cameraCategory != nil }, set: { if !$0, cameraCategory != nil { step = .choose } })) {
-            if let category = cameraCategory { camera(category) }
+        .fullScreenCover(isPresented: Binding(get: { camera != nil }, set: { if !$0 { camera = nil } }),
+                         onDismiss: {
+                             if let raised {
+                                 sosSent = raised
+                                 self.raised = nil
+                             }
+                         }) {
+            if let category = camera {
+                StudentSOSCameraPage(model: model, category: category, onClose: { camera = nil }) {
+                    raised = category
+                    camera = nil
+                }
+            }
         }
         .task { await model.load() }
     }
 
-    private var cameraCategory: StudentReportCategory? {
-        if case .camera(let category) = step { return category }
-        return nil
-    }
-
-    private func back() {
-        switch step {
-        case .choose, .receipt, .sosSent: onClose()
-        case .details, .camera: step = .choose
-        }
-    }
-
     @ViewBuilder
-    private var page: some View {
-        switch step {
-        case .choose:
-            MealsCompactHeader(title: ReportCopy.whatsWrong, onBack: back)
-            if !model.isDeskStaffed {
-                HStack(alignment: .top, spacing: MLSpacing.s12) {
-                    Image(systemName: "clock").accessibilityHidden(true)
-                    Text(ReportCopy.noOneOnDuty).font(StudentType.footnote).fixedSize(horizontal: false, vertical: true)
-                }
-                .foregroundStyle(MLColor.ink)
-                .padding(MLSpacing.s16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color(hex: 0xFFF3D6)))
+    private var choose: some View {
+        if !model.isDeskStaffed {
+            HStack(alignment: .top, spacing: MLSpacing.s12) {
+                Image(systemName: "clock").accessibilityHidden(true)
+                Text(ReportCopy.noOneOnDuty).font(StudentType.footnote).fixedSize(horizontal: false, vertical: true)
             }
-            ForEach(StudentReportCategory.allCases, id: \.self) { category in
-                ReportCategoryRow(category: category) {
-                    model.begin()
-                    step = category.isUrgent ? .camera(category) : .details(category)
+            .foregroundStyle(MLColor.ink)
+            .padding(MLSpacing.s16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color(hex: 0xFFF3D6)))
+        }
+        ForEach(StudentReportCategory.allCases, id: \.self) { category in
+            ReportCategoryRow(category: category) {
+                switch model.choose(category) {
+                case .details(let picked): details = picked
+                case .camera(let picked): camera = picked
                 }
             }
-            Text(ReportCopy.urgentFootnote)
-                .font(StudentType.secondary)
-                .foregroundStyle(MLColor.inkSecondary)
-        case .details(let category):
-            MealsCompactHeader(title: ReportCopy.reportProblem, onBack: back)
-            ReportHeaderCard(category: category, chips: chips(sentAt: nil))
-            Text(ReportCopy.whatHappened)
-                .font(StudentType.footnote)
-                .foregroundStyle(MLColor.inkSecondary)
-            TextField(ReportCopy.whatHappened, text: $model.note, prompt: nil, axis: .vertical)
-                .font(StudentType.body)
-                .lineLimit(2...5)
-                .padding(.horizontal, MLSpacing.s16)
-                .padding(.vertical, MLSpacing.s8)
-                .frame(minHeight: 50)
-                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(MLColor.surface))
-                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(MLColor.border, lineWidth: 1))
-                .disabled(model.send == .sending)
-            Button {} label: {
-                Label(ReportCopy.addPhoto, systemImage: "camera")
-                    .font(StudentType.bodySemibold)
+        }
+        Text(ReportCopy.urgentFootnote)
+            .font(StudentType.secondary)
+            .foregroundStyle(MLColor.inkSecondary)
+    }
+}
+
+/// The chips under the report's header card: the dish, the mess, the meal and the time.
+@MainActor
+private func reportChips(_ model: StudentReportViewModel, sentAt: Date?) -> [String] {
+    var chips = [model.subject?.dishName, model.context.mess.name].compactMap { $0 }
+    if let meal = model.meal {
+        chips.append("\(MLFormat.mealSlot(meal.slot)) · \(StudentFormat.mediumDay(meal.startsAt, in: model.timeZone))")
+    }
+    chips.append(sentAt.map { ReportCopy.sent(MLFormat.time($0, in: model.timeZone)) } ?? MLFormat.time(model.now, in: model.timeZone))
+    return chips
+}
+
+/// Report · Details (221:63525) with its Sending (221:63541) and Failed (221:65437) states. Send report is pinned above
+/// the tab bar; the Receipt is pushed once the report is recorded.
+struct StudentReportDetailsPage: View {
+    @State var model: StudentReportViewModel
+    let category: StudentReportCategory
+    let onShowIssue: ((CommunityIssueID) -> Void)?
+    let onClose: () -> Void
+    @State private var showsReceipt = false
+    @FocusState private var noteFocused: Bool
+
+    var body: some View {
+        MLScreen(ReportCopy.reportProblem) {
+            VStack(alignment: .leading, spacing: MLSpacing.s16) {
+                ReportHeaderCard(category: category, chips: reportChips(model, sentAt: nil))
+                Text(ReportCopy.whatHappened)
+                    .font(StudentType.footnote)
                     .foregroundStyle(MLColor.inkSecondary)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 48)
-                    .overlay(Capsule().strokeBorder(MLColor.ink, lineWidth: 1.5))
-            }
-            .buttonStyle(.plain)
-            .disabled(true)
-            .accessibilityHint(ReportCopy.cameraSimulated)
-            if model.send == .failed {
-                HStack(spacing: MLSpacing.s12) {
-                    Image(systemName: "exclamationmark.triangle").accessibilityHidden(true)
-                    Text(ReportCopy.didntSend).font(StudentType.secondaryMedium)
+                TextField(ReportCopy.whatHappened, text: $model.note, prompt: nil, axis: .vertical)
+                    .font(StudentType.body)
+                    .lineLimit(2...5)
+                    .focused($noteFocused)
+                    .padding(.horizontal, MLSpacing.s16)
+                    .padding(.vertical, MLSpacing.s8)
+                    .frame(minHeight: 50)
+                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(MLColor.surface))
+                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(MLColor.border, lineWidth: 1))
+                    .disabled(model.send == .sending)
+                    .mlKeepsVisible(id: "report.note", when: noteFocused)
+                Button {} label: {
+                    Label(ReportCopy.addPhoto, systemImage: "camera")
+                        .font(StudentType.bodySemibold)
+                        .foregroundStyle(MLColor.inkSecondary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 48)
+                        .overlay(Capsule().strokeBorder(MLColor.ink, lineWidth: 1.5))
                 }
-                .foregroundStyle(MLColor.danger)
-                .padding(.horizontal, MLSpacing.s20)
-                .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(StudentTint.errorFill))
-            }
-            ReportNextSteps()
-        case .receipt:
-            MealsCompactHeader(title: ReportCopy.reportSent, onBack: back)
-            if let receipt = model.receipt {
-                ReceiptCard(receipt: receipt, chips: chips(sentAt: receipt.sentAt))
+                .buttonStyle(.plain)
+                .disabled(true)
+                .accessibilityHint(ReportCopy.cameraSimulated)
+                if model.send == .failed {
+                    HStack(spacing: MLSpacing.s12) {
+                        Image(systemName: "exclamationmark.triangle").accessibilityHidden(true)
+                        Text(ReportCopy.didntSend).font(StudentType.secondaryMedium)
+                    }
+                    .foregroundStyle(MLColor.danger)
+                    .padding(.horizontal, MLSpacing.s20)
+                    .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(StudentTint.errorFill))
+                }
                 ReportNextSteps()
             }
-        case .sosSent(let category):
-            sosSent(category)
-        case .camera:
-            MealsCompactHeader(title: ReportCopy.whatsWrong, onBack: back)
-        }
-    }
-
-    private func chips(sentAt: Date?) -> [String] {
-        var chips = [model.subject?.dishName, model.context.mess.name].compactMap { $0 }
-        if let meal = model.meal {
-            chips.append("\(MLFormat.mealSlot(meal.slot)) · \(StudentFormat.mediumDay(meal.startsAt, in: model.timeZone))")
-        }
-        chips.append(sentAt.map { ReportCopy.sent(MLFormat.time($0, in: model.timeZone)) } ?? MLFormat.time(model.now, in: model.timeZone))
-        return chips
-    }
-
-    @ViewBuilder
-    private var bottomButtons: some View {
-        switch step {
-        case .details(let category):
-            PassBottomButton(title: model.send == .failed ? ReportCopy.tryAgain : (model.send == .sending ? ReportCopy.sending : ReportCopy.sendReport)) {
+        } bottom: {
+            PassBottomButton(title: model.send == .failed ? ReportCopy.tryAgain
+                             : (model.send == .sending ? ReportCopy.sending : ReportCopy.sendReport)) {
+                noteFocused = false
                 Task {
                     await model.sendReport(category)
-                    if model.receipt != nil { step = .receipt }
+                    if model.receipt != nil { showsReceipt = true }
                 }
             }
             .allowsHitTesting(model.send != .sending)
-        case .receipt:
-            VStack {
-                Spacer()
-                HStack(spacing: MLSpacing.s12) {
-                    if case .published(let id)? = model.receipt?.outcome, let onShowIssue {
-                        OutlineActionButton(title: ReportCopy.viewReport) { onShowIssue(id) }
-                    }
-                    InkActionButton(title: ReportCopy.done, action: onClose)
-                }
-                .padding(.horizontal, MLSpacing.margin)
-                .padding(.bottom, 78)
-            }
-        case .sosSent:
-            PassBottomButton(title: ReportCopy.done, action: onClose)
-        case .choose, .camera:
-            EmptyView()
+            .studentAboveTabBar()
+        }
+        // Back would abandon a send in flight, so it waits until the send has an answer.
+        .navigationBarBackButtonHidden(model.send == .sending)
+        .navigationDestination(isPresented: $showsReceipt) {
+            StudentReportReceiptPage(model: model, onShowIssue: onShowIssue, onClose: onClose)
         }
     }
+}
 
-    // MARK: SOS
+/// Report · Receipt (221:63557). The report is recorded, so the page ends the flow: no Back, Done closes it.
+struct StudentReportReceiptPage: View {
+    @State var model: StudentReportViewModel
+    let onShowIssue: ((CommunityIssueID) -> Void)?
+    let onClose: () -> Void
 
-    /// SOS · Camera. The simulator has no camera, so this is a static preview and the capture is not verified.
-    private func camera(_ category: StudentReportCategory) -> some View {
+    var body: some View {
+        MLScreen(ReportCopy.reportSent) {
+            VStack(alignment: .leading, spacing: MLSpacing.s16) {
+                if let receipt = model.receipt {
+                    ReceiptCard(receipt: receipt, chips: reportChips(model, sentAt: receipt.sentAt))
+                    ReportNextSteps()
+                }
+            }
+        } bottom: {
+            HStack(spacing: MLSpacing.s12) {
+                if case .published(let id)? = model.receipt?.outcome, let onShowIssue {
+                    OutlineActionButton(title: ReportCopy.viewReport) { onShowIssue(id) }
+                }
+                InkActionButton(title: ReportCopy.done, action: onClose)
+            }
+            .studentAboveTabBar()
+        }
+        .navigationBarBackButtonHidden(true)
+    }
+}
+
+/// SOS · Camera (221:63493). The simulator has no camera, so this is a static preview and the capture is not verified
+/// on a device. The shutter raises the SOS (`SOSRepository.raise`), then tells every screen the data changed.
+struct StudentSOSCameraPage: View {
+    @Environment(AppEnvironment.self) private var environment
+    @State var model: StudentReportViewModel
+    let category: StudentReportCategory
+    let onClose: () -> Void
+    let onRaised: () -> Void
+
+    var body: some View {
         ZStack {
             Color(hex: 0x1C1C1C).ignoresSafeArea()
             VStack(alignment: .leading, spacing: MLSpacing.s16) {
                 HStack(spacing: MLSpacing.s12) {
-                    Button(action: back) {
+                    Button(action: onClose) {
                         Image(systemName: "xmark")
                             .font(.system(size: 17, weight: .medium))
                             .foregroundStyle(MLColor.onHero)
@@ -287,7 +310,7 @@ struct StudentReportView: View {
                     Task {
                         if await model.raiseSOS(category) {
                             environment.dataDidChange()
-                            step = .sosSent(category)
+                            onRaised()
                         }
                     }
                 } label: {
@@ -303,48 +326,65 @@ struct StudentReportView: View {
             .padding(.top, MLSpacing.s8)
         }
     }
+}
 
-    @ViewBuilder
-    private func sosSent(_ category: StudentReportCategory) -> some View {
-        MealsLargeHeader(title: ReportCopy.sosSent, subtitle: StudentReportCategoryTitle.title(category), onBack: nil)
-        if let sos = model.sos {
+/// SOS · Sent (221:63509). The SOS is raised, so the page ends the flow: no Back, Done closes it.
+struct StudentSOSSentPage: View {
+    @State var model: StudentReportViewModel
+    let category: StudentReportCategory
+    let onClose: () -> Void
+
+    var body: some View {
+        MLScreen(ReportCopy.sosSent, subtitle: StudentReportCategoryTitle.title(category)) {
             VStack(alignment: .leading, spacing: MLSpacing.s16) {
-                HStack(spacing: MLSpacing.s8) {
-                    Circle().fill(MLColor.lime).frame(width: 10, height: 10)
-                    Text(ReportCopy.sent(MLFormat.time(sos.raisedAt, in: model.timeZone))).font(StudentType.secondaryMedium)
+                if let sos = model.sos {
+                    card(sos)
+                    Text(ReportCopy.feelingUnwell)
+                        .font(StudentType.secondaryMedium)
+                        .foregroundStyle(MLColor.ink)
+                        .frame(maxWidth: .infinity)
+                        .multilineTextAlignment(.center)
                 }
-                .foregroundStyle(MLColor.onHeroSecondary)
-                Text(ReportCopy.toldKitchen)
-                    .font(.system(size: 30, weight: .semibold))
-                    .foregroundStyle(MLColor.onHero)
-                    .fixedSize(horizontal: false, vertical: true)
-                let times: [Date?] = [sos.raisedAt, sos.claim?.at, nil, sos.checks.first?.at]
-                ForEach(Array(ReportCopy.sosSteps.enumerated()), id: \.offset) { index, title in
-                    HStack(spacing: MLSpacing.s12) {
-                        SOSStepMark(done: index == 0 || times[index] != nil, current: index == 1 && times[1] == nil)
-                        Text(title)
-                            .font(index <= 1 ? StudentType.bodySemibold : StudentType.body)
-                            .foregroundStyle(index <= 1 ? MLColor.onHero : MLColor.onHeroSecondary)
-                        Spacer()
-                        if let time = times[index] {
-                            Text(MealsFormat.clock(time, in: model.timeZone))
-                                .font(StudentType.mono)
-                                .foregroundStyle(MLColor.onHeroSecondary)
-                        }
+            }
+        } bottom: {
+            PassBottomButton(title: ReportCopy.done, action: onClose)
+                .studentAboveTabBar()
+        }
+        .navigationBarBackButtonHidden(true)
+    }
+
+    private func card(_ sos: SOSCase) -> some View {
+        VStack(alignment: .leading, spacing: MLSpacing.s16) {
+            HStack(spacing: MLSpacing.s8) {
+                Circle().fill(MLColor.lime).frame(width: 10, height: 10)
+                Text(ReportCopy.sent(MLFormat.time(sos.raisedAt, in: model.timeZone))).font(StudentType.secondaryMedium)
+            }
+            .foregroundStyle(MLColor.onHeroSecondary)
+            Text(ReportCopy.toldKitchen)
+                .font(.system(size: 30, weight: .semibold))
+                .foregroundStyle(MLColor.onHero)
+                .fixedSize(horizontal: false, vertical: true)
+            let times: [Date?] = [sos.raisedAt, sos.claim?.at, nil, sos.checks.first?.at]
+            ForEach(Array(ReportCopy.sosSteps.enumerated()), id: \.offset) { index, title in
+                HStack(spacing: MLSpacing.s12) {
+                    SOSStepMark(done: index == 0 || times[index] != nil, current: index == 1 && times[1] == nil)
+                    Text(title)
+                        .font(index <= 1 ? StudentType.bodySemibold : StudentType.body)
+                        .foregroundStyle(index <= 1 ? MLColor.onHero : MLColor.onHeroSecondary)
+                    Spacer()
+                    if let time = times[index] {
+                        Text(MealsFormat.clock(time, in: model.timeZone))
+                            .font(StudentType.mono)
+                            .foregroundStyle(MLColor.onHeroSecondary)
                     }
                 }
-                Text(ReportCopy.messageWhenChecked)
-                    .font(StudentType.secondary)
-                    .foregroundStyle(MLColor.onHeroSecondary)
             }
-            .padding(MLSpacing.s20)
-            .background(RoundedRectangle(cornerRadius: StudentMetric.heroRadius, style: .continuous).fill(MLColor.heroBackground))
-            Text(ReportCopy.feelingUnwell)
-                .font(StudentType.secondaryMedium)
-                .foregroundStyle(MLColor.ink)
-                .frame(maxWidth: .infinity)
-                .multilineTextAlignment(.center)
+            Text(ReportCopy.messageWhenChecked)
+                .font(StudentType.secondary)
+                .foregroundStyle(MLColor.onHeroSecondary)
         }
+        .padding(MLSpacing.s20)
+        .background(RoundedRectangle(cornerRadius: StudentMetric.heroRadius, style: .continuous).fill(MLColor.heroBackground))
     }
 }
 
