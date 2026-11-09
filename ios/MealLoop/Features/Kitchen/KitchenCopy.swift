@@ -137,6 +137,12 @@ enum KitchenCopy {
     static let me = "Me"
     static let onShift = "On shift"
     static let language = "Language"
+    // "This meal" block on Alerts (Prompt 5, R2)
+    static let shortagesThisMeal = "food-short reports this meal"
+    static let wasteReport = "Waste report"
+    static let draftWord = "Draft"
+    static let notRecordedWord = "Not recorded"
+    static let afterTheMeal = "After the meal"
     static let english = "English"
     static let help = "Help"
     static let signOut = "Sign out"

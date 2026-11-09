@@ -58,6 +58,11 @@ struct KitchenAlert: Equatable, Identifiable {
 @Observable
 final class KitchenAlertsViewModel {
     private(set) var state: LoadState<[KitchenAlert]> = .idle
+    /// Loaded with the rows; shown in the "This meal" block (R2). Nil until loaded.
+    private(set) var status: MealStatus?
+    private(set) var waste: WasteReportSummary?
+    private(set) var shortageCount: Int?
+    private(set) var history: [MealRecord] = []
     let session: StaffSession
     private let mealState: any MealStateRepository
     private let shortages: any ShortageRepository
@@ -83,6 +88,10 @@ final class KitchenAlertsViewModel {
             let history = try await mealState.mealHistory(for: session.mess.id)
             let rows = KitchenAlert.alerts(status: status, waste: waste, shortages: reports, history: history,
                                            timeZone: session.mess.timeZone)
+            self.status = status
+            self.waste = waste
+            self.shortageCount = status == nil ? nil : reports.count
+            self.history = history.filter { $0.mealID != status?.meal.id }
             state = rows.isEmpty ? .empty : .loaded(rows)
         } catch RepositoryError.offline(let savedAt) {
             state = .offline(state.value, savedAt: savedAt)
@@ -115,10 +124,14 @@ struct KitchenAlertsView: View {
                                 actionTitle: KitchenSOSText.alertAction(stage),
                                 onAction: KitchenSOSText.alertAction(stage) == nil ? nil : onOpenSOS)
                     }
+                    if model.state.value != nil || model.state == .empty {
+                        StaffMealSummary(status: model.status, mess: mess, count: model.shortageCount,
+                                         countCaption: KitchenCopy.shortagesThisMeal,
+                                         facts: [StaffFact(label: KitchenCopy.wasteReport, value: wasteText)])
+                    }
                     switch model.state {
                     case .empty where sos.current == nil:
                         StateBlock(symbol: "bell", title: KitchenCopy.nothingNew, message: KitchenCopy.alertsShowHere)
-                            .padding(.top, MLSpacing.s32 * 3)
                     case .empty:
                         EmptyView()
                     default:
@@ -129,11 +142,22 @@ struct KitchenAlertsView: View {
                             }
                         }
                     }
+                    StaffEarlierMeals(records: model.history, timeZone: mess.timeZone)
                 }
                 .padding(.horizontal, MLSpacing.margin)
                 .padding(.bottom, KitchenLayout.scrollBottomInset)
             }
             .refreshable { await model.load() }
+        }
+    }
+
+    /// Plain text, as Kitchen status always is: Recorded, Draft, or not yet (only after the meal).
+    private var wasteText: String? {
+        guard model.status != nil else { return nil }
+        switch model.waste?.status {
+        case .recorded?: return KitchenCopy.recordedWord
+        case .draft?: return KitchenCopy.draftWord
+        case .notStarted?, nil: return model.status?.state == .closed ? KitchenCopy.notRecordedWord : KitchenCopy.afterTheMeal
         }
     }
 

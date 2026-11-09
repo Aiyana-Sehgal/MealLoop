@@ -102,6 +102,12 @@ struct PassDeskAlertsView: View {
                                 actionTitle: PassDeskSOSText.alertAction(stage),
                                 onAction: PassDeskSOSText.alertAction(stage) == nil ? nil : onOpenSOS)
                     }
+                    if let content = model.state.value {
+                        StaffMealSummary(status: content.status, mess: mess, count: content.count.recorded.value,
+                                         countCaption: PassDeskCopy.specialMealsRecorded,
+                                         facts: [StaffFact(label: PassDeskCopy.onShift,
+                                                           value: model.shiftStartedAt.map { MLFormat.time($0, in: mess.timeZone) })])
+                    }
                     if !alerts.isEmpty {
                         VStack(spacing: 0) {
                             SectionHeader(title: PassDeskCopy.earlier)
@@ -109,7 +115,7 @@ struct PassDeskAlertsView: View {
                         }
                     } else if sos.current == nil {
                         StateBlock(symbol: "bell", title: PassDeskCopy.nothingNew, message: PassDeskCopy.alertsShowHere)
-                            .padding(.top, PassDeskLayout.emptyStateTop)
+                            .padding(.top, model.state.value == nil ? PassDeskLayout.emptyStateTop : 0)
                     }
                 }
                 .padding(.horizontal, MLSpacing.margin)

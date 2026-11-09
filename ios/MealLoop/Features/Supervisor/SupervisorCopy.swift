@@ -4,6 +4,8 @@ import Foundation
 /// (design/audit/export_supervisor/). Lines the pack does not draw are marked "Not drawn" and listed in
 /// docs/verification/supervisor/REPORT.md.
 enum SupervisorCopy {
+    /// "This meal" block on Alerts (Prompt 5, R2).
+    static let activeShortagesCaption = "active shortages this meal"
     // MARK: Tabs and titles
     static let alertsTitle = "Alerts"
     static let meTitle = "Me"

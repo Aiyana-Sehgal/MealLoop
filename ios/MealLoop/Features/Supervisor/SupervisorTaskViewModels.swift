@@ -8,6 +8,9 @@ final class SupervisorAlertsViewModel {
     struct Content: Equatable {
         let mess: Mess
         let followUps: SupervisorFollowUps
+        /// The current meal and the earlier meals, already read to work out the follow-ups (R2 "This meal" block).
+        var current: MealStatus?
+        var history: [MealRecord] = []
     }
 
     private(set) var state: LoadState<Content> = .idle
@@ -30,7 +33,9 @@ final class SupervisorAlertsViewModel {
             let current = try await repositories.mealState.currentMeal(for: session.mess.id)
             let followUps = try await SupervisorFollowUps.load(mess: session.mess.id, current: current,
                                                                repositories: repositories)
-            state = .loaded(Content(mess: session.mess, followUps: followUps))
+            let history = try await repositories.mealState.mealHistory(for: session.mess.id)
+            state = .loaded(Content(mess: session.mess, followUps: followUps, current: current,
+                                    history: history.filter { $0.mealID != current?.meal.id }))
         } catch RepositoryError.offline(let savedAt) {
             state = .offline(state.value, savedAt: savedAt)
         } catch {

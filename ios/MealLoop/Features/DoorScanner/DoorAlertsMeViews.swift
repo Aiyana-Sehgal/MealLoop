@@ -67,6 +67,12 @@ struct DoorAlertsView: View {
                                 actionTitle: DoorSOSText.alertAction(stage),
                                 onAction: DoorSOSText.alertAction(stage) == nil ? nil : onOpenSOS)
                     }
+                    if let content = model.state.value {
+                        StaffMealSummary(status: content.status, mess: mess, count: content.recordedCount?.value,
+                                         countCaption: content.status.state == .closed ? DoorScannerCopy.finalEntries
+                                                                                        : DoorScannerCopy.recordedSoFar,
+                                         facts: summaryFacts(content))
+                    }
                     if !alerts.isEmpty {
                         VStack(spacing: 0) {
                             SectionHeader(title: DoorScannerCopy.earlier)
@@ -77,13 +83,22 @@ struct DoorAlertsView: View {
                         }
                     } else if sos.current == nil {
                         StateBlock(symbol: "bell", title: DoorScannerCopy.nothingNew, message: DoorScannerCopy.alertsShowHere)
-                            .padding(.top, DoorLayout.emptyStateTop)
+                            .padding(.top, model.state.value == nil ? DoorLayout.emptyStateTop : 0)
                     }
                 }
                 .padding(.horizontal, MLSpacing.margin)
                 .padding(.bottom, DoorLayout.scrollBottomInset)
             }
         }
+    }
+
+    /// The shift start the Me page shows, and after the meal the entries without a vote, both already loaded.
+    private func summaryFacts(_ content: DoorHomeContent) -> [StaffFact] {
+        var facts = [StaffFact(label: DoorScannerCopy.onShift, value: model.shiftStartedAt.map { MLFormat.time($0, in: mess.timeZone) })]
+        if case .afterMeal(_, _, let withoutVoting) = content.phase {
+            facts.append(StaffFact(label: DoorScannerCopy.enteredWithoutVoting, value: String(withoutVoting)))
+        }
+        return facts
     }
 }
 
