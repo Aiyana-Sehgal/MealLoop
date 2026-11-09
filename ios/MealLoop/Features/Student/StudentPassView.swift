@@ -44,6 +44,8 @@ struct StudentPassView: View {
     @State private var model: StudentPassViewModel
     @State private var confirming = false
     @State private var hold = PassHoldTracker()
+    /// Next week's pass request (StudentPassRequestViews.swift), shown when this week has no pass to use.
+    @State private var request: StudentPassRequestModel?
     let onOpenCrowd: (() -> Void)?
     let onBack: () -> Void
 
@@ -69,6 +71,11 @@ struct StudentPassView: View {
         }
         .task(id: environment.dataRevision) {
             await model.load()
+            if request == nil {
+                request = StudentPassRequestModel(context: model.context, repositories: environment.repositories,
+                                                  clock: environment.clock)
+            }
+            await request?.load()
         }
         .task(id: model.isLive) {
             guard model.isLive else { return }
@@ -133,10 +140,12 @@ struct StudentPassView: View {
         case .used(_, let at, false):
             MealsCompactHeader(title: MealsCopy.specialPass, onBack: onBack)
             PassStatusCard(symbol: "checkmark.circle", detail: MealsCopy.alreadyUsed(MLFormat.time(at, in: model.timeZone)))
+            requestSection
             nextRows
         case .expired(_, let endedAt):
             MealsCompactHeader(title: MealsCopy.specialPass, onBack: onBack)
             PassStatusCard(symbol: "clock", detail: MealsCopy.expired(MLFormat.time(endedAt, in: model.timeZone)))
+            requestSection
             nextRows
         case .wrongMess(let passMess):
             MealsCompactHeader(title: MealsCopy.specialPass, onBack: onBack)
@@ -145,6 +154,22 @@ struct StudentPassView: View {
         case .notEligible:
             MealsCompactHeader(title: MealsCopy.specialPass, onBack: onBack)
             PassStatusCard(symbol: "minus", detail: MealsCopy.noPassThisWeek)
+            requestSection
+        }
+    }
+
+    @ViewBuilder
+    private var requestSection: some View {
+        if let request, request.isLoaded {
+            StudentPassRequestSection(model: request)
+        }
+    }
+
+    /// This week has no pass to use, so the page offers next week's request.
+    private var showsRequest: Bool {
+        switch model.state.value {
+        case .used(_, _, false)?, .expired?, .notEligible?: return request?.isLoaded == true
+        default: return false
         }
     }
 
@@ -184,6 +209,20 @@ struct StudentPassView: View {
                 model.beginConfirm()
                 confirming = true
             }
+        } else if showsRequest, let request {
+            switch request.request?.state {
+            case .pending?:
+                PassBottomButton(title: PassRequestCopy.cancelRequest, outlined: true) { Task { await request.cancel() } }
+                    .disabled(request.isWriting)
+            case .accepted?:
+                EmptyView()
+            case .declined?:
+                PassBottomButton(title: PassRequestCopy.requestAgain) { Task { await request.ask() } }
+                    .disabled(request.isWriting)
+            case .cancelled?, nil:
+                PassBottomButton(title: PassRequestCopy.request) { Task { await request.ask() } }
+                    .disabled(request.isWriting)
+            }
         }
     }
 }
@@ -214,6 +253,8 @@ struct PassInUseLine: View {
 /// The black pill above the tab bar: Use pass, Try again.
 struct PassBottomButton: View {
     let title: String
+    /// The outlined pill of "Cancel request" (student_pass_05_requested).
+    var outlined = false
     let action: () -> Void
 
     var body: some View {
@@ -222,10 +263,16 @@ struct PassBottomButton: View {
             Button(action: action) {
                 Text(title)
                     .font(StudentType.bodySemibold)
-                    .foregroundStyle(MLColor.onHero)
+                    .foregroundStyle(outlined ? MLColor.ink : MLColor.onHero)
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
-                    .background(Capsule().fill(LinearGradient(colors: [MLColor.ink, Color(hex: 0x4A4A48)], startPoint: .top, endPoint: .bottom)))
+                    .background {
+                        if outlined {
+                            Capsule().fill(MLColor.canvas).overlay(Capsule().strokeBorder(MLColor.ink, lineWidth: 1.5))
+                        } else {
+                            Capsule().fill(LinearGradient(colors: [MLColor.ink, Color(hex: 0x4A4A48)], startPoint: .top, endPoint: .bottom))
+                        }
+                    }
                     .contentShape(Capsule())
             }
             .buttonStyle(.plain)

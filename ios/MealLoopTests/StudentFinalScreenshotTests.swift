@@ -251,5 +251,18 @@ final class StudentFinalScreenshotTests: XCTestCase {
             StudentCreditsHistoryView(model: world.you, rewards: world.rewards) {}
         }
     }
+
+    // MARK: - Follow-ups P2: next week's pass request
+
+    func testCapturePassRequest() async throws {
+        let world = World(.afterMeal)
+        try await shot("p2_pass_request", world, tab: .home, wait: 2) {
+            StudentPassScreen(session: world.session) {}.studentPushedPage(usesSystemBar: false)
+        }
+        _ = try await world.environment.repositories.passRequests.request(for: DemoSeed.sampleStudent, at: DemoSeed.mess)
+        try await shot("p2_pass_requested", world, tab: .home, wait: 2) {
+            StudentPassScreen(session: world.session) {}.studentPushedPage(usesSystemBar: false)
+        }
+    }
 }
 #endif

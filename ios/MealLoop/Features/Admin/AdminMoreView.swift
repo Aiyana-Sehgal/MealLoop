@@ -225,6 +225,8 @@ struct AdminPassesScreen: View {
                         AdminChip(text: page.mess, symbol: "fork.knife", isSmall: true)
                         AdminChip(text: AdminScreenCopy.rules, symbol: "info.circle", isSmall: true)
                     }
+                    // Requests for next week (admin_passes_01_requests), before this week's pass card.
+                    AdminPassRequestsSection(nav: nav)
                     HeroCard {
                         VStack(spacing: MLSpacing.s12) {
                             HeroEyebrow(label: page.title)

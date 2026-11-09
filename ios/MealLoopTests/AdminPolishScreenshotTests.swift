@@ -128,5 +128,10 @@ final class AdminPolishScreenshotTests: XCTestCase {
             AdminPageScaffold(title: AdminScreenCopy.rewards) { AdminRewardCatalogueSection(nav: world.nav, addOpen: true) }
         }
     }
+
+    func testCapturePassRequests() async throws {
+        let world = try await world(.duringMeal)
+        try await shot("p2_admin_passes_requests", world, wait: 2) { AdminPassesScreen(nav: world.nav) }
+    }
 }
 #endif
