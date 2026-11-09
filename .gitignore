@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+
+# Xcode user state and build output
+xcuserdata/
+*.xcuserstate
+**/project.xcworkspace/xcuserdata/
+DerivedData/
+build/
+
+# Local tool folders
+.codex/
+.claude/worktrees/
