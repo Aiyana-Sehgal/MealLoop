@@ -13,7 +13,8 @@ enum WardenRoute: Hashable {
     case outNowAll
     case outNowStudent(OutingRequestID)
     case historyRecord(String)
-    case notBuilt(String)
+    /// W-6 Alerts (1855:1489).
+    case alerts
 }
 
 /// The Warden root: Queue, Out now, Escalated, History, words only (W01). Only a Warden session reaches the screens;
@@ -138,15 +139,15 @@ struct WardenTabsView: View {
     private func destination(_ route: WardenRoute, model: WardenModel) -> some View {
         switch route {
         case .me:
-            WardenMeScreen(model: model, onBack: pop) { push(.notBuilt($0)) }
+            WardenMeScreen(model: model, onBack: pop) { push(.alerts) }
         case .outNowAll:
             WardenOutNowAllScreen(model: model, onBack: pop) { push(.outNowStudent($0)) }
         case .outNowStudent(let id):
             WardenOutNowStudentScreen(model: model, outingID: id, onBack: pop)
         case .historyRecord(let id):
             WardenHistoryRecordScreen(model: model, itemID: id, onBack: pop)
-        case .notBuilt(let title):
-            NotImplementedView(title: title)
+        case .alerts:
+            WardenAlertsScreen(model: model, onBack: pop)
         }
     }
 }

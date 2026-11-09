@@ -464,9 +464,10 @@ struct WardenMeScreen: View {
     @Environment(SessionStore.self) private var sessionStore
     let model: WardenModel
     let onBack: () -> Void
-    let onNotBuilt: (String) -> Void
+    let onAlerts: () -> Void
 
     @State private var isSigningOut = false
+    @State private var sheet: StaffMeSheet?
 
     var body: some View {
         WardenPushedPage(title: WardenCopy.meTitle, subtitle: nil, onBack: onBack) {
@@ -497,8 +498,8 @@ struct WardenMeScreen: View {
                 }
             }
             VStack(spacing: 0) {
-                QuietRow(title: WardenCopy.alerts) { onNotBuilt(WardenCopy.alerts) }
-                QuietRow(title: WardenCopy.help) { onNotBuilt(WardenCopy.help) }
+                QuietRow(title: WardenCopy.alerts, action: onAlerts)
+                QuietRow(title: WardenCopy.help) { sheet = .help }
                 Button {
                     isSigningOut = true
                 } label: {
@@ -517,6 +518,9 @@ struct WardenMeScreen: View {
             isSigningOut = false
             router.reset()
             sessionStore.signOut()
+        }
+        .mlSheet(item: $sheet) { _ in
+            StaffHelpSheet(items: StaffHelpContent.warden) { sheet = nil }
         }
     }
 
