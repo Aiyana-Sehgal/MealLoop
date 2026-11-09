@@ -16,7 +16,7 @@ Captures stay outside the repository, in `~/mealloop-captures/student-standards/
 | S2 Report and SOS as pushed pages | Done | `206f644` | Back goes one step; draft in the view model |
 | S3 Attendance to Discrepancy | Done | `3b30ebe` | Tue 13 Aug dinner opens the sheet; VM tests |
 | S4 Student Search above the keyboard | Done | `a8769f6` | Menu rows above the keyboard; tab bar under it |
-| S5 Cheap empty-space audit | Pending | | |
+| S5 Cheap empty-space audit | Done | see below | 2 flagged before (Search 48%, Dish 41%); 0 after |
 | S6 Student walk | Pending | | |
 
 ## S1 Standards on every Student screen
@@ -118,6 +118,66 @@ Details form with the button in its sending state, and a separate page would let
 - Content is anchored to the top (`MLScreen`), and the scroll view dismisses the keyboard interactively.
 - The Student tab bar now ignores the keyboard's safe area (`StudentRootView`), so it stays at the bottom edge under
   the keyboard as an iOS tab bar does, instead of riding up over the results.
+
+## S5 Cheap empty-space audit
+
+Script: `docs/verification/student-standards/blank_audit.py`, a copy of `docs/verification/followups/blank_audit.py`
+(the owner's script; `~/Downloads/blank_audit.py` was not on this Mac). It reports the longest blank band between the
+header and the tab bar and flags a screen above 25%. Captures: every Student route once at 1x on iPhone 18 Pro, from
+`StudentFinalScreenshotTests/testCaptureStudentAudit` (`TEST_RUNNER_STUDENT_FINAL_SHOTS`, `TEST_RUNNER_AUDIT`), which
+this run extended with the moved pages. Output kept in `~/mealloop-captures/student-standards/audit_s1.tsv` (before,
+after S1/S2) and `audit_s5.tsv` (after S4 and S5).
+
+Flagged full-screen pages and their fixes:
+
+| Screen | Blank before | Blank after | Fix |
+|---|---|---|---|
+| Search (idle) | 48% | 8% | S4: the leading meal's dishes from the menu `StudentMealsViewModel` already loads |
+| Dish | 41% | 6% | "Also at lunch": the meal's other dishes from the menu the host already loaded (`otherDishes(than:day:slot:)`); each opens its page. Rate a dish stays pinned |
+
+Every other route was at or below 16% before and is unchanged:
+
+| Screen | Before | After |
+|---|---|---|
+| Answer | 6% | 6% |
+| Attendance | 3% | 3% |
+| Attendance with the Discrepancy sheet (sheet over a scrim, not judged) | n/a | 0% |
+| Attendance after a request | n/a | 3% |
+| Community | 6% | 6% |
+| Community, scrolled | 3% | 3% |
+| Credits | 3% | 3% |
+| Credits history | 6% | 6% |
+| Crowd | 3% | 3% |
+| Entry QR | 3% | 3% |
+| A filed report | 4% | 4% |
+| Help | 6% | 6% |
+| Home | 7% | 7% |
+| Community issue | 4% | 4% |
+| Meals | 3% | 3% |
+| Meals, scrolled | 3% | 3% |
+| My feedback | 3% | 3% |
+| My reports | 4% | 4% |
+| New outing | 3% | 3% |
+| Notifications | 6% | 6% |
+| An outing request | 3% | 3% |
+| Outing sent | 3% | 3% |
+| Outings | 4% | 4% |
+| Special pass | 5% | 5% |
+| Special pass, request for next week | 5% | 5% |
+| Privacy & data | 4% | 4% |
+| How was lunch? | 16% | 16% |
+| Report · What's wrong | 4% | 4% |
+| Report · Details | 4% | 4% |
+| Report · Receipt | 4% | 4% |
+| SOS · Sent | 14% | 14% |
+| Spending | 6% | 6% |
+| You | 4% | 4% |
+| You, scrolled | 4% | 4% |
+
+The "scrolled" captures did not scroll in the hosted test window (they match the unscrolled ones), so the title
+collapse on those tab roots was checked in the S6 walk instead.
+
+Test added: `StudentMealsScreensTests.testTheDishPageListsTheRestOfItsMealFromTheLoadedMenu`.
 
 ## Validation so far
 
