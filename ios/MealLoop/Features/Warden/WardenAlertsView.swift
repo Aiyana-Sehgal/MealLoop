@@ -10,7 +10,9 @@ enum WardenAlertsCopy {
     static let escalated = "Escalated to the senior warden"
     static let overdue = "Overdue return"
     static func decideBy(_ student: String, _ when: String) -> String { "\(student) · decide by \(when)" }
-    static func missed(_ student: String) -> String { "\(student) · past the reply time" }
+    static func missed(_ student: String, _ when: String?) -> String {
+        when.map { "\(student) · missed \($0)" } ?? "\(student) · past the reply time"
+    }
     static func lateBack(_ student: String, _ when: String) -> String { "\(student) · back by \(when)" }
     static let none = "Nothing needs you right now."
 }
@@ -34,8 +36,9 @@ enum WardenAlerts {
                                detail: WardenAlertsCopy.decideBy(name(item), OutingFormat.dayHour(by)), time: by)
         }
         let escalations = escalated.map { item in
-            WardenAlert(id: "escalated-\(item.id.rawValue)", kind: .escalated, title: WardenAlertsCopy.escalated,
-                        detail: WardenAlertsCopy.missed(name(item)), time: item.wardenDecideBy ?? item.guardianReplyBy)
+            let missedAt = item.wardenDecideBy ?? item.guardianReplyBy
+            return WardenAlert(id: "escalated-\(item.id.rawValue)", kind: .escalated, title: WardenAlertsCopy.escalated,
+                               detail: WardenAlertsCopy.missed(name(item), missedAt.map(OutingFormat.dayHour)), time: missedAt)
         }
         let overdue = outNow.filter { $0.isLate(at: now) }.compactMap { item -> WardenAlert? in
             guard let back = item.returnBy else { return nil }
@@ -72,12 +75,10 @@ struct WardenAlertsScreen: View {
 
     private func row(_ alert: WardenAlert, isLast: Bool) -> some View {
         HStack(alignment: .top, spacing: MLSpacing.s12) {
-            Image(systemName: alert.kind == .overdue ? "clock" : alert.kind == .escalated ? "exclamationmark.triangle" : "hourglass")
-                .font(MLType.bodyEmphasis)
-                .foregroundStyle(alert.kind == .overdue ? MLColor.ink : MLColor.lime)
+            // W-6 marks every row with the Orbit mark on a quiet tile.
+            OrbitMarkView()
                 .frame(width: 40, height: 40)
-                .background(RoundedRectangle(cornerRadius: MLRadius.icon, style: .continuous)
-                    .fill(alert.kind == .overdue ? MLColor.fillQuiet : MLColor.ink))
+                .background(RoundedRectangle(cornerRadius: MLRadius.icon, style: .continuous).fill(MLColor.fillQuiet))
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(alert.title).mlFont(.staffBody).fontWeight(.semibold).foregroundStyle(MLColor.ink)

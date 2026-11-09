@@ -114,6 +114,7 @@ final class OutingScreenshotTests: XCTestCase {
 
         var model = await world.wardenModel()
         try await shot("W01_warden_decide_with_video", world) { warden(model) }
+        try await shot("W6_warden_alerts", world) { warden(model, route: .alerts) }
 
         model = await world.wardenModel()
         await model.focus(on: OutingSeed.meeraRequest.id)
