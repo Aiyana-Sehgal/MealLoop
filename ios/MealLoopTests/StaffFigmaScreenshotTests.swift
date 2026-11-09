@@ -246,6 +246,42 @@ final class StaffFigmaScreenshotTests: XCTestCase {
         try await shot("2531_5101", during) { desk(during) }
     }
 
+    // MARK: Kitchen (Prompt 4 spacing audit; named by screen, not node id)
+
+    private func kitchen(_ world: World, tab: StaffTab = .home) -> some View {
+        world.router.selectedStaffTab = tab
+        return KitchenRootView(session: world.session)
+    }
+
+    func testKitchenHomeAlertsAndMe() async throws {
+        let before = World(.beforeMeal, role: .kitchenStaff)
+        before.at(11, 50)
+        try await shot("kitchen_home_before", before) { kitchen(before) }
+        try await shot("kitchen_alerts_before", before) { kitchen(before, tab: .alerts) }
+        try await shot("kitchen_me", before) { kitchen(before, tab: .me) }
+
+        let during = World(.duringMeal, role: .kitchenStaff)
+        during.at(12, 55)
+        try await shot("kitchen_home_during", during) { kitchen(during) }
+        try await shot("kitchen_alerts_during", during) { kitchen(during, tab: .alerts) }
+
+        try await during.close()
+        during.at(14, 5)
+        try await shot("kitchen_home_after", during) { kitchen(during) }
+    }
+
+    /// Language and Help (MS-G4, MS-G5), pushed the way Me pushes them (Prompt 4).
+    func testStaffMePages() async throws {
+        let world = World(.beforeMeal, role: .kitchenStaff)
+        try await shot("1520_122891_language", world) { NavigationStack { StaffLanguagePage() } }
+        try await shot("1520_122941_kitchen_help", world) {
+            NavigationStack { StaffHelpPage(role: "Kitchen Staff", items: StaffHelpContent.kitchen) }
+        }
+        try await shot("door_help", world) {
+            NavigationStack { StaffHelpPage(role: "Door Scanner", items: StaffHelpContent.doorScanner) }
+        }
+    }
+
     func testDeskSOS() async throws {
         let world = World(.duringMeal, role: .passDesk)
         try await world.raiseSOS()

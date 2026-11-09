@@ -467,7 +467,7 @@ struct WardenMeScreen: View {
     let onAlerts: () -> Void
 
     @State private var isSigningOut = false
-    @State private var sheet: StaffMeSheet?
+    @State private var page: StaffMePage?
 
     var body: some View {
         WardenPushedPage(title: WardenCopy.meTitle, subtitle: nil, onBack: onBack) {
@@ -499,7 +499,7 @@ struct WardenMeScreen: View {
             }
             VStack(spacing: 0) {
                 QuietRow(title: WardenCopy.alerts, action: onAlerts)
-                QuietRow(title: WardenCopy.help) { sheet = .help }
+                QuietRow(title: WardenCopy.help) { page = .help }
                 Button {
                     isSigningOut = true
                 } label: {
@@ -519,9 +519,7 @@ struct WardenMeScreen: View {
             router.reset()
             sessionStore.signOut()
         }
-        .mlSheet(item: $sheet) { _ in
-            StaffHelpSheet(items: StaffHelpContent.warden) { sheet = nil }
-        }
+        .staffMePages($page, role: WardenCopy.roleName, help: StaffHelpContent.warden)
     }
 
     private func hours(_ profile: WardenProfile) -> String? {

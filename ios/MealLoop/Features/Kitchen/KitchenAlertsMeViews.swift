@@ -161,7 +161,7 @@ struct KitchenMeView: View {
     @Environment(SessionStore.self) private var sessionStore
     let session: StaffSession
     let open: (KitchenRoute) -> Void
-    @State private var sheet: StaffMeSheet?
+    @State private var page: StaffMePage?
 
     var body: some View {
         ZStack {
@@ -179,8 +179,8 @@ struct KitchenMeView: View {
                         // Switch role needs a decision on who may hold two roles (Needs a decision); the row says so.
                         QuietRow(title: KitchenCopy.switchRole, value: StaffMeCopy.notAvailableYet) {}
                             .disabled(true)
-                        QuietRow(title: KitchenCopy.language, value: KitchenCopy.english) { sheet = .language }
-                        QuietRow(title: KitchenCopy.help) { sheet = .help }
+                        QuietRow(title: KitchenCopy.language, value: KitchenCopy.english) { page = .language }
+                        QuietRow(title: KitchenCopy.help) { page = .help }
                         signOutRow
                     }
                 }
@@ -188,12 +188,7 @@ struct KitchenMeView: View {
                 .padding(.bottom, KitchenLayout.scrollBottomInset)
             }
         }
-        .mlSheet(item: $sheet) { page in
-            switch page {
-            case .language: StaffLanguageSheet { sheet = nil }
-            case .help: StaffHelpSheet(items: StaffHelpContent.kitchen) { sheet = nil }
-            }
-        }
+        .staffMePages($page, role: MLFormat.roleName(session.role), help: StaffHelpContent.kitchen)
     }
 
     private var profile: some View {

@@ -147,11 +147,19 @@ struct PassDeskMeView: View {
     @Environment(SessionStore.self) private var sessionStore
     let model: PassDeskHomeViewModel
     let problems: PassDeskProblemLog
-    @State private var sheet: StaffMeSheet?
+    @State private var page: StaffMePage?
 
     private var session: StaffSession { model.session }
 
     var body: some View {
+        NavigationStack {
+            content
+                .toolbar(.hidden, for: .navigationBar)
+                .staffMePages($page, role: MLFormat.roleName(session.role), help: StaffHelpContent.passDesk)
+        }
+    }
+
+    private var content: some View {
         ZStack {
             OrbitBackground()
             ScrollView {
@@ -169,19 +177,13 @@ struct PassDeskMeView: View {
                     }
                     VStack(spacing: 0) {
                         Rectangle().fill(MLColor.border).frame(height: 1)
-                        StaffMeRow(title: PassDeskCopy.language, value: PassDeskCopy.english) { sheet = .language }
-                        StaffMeRow(title: PassDeskCopy.help) { sheet = .help }
+                        StaffMeRow(title: PassDeskCopy.language, value: PassDeskCopy.english) { page = .language }
+                        StaffMeRow(title: PassDeskCopy.help) { page = .help }
                         signOutRow
                     }
                 }
                 .padding(.horizontal, MLSpacing.margin)
                 .padding(.bottom, PassDeskLayout.scrollBottomInset)
-            }
-        }
-        .mlSheet(item: $sheet) { page in
-            switch page {
-            case .language: StaffLanguageSheet { sheet = nil }
-            case .help: StaffHelpSheet(items: StaffHelpContent.passDesk) { sheet = nil }
             }
         }
     }

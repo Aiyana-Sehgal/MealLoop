@@ -94,11 +94,19 @@ struct DoorMeView: View {
     @Environment(SessionStore.self) private var sessionStore
     let model: DoorHomeViewModel
     let problems: DoorProblemLog
-    @State private var sheet: StaffMeSheet?
+    @State private var page: StaffMePage?
 
     private var session: StaffSession { model.session }
 
     var body: some View {
+        NavigationStack {
+            content
+                .toolbar(.hidden, for: .navigationBar)
+                .staffMePages($page, role: MLFormat.roleName(session.role), help: StaffHelpContent.doorScanner)
+        }
+    }
+
+    private var content: some View {
         ZStack {
             OrbitBackground()
             ScrollView {
@@ -116,19 +124,13 @@ struct DoorMeView: View {
                     }
                     VStack(spacing: 0) {
                         Rectangle().fill(MLColor.border).frame(height: 1)
-                        StaffMeRow(title: DoorScannerCopy.language, value: DoorScannerCopy.english) { sheet = .language }
-                        StaffMeRow(title: DoorScannerCopy.help) { sheet = .help }
+                        StaffMeRow(title: DoorScannerCopy.language, value: DoorScannerCopy.english) { page = .language }
+                        StaffMeRow(title: DoorScannerCopy.help) { page = .help }
                         signOutRow
                     }
                 }
                 .padding(.horizontal, MLSpacing.margin)
                 .padding(.bottom, DoorLayout.scrollBottomInset)
-            }
-        }
-        .mlSheet(item: $sheet) { page in
-            switch page {
-            case .language: StaffLanguageSheet { sheet = nil }
-            case .help: StaffHelpSheet(items: StaffHelpContent.doorScanner) { sheet = nil }
             }
         }
     }
