@@ -161,6 +161,7 @@ struct AdminPageDestination: View {
             case .redemptions: AdminRedemptionsScreen(nav: nav)
             }
         }
-        .toolbar(.hidden, for: .navigationBar)
+        // Pages on `AdminPageScaffold` (MLScreen) keep the system bar for back and swipe-back; the two pages that draw
+        // their own back button (headcount, Edit day) hide it themselves.
     }
 }

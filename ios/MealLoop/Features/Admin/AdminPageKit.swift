@@ -1,6 +1,8 @@
 import SwiftUI
 
-/// Orbit background, Back, title and a scrolling body, as on every Admin page. The tab bar stays over it.
+/// Every Admin page, on `MLScreen` (docs/SWIFTUI_STANDARDS.md): the Orbit background, the system back button with the
+/// interactive swipe-back on a pushed page, a large title that collapses into the bar as the page scrolls, and clearance
+/// for the floating tab bar. `onBack` is kept for callers; the system back button pops the page.
 struct AdminPageScaffold<Content: View>: View {
     let title: String
     var subtitle: String?
@@ -8,35 +10,13 @@ struct AdminPageScaffold<Content: View>: View {
     @ViewBuilder let content: Content
 
     var body: some View {
-        ZStack {
-            OrbitBackground()
-            ScrollView {
-                VStack(alignment: .leading, spacing: MLSpacing.s16) {
-                    if let onBack {
-                        AdminBackButton(action: onBack)
-                    } else {
-                        Color.clear.frame(height: MLSize.hit)
-                    }
-                    VStack(alignment: .leading, spacing: MLSpacing.s4) {
-                        Text(title)
-                            .font(MLType.largeTitle)
-                            .foregroundStyle(MLColor.ink)
-                            .accessibilityAddTraits(.isHeader)
-                        if let subtitle {
-                            Text(subtitle)
-                                .font(MLType.body)
-                                .foregroundStyle(MLColor.inkSecondary)
-                        }
-                    }
-                    .padding(.top, -MLSpacing.s8)
-                    content
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, MLSpacing.margin)
-                .padding(.bottom, AdminLayout.scrollBottomInset)
+        MLScreen(title, subtitle: subtitle, bottomClearance: .tabBar) {
+            VStack(alignment: .leading, spacing: MLSpacing.s16) {
+                content
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, MLSpacing.s8)
         }
-        .toolbar(.hidden, for: .navigationBar)
     }
 }
 
