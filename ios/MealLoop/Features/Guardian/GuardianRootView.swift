@@ -42,8 +42,11 @@ struct GuardianPageView: View {
     var recordElapsed = 0
     var photoTyped = ""
     var photoCode = ""
+    /// Screenshot runs pass a pushed page (G-5, G-6) to show.
+    var initialInfo: GuardianInfoPage?
 
     @State private var holder: GuardianModel?
+    @State private var infoPath: [GuardianInfoPage] = []
     @State private var sheet: GuardianSheet?
     @State private var rejectReason: String?
     @State private var changeFields: Set<String> = []
@@ -51,13 +54,22 @@ struct GuardianPageView: View {
     var model: GuardianModel { holder ?? GuardianModel(account: account, repository: RemoteOutingCaseRepository()) }
 
     var body: some View {
-        Group {
-            if holder != nil {
-                content
-            } else {
-                ZStack {
-                    OrbitBackground()
-                    ProgressView()
+        NavigationStack(path: $infoPath) {
+            Group {
+                if holder != nil {
+                    content
+                } else {
+                    ZStack {
+                        OrbitBackground()
+                        ProgressView()
+                    }
+                }
+            }
+            .toolbar(.hidden, for: .navigationBar)
+            .navigationDestination(for: GuardianInfoPage.self) { page in
+                switch page {
+                case .notifications: GuardianNotificationsPage(model: model)
+                case .help: GuardianHelpPage(model: model)
                 }
             }
         }
@@ -75,6 +87,7 @@ struct GuardianPageView: View {
                 if initialSheet == .askToChange { changeFields = ["Time"] }
                 sheet = initialSheet
             }
+            if let initialInfo { infoPath = [initialInfo] }
         }
         .mlSheet(isPresented: Binding(get: { sheet != nil }, set: { if !$0 { sheet = nil } })) {
             GuardianSheetView(model: model, sheet: sheet, rejectReason: $rejectReason, changeFields: $changeFields) {
@@ -198,8 +211,8 @@ struct GuardianPageView: View {
         } footer: {
             GuardianFootnote(text: GuardianCopy.videosDeleted)
             HStack(spacing: MLSpacing.s32) {
-                TextLinkButton(title: GuardianCopy.messages) {}.disabled(true).opacity(0.45)
-                TextLinkButton(title: GuardianCopy.help) {}.disabled(true).opacity(0.45)
+                TextLinkButton(title: GuardianCopy.messages) { infoPath.append(.notifications) }
+                TextLinkButton(title: GuardianCopy.help) { infoPath.append(.help) }
             }
             TextLinkButton(title: GuardianCopy.backToRequest) { model.backFromPastAnswers() }
         }

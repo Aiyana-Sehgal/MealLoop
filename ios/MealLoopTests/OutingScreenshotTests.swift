@@ -337,6 +337,18 @@ final class OutingScreenshotTests: XCTestCase {
         try await shot("GA3_guardian_done", world) { entry([.activate, .confirmLink, .done]) }
     }
 
+    func testCaptureGuardianNotificationsAndHelp() async throws {
+        let world = World()
+        try await world.guardianAcceptsByVideo()
+        let model = await guardianModel(world)
+        try await shot("G5_guardian_notifications", world) {
+            GuardianPageView(account: OutingSeed.guardianAccount, preparedModel: model, initialInfo: .notifications)
+        }
+        try await shot("G6_guardian_help", world) {
+            GuardianPageView(account: OutingSeed.guardianAccount, preparedModel: model, initialInfo: .help)
+        }
+    }
+
     func testCaptureGuardianChooseAndSheets() async throws {
         let world = World()
         var model = await guardianModel(world)
