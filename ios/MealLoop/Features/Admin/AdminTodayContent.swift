@@ -160,6 +160,8 @@ struct AdminTodayContent: Equatable {
 
     var visibleShortages: [Shortage] { Array((meal?.shortages ?? []).prefix(Self.needsYouLimit)) }
     var hasMoreShortages: Bool { (meal?.shortages.count ?? 0) > Self.needsYouLimit }
+    /// More rows wait than Today shows: See all opens the full list.
+    var hasMoreNeedsYou: Bool { (meal?.shortages.count ?? 0) + reviewMeals.count > Self.needsYouLimit }
     /// Review rows fill what the shortages leave, so Today never holds more than the limit.
     var visibleReviews: [ReviewMeal] { Array(reviewMeals.prefix(max(Self.needsYouLimit - visibleShortages.count, 0))) }
 

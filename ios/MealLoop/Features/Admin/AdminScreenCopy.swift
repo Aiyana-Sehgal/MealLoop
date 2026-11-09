@@ -469,6 +469,9 @@ enum AdminScreenCopy {
     static func seeAllCount(_ count: Int) -> String { "See all · \(count)" }
     /// Said by a control the frame draws but the prototype has no page for.
     static let notInPrototype = "This isn't part of this prototype."
+    static func historyNotHeld(_ held: Int, _ total: Int) -> String {
+        "The record holds the last \(held) of today's \(total) entries."
+    }
     static let unsureMark = "(?)"
     static let dateLabel = "Date"
     static let safetyCasesSubtitle = "Last 4 weeks · all messes"

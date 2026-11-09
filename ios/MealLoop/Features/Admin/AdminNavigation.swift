@@ -27,6 +27,11 @@ enum AdminPage: Hashable {
     case outings
     case messHeadcount(String, MealSlot)
     case notAnswered
+    /// Menu votes › New proposals, and one proposal.
+    case proposals
+    case proposal(String)
+    /// Rewards › Redemptions.
+    case redemptions
 }
 
 /// What a page needs from its tab: who is signed in, how to move, and how to show a toast.

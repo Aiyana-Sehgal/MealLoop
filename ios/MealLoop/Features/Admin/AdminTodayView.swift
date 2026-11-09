@@ -64,6 +64,8 @@ struct AdminTodayView: View {
                 AdminLiveMealView(model: model, nav: nav)
             case .page(let page):
                 AdminPageDestination(page: page, nav: nav)
+            case .needsYou:
+                AdminNeedsYouView(model: model, nav: nav) { path.append($0) }
             case .notImplemented(let title):
                 NotImplementedView(title: title)
             }
@@ -150,8 +152,8 @@ struct AdminTodayBody: View {
                 HStack {
                     AdminLabel(text: AdminCopy.needsYou)
                     Spacer()
-                    if content.hasMoreShortages {
-                        TextLinkButton(title: AdminCopy.seeAll) { open(.live) }
+                    if content.hasMoreNeedsYou {
+                        TextLinkButton(title: AdminCopy.seeAll) { open(.needsYou) }
                     }
                 }
                 .padding(.bottom, 6)
@@ -190,6 +192,42 @@ struct AdminTodayBody: View {
         .accessibilityValue(chip)
         .overlay(alignment: .top) {
             Rectangle().fill(MLColor.border).frame(height: 1)
+        }
+    }
+}
+
+/// Today › See all: every shortage and review waiting for the admin, as hairline rows with their chips. Fills the
+/// screen with the list; one honest line when nothing is waiting.
+struct AdminNeedsYouView: View {
+    let model: AdminTodayViewModel
+    let nav: AdminNav
+    let open: (AdminRoute) -> Void
+
+    var body: some View {
+        AdminPageScaffold(title: AdminVotesRewardsCopy.needsYouTitle, onBack: nav.pop) {
+            if let content = model.state.value {
+                let mealName = MLFormat.mealSlot(content.selectedSlot)
+                let shortages = content.meal?.shortages ?? []
+                if shortages.isEmpty && content.reviewMeals.isEmpty {
+                    Text(AdminVotesRewardsCopy.nothingNeedsYou).mlFont(.body).foregroundStyle(MLColor.inkSecondary)
+                }
+                VStack(spacing: 0) {
+                    ForEach(shortages) { shortage in
+                        AdminRow(title: AdminCopy.needsYouTitle(dish: shortage.dishName, level: MLFormat.shortageLevel(shortage.level)),
+                                 detail: AdminCopy.needsYouDetail(mess: content.mess.name, meal: mealName),
+                                 showsChevron: false, action: { open(.live) }) {
+                            AdminChip(text: AdminCopy.liveAction, style: .lime)
+                        }
+                    }
+                    ForEach(content.reviewMeals) { review in
+                        AdminRow(title: AdminCopy.reviewTitle(review.meal),
+                                 detail: AdminCopy.reviewDetail(review.meal, in: content.mess.timeZone),
+                                 showsChevron: false, action: { open(.page(.meal(review.id))) }) {
+                            AdminChip(text: AdminScreenCopy.review, style: .outline)
+                        }
+                    }
+                }
+            }
         }
     }
 }

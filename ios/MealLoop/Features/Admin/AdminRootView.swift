@@ -20,6 +20,8 @@ enum AdminRoute: Hashable {
     case headcount
     case live
     case page(AdminPage)
+    /// Today › See all: every row that needs the admin (admin_today_01_see_all in the design brief).
+    case needsYou
     case notImplemented(title: String)
 }
 
@@ -142,6 +144,9 @@ struct AdminPageDestination: View {
             case .outings: AdminOutingsScreen(nav: nav)
             case .messHeadcount(let id, let slot): AdminMessHeadcountScreen(id: id, slot: slot, nav: nav)
             case .notAnswered: AdminNotAnsweredScreen(nav: nav)
+            case .proposals: AdminProposalsScreen(nav: nav)
+            case .proposal(let id): AdminProposalScreen(id: id, nav: nav)
+            case .redemptions: AdminRedemptionsScreen(nav: nav)
             }
         }
         .toolbar(.hidden, for: .navigationBar)

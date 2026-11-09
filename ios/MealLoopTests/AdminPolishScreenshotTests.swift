@@ -89,5 +89,16 @@ final class AdminPolishScreenshotTests: XCTestCase {
                               nav: world.nav, remindOpen: true)
         }
     }
+
+    func testCaptureBuiltPages() async throws {
+        let world = try await world(.duringMeal)
+        try await shot("votes_2277-2081", world) { AdminVotesScreen(nav: world.nav) }
+        try await shot("proposals", world) { AdminProposalsScreen(nav: world.nav) }
+        try await shot("proposal_detail", world) { AdminProposalScreen(id: "demo-proposal-dosa-fridays", nav: world.nav) }
+        try await shot("redemptions", world) { AdminRedemptionsScreen(nav: world.nav) }
+        let today = AdminTodayViewModel(context: world.context, repositories: world.env.repositories, clock: world.core.clock)
+        await today.load()
+        try await shot("today_see_all", world, tab: "Today") { AdminNeedsYouView(model: today, nav: world.nav) { _ in } }
+    }
 }
 #endif

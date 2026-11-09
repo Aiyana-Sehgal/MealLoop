@@ -249,10 +249,9 @@ struct AdminPassesScreen: View {
                         }
                         .frame(maxWidth: .infinity)
                     }
+                    // The request is shown as the record holds it; deciding a pass request is not in this brief.
                     AdminCard {
-                        Button {
-                            nav.toast(AdminScreenCopy.notInPrototype)
-                        } label: {
+                        Group {
                             HStack(spacing: MLSpacing.s8) {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(page.requestName)
@@ -264,11 +263,9 @@ struct AdminPassesScreen: View {
                                 }
                                 Spacer(minLength: MLSpacing.s8)
                                 AdminChip(text: page.requestStatus, style: .filled, isSmall: true)
-                                AdminChevron()
                             }
-                            .contentShape(Rectangle())
+                            .accessibilityElement(children: .combine)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -279,6 +276,9 @@ struct AdminPassesScreen: View {
 struct AdminVotesScreen: View {
     @Environment(AppEnvironment.self) private var environment
     let nav: AdminNav
+    @State private var showsRules = false
+    @State private var decideSubject: String?
+    @State private var votesModel: AdminVotesModel?
 
     var body: some View {
         let more = environment.repositories.adminMore
@@ -286,7 +286,10 @@ struct AdminVotesScreen: View {
             AdminLoadedPage(model: AdminPageModel { try await more.votes() }, timeZone: nav.timeZone) { page, _ in
                 VStack(alignment: .leading, spacing: MLSpacing.s12) {
                     Color.clear.frame(height: MLSpacing.s4)
-                    AdminChip(text: AdminScreenCopy.rules, symbol: "info.circle", isSmall: true)
+                    Button { showsRules = true } label: {
+                        AdminChip(text: AdminScreenCopy.rules, symbol: "info.circle", isSmall: true)
+                    }
+                    .buttonStyle(.plain)
                     HeroCard {
                         VStack(alignment: .leading, spacing: MLSpacing.s12) {
                             AdminChip(text: AdminScreenCopy.voteClosed, style: .filled, isSmall: true)
@@ -315,8 +318,13 @@ struct AdminVotesScreen: View {
                             Text(page.advice)
                                 .font(MLType.body)
                                 .foregroundStyle(MLColor.onHeroSecondary)
+                            if let decided = votesModel?.decision {
+                                Text(AdminVotesRewardsCopy.decided(decided.decision))
+                                    .mlFont(.bodyEmphasis)
+                                    .foregroundStyle(MLColor.onHero)
+                            }
                             Button {
-                                nav.toast(AdminScreenCopy.notInPrototype)
+                                decideSubject = AdminVotesRewardsCopy.decideSubject(page.closedTitle, page.forPercent)
                             } label: {
                                 Text(AdminScreenCopy.decide)
                                     .font(MLType.staffPrimary)
@@ -345,7 +353,7 @@ struct AdminVotesScreen: View {
                     }
                     AdminCard {
                         Button {
-                            nav.toast(AdminScreenCopy.notInPrototype)
+                            nav.push(.proposals)
                         } label: {
                             HStack {
                                 Text(AdminScreenCopy.newProposals(page.newProposals))
@@ -361,12 +369,40 @@ struct AdminVotesScreen: View {
                 }
             }
         }
+        .task {
+            if votesModel == nil {
+                votesModel = AdminVotesModel(repository: environment.repositories.adminVotesRewards,
+                                             role: nav.context.account.role)
+            }
+            await votesModel?.load()
+        }
+        .mlSheet(isPresented: $showsRules) {
+            AdminRulesSheet(title: AdminVotesRewardsCopy.votingRulesTitle, rules: AdminVotesRewardsCopy.votingRules) {
+                showsRules = false
+            }
+        }
+        .mlSheet(item: Binding(get: { decideSubject.map(SheetSubject.init) }, set: { decideSubject = $0?.text }),
+                 isWorking: votesModel?.isSaving ?? false) { subject in
+            if let votesModel {
+                AdminDecideSheet(model: votesModel, subject: subject.text, onSaved: {
+                    decideSubject = nil
+                    nav.toast(AdminVotesRewardsCopy.decisionLine)
+                }, onClose: { decideSubject = nil })
+            }
+        }
     }
+}
+
+/// A string as a sheet item.
+struct SheetSubject: Identifiable {
+    let text: String
+    var id: String { text }
 }
 
 struct AdminRewardsScreen: View {
     @Environment(AppEnvironment.self) private var environment
     let nav: AdminNav
+    @State private var showsRules = false
 
     var body: some View {
         let more = environment.repositories.adminMore
@@ -374,10 +410,16 @@ struct AdminRewardsScreen: View {
             AdminLoadedPage(model: AdminPageModel { try await more.rewards() }, timeZone: nav.timeZone) { page, _ in
                 VStack(alignment: .leading, spacing: MLSpacing.s12) {
                     Color.clear.frame(height: MLSpacing.s4)
-                    AdminChip(text: AdminScreenCopy.rules, symbol: "info.circle", isSmall: true)
+                    Button { showsRules = true } label: {
+                        AdminChip(text: AdminScreenCopy.rules, symbol: "info.circle", isSmall: true)
+                    }
+                    .buttonStyle(.plain)
                     HStack(spacing: MLSpacing.s8) {
                         AdminChip(text: AdminScreenCopy.catalogue, style: .ink, isSmall: true)
-                        AdminChip(text: AdminScreenCopy.redemptions, isSmall: true)
+                        Button { nav.push(.redemptions) } label: {
+                            AdminChip(text: AdminScreenCopy.redemptions, isSmall: true)
+                        }
+                        .buttonStyle(.plain)
                     }
                     HeroCard {
                         HStack(spacing: MLSpacing.s16) {
@@ -412,6 +454,11 @@ struct AdminRewardsScreen: View {
                         AdminRewardTicket(reward: reward)
                     }
                 }
+            }
+        }
+        .mlSheet(isPresented: $showsRules) {
+            AdminRulesSheet(title: AdminVotesRewardsCopy.rewardRulesTitle, rules: AdminVotesRewardsCopy.rewardRules) {
+                showsRules = false
             }
         }
     }
@@ -464,22 +511,8 @@ struct AdminSpareFoodScreen: View {
                             }
                         }
                     }
+                    // The steps are drawn above; the record holds no dish list, so there is no page to open.
                     AdminNote(text: page.note)
-                    AdminCard {
-                        Button {
-                            nav.toast(AdminScreenCopy.notInPrototype)
-                        } label: {
-                            HStack {
-                                Text(AdminScreenCopy.seeDishesAndSteps)
-                                    .font(MLType.staffPrimary)
-                                    .foregroundStyle(MLColor.ink)
-                                Spacer()
-                                AdminChevron()
-                            }
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                    }
                 }
             }
         }
@@ -517,20 +550,11 @@ struct AdminHistoryScreen: View {
                             }
                         }
                     }
-                    AdminCard {
-                        Button {
-                            nav.toast(AdminScreenCopy.notInPrototype)
-                        } label: {
-                            HStack {
-                                Text(AdminScreenCopy.seeAllCount(page.entriesToday))
-                                    .font(MLType.staffBody)
-                                    .foregroundStyle(MLColor.ink)
-                                Spacer()
-                                AdminChevron()
-                            }
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
+                    // The page lists every entry the record holds; when it holds fewer than today's count, it says so.
+                    if page.lines.count < page.entriesToday {
+                        Text(AdminScreenCopy.historyNotHeld(page.lines.count, page.entriesToday))
+                            .mlFont(.secondary)
+                            .foregroundStyle(MLColor.inkSecondary)
                     }
                 }
             }
@@ -671,7 +695,7 @@ struct AdminOutingsScreen: View {
                 }
                 VStack(spacing: 0) {
                     ForEach(page.lines) { line in
-                        AdminRow(title: line.title, detail: line.detail, action: { nav.toast(AdminScreenCopy.notInPrototype) }) {
+                        AdminRow(title: line.title, detail: line.detail, showsChevron: false, action: nil) {
                             if let count = line.count {
                                 Text("\(count)")
                                     .font(MLType.monoBody)
