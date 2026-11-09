@@ -15,10 +15,9 @@ actor DemoPeopleStore {
         Mess(id: MessID("demo-\($0.lowercased())-mess"), name: $0 == "Annexe" ? $0 : "\($0) Mess", timeZoneIdentifier: "Asia/Kolkata")
     }
     private func require(_ session: Session) throws {
-        // Owner decision (9 November): the Food Head (admin) manages people and access as the Super Admin does.
-        guard session.account.role == .superAdmin || session.account.role == .admin,
+        guard session.account.role == .superAdmin,
               accounts.contains(where: { $0 == session.account }) else {
-            throw RepositoryError.notAllowed(reason: "Only the Admin manages people and access.")
+            throw RepositoryError.notAllowed(reason: "Only the Super Admin manages people and access.")
         }
     }
     private func index(_ id: AccountID) throws -> Int {

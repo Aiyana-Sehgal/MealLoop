@@ -22,11 +22,10 @@ final class PeopleAccessTests: XCTestCase {
         let directory = try await people.directory(by: session(.superAdmin))
         XCTAssertFalse(String(reflecting: directory).contains(given.value))
     }
-    func testEveryRoleButTheAdminCannotManagePeople() async throws {
+    func testFoodHeadAndEveryOtherRoleCannotManagePeople() async throws {
         let core = DemoDataProvider()
         let people = core.makeRepositories().people
-        _ = try await people.directory(by: session(.admin))
-        for role in Role.allCases where role != .superAdmin && role != .admin {
+        for role in Role.allCases where role != .superAdmin {
             do { _ = try await people.directory(by: session(role)); XCTFail("Allowed \(role)") } catch { guard case RepositoryError.notAllowed = error else { return XCTFail("Wrong error") } }
             do { _ = try await people.givePassword(to: account(.doorScanner).id, by: session(role)); XCTFail("Allowed give") } catch {}
             do { try await people.revokePassword(of: account(.doorScanner).id, by: session(role)); XCTFail("Allowed revoke") } catch {}

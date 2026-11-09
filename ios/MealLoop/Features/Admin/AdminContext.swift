@@ -4,8 +4,7 @@ import Foundation
 struct AdminContext: Equatable, Sendable {
     let account: Account
     let mess: Mess
-    /// Owner decision (9 November): Admin and Super Admin are one role, so the Food Head sees every mess too.
-    var allMesses: Bool { account.role == .superAdmin || account.role == .admin }
+    var allMesses: Bool { account.role == .superAdmin }
     var canManagePeople: Bool { allMesses }
 
     init?(session: Session) {

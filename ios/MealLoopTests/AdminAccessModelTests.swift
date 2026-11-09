@@ -3,19 +3,18 @@ import XCTest
 
 @MainActor final class AdminAccessModelTests: XCTestCase {
     private func session(_ role: Role) -> Session { Session(account: DemoSeed.accounts.first { $0.role == role }!, staff: nil) }
-    /// Owner decision (9 November): Admin and Super Admin are one role, so the Food Head sees every mess and manages people.
-    func testFoodHeadSeesAllMessesAndPeopleLikeTheSuperAdmin() async throws {
+    func testFoodHeadOnlyOwnMessAndNoPeople() async throws {
         let core = DemoDataProvider()
         let context = try XCTUnwrap(AdminContext(session: session(.admin)))
-        XCTAssertTrue(context.allMesses)
-        XCTAssertTrue(context.canManagePeople)
+        XCTAssertFalse(context.allMesses)
+        XCTAssertFalse(context.canManagePeople)
         let model = AdminTodayViewModel(context: context, repositories: core.makeRepositories().scopedAdmin(session(.admin), mess: context.mess), clock: core.clock)
         await model.load()
-        XCTAssertNotNil(model.state.value?.otherMesses, "The same four-mess Today as the Super Admin.")
+        XCTAssertNil(model.state.value?.otherMesses)
         XCTAssertEqual(model.state.value?.mess.id, DemoSeed.mess.id)
         let access = AdminAccessModel(session: session(.admin), repository: core.makeRepositories().people)
         await access.load()
-        XCTAssertNotNil(access.state.value)
+        XCTAssertNil(access.state.value)
     }
     func testInvitedFoodHeadGetsAssignedMessWithoutMainFallback() async throws {
         let core = DemoDataProvider()
@@ -25,11 +24,15 @@ import XCTest
         let given = try await people.invite(name: "Sample name", contact: "new-head@mealloop.example", role: .admin, mess: north.id, by: session(.superAdmin))
         let signedIn = try await core.signInStaff(email: given.person.account.email, password: given.value)
         let context = try XCTUnwrap(AdminContext(session: signedIn))
-        XCTAssertEqual(context.mess.id, north.id, "The account keeps its assigned mess.")
-        XCTAssertTrue(context.allMesses, "Owner decision (9 November): every Food Head has the all-mess scope.")
+        XCTAssertEqual(context.mess.id, north.id)
+        XCTAssertFalse(context.allMesses)
         let repos = core.makeRepositories().scopedAdmin(signedIn, mess: north)
-        let main = try await repos.mealState.currentMeal(for: DemoSeed.mess.id)
-        XCTAssertEqual(main?.meal.messID, DemoSeed.mess.id, "Main is read as Main, never passed off as North.")
+        let today = AdminTodayViewModel(context: context, repositories: repos, clock: core.clock)
+        await today.load()
+        XCTAssertNil(today.state.value, "No North live data must not become Main data")
+        guard case .failed = today.state else { return XCTFail("Missing live source must say unavailable, not that no meal exists") }
+        do { _ = try await repos.mealState.currentMeal(for: DemoSeed.mess.id); XCTFail("Main live-read leak") } catch {}
+        do { _ = try await repos.headcount.headcount(for: DemoSeed.lunch.id); XCTFail("Main leak") } catch {}
     }
     func testSuperAdminAllMessContextAndPasswordDismissal() async throws {
         let core = DemoDataProvider()
