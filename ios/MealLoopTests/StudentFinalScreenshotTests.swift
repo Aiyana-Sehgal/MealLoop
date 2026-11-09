@@ -214,11 +214,11 @@ final class StudentFinalScreenshotTests: XCTestCase {
             StudentPassScreen(session: world.session) {}
                 .studentPushedPage(usesSystemBar: false)
         }
-        try await shot("pass_use_now_sheet", world, tab: .home, wait: 2) {
+        try await shot("pass_hold_sheet", world, tab: .home, wait: 2) {
             StudentPassScreen(session: world.session) {}
                 .studentPushedPage(usesSystemBar: false)
                 .mlSheet(isPresented: .constant(true)) {
-                    PassUseNowSheet(phase: .holding, refusal: nil, onUse: {}, onNotYet: {})
+                    PassHoldSheet(phase: .holding, refusal: nil, tracker: PassHoldTracker(), onUse: {}, onCancel: {})
                 }
         }
         try await shot("pass_available_largest_text", world, tab: .home, largestText: true) {

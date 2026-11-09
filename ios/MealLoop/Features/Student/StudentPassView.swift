@@ -43,6 +43,7 @@ struct StudentPassView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var model: StudentPassViewModel
     @State private var confirming = false
+    @State private var hold = PassHoldTracker()
     let onOpenCrowd: (() -> Void)?
     let onBack: () -> Void
 
@@ -77,13 +78,13 @@ struct StudentPassView: View {
                 await model.tick()
             }
         }
-        // Redrawn use flow (StudentPassUseFlow.swift): two explicit buttons, no press-and-hold.
-        .mlSheet(isPresented: $confirming, isWorking: model.phase == .sending) {
-            PassUseNowSheet(phase: model.phase, refusal: model.holdError, onUse: {
+        // Owner decision (9 November): the pass keeps hold-to-use, in a compact sheet (StudentPassUseFlow.swift).
+        .mlSheet(isPresented: $confirming, isWorking: model.phase == .sending, onDismiss: { hold.reset() }) {
+            PassHoldSheet(phase: model.phase, refusal: model.holdError, tracker: hold, onUse: {
                 Task {
                     if await model.confirmHold() { confirming = false }
                 }
-            }, onNotYet: { confirming = false })
+            }, onCancel: { confirming = false })
         }
     }
 
