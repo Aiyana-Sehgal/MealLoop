@@ -174,6 +174,7 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
     private nonisolated let studentSpendingStore = DemoStudentSpendingStore()
     private nonisolated let adminVotesRewardsStore = DemoAdminVotesRewardsStore()
     private nonisolated let rewardCatalogueStore = DemoRewardCatalogueStore()
+    private nonisolated let passRequestStore = DemoPassRequestStore()
     private nonisolated let studentRewardsStore = DemoStudentRewardsStore()
     private nonisolated let feedbackRatingStore = DemoFeedbackRatingStore()
     /// The instant the live pass code is read at, shared by the Student pass and the Pass Desk.
@@ -209,6 +210,7 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
                             studentSpending: DemoStudentSpending(core: self, store: studentSpendingStore),
                             adminVotesRewards: DemoAdminVotesRewards(core: self, store: adminVotesRewardsStore),
                             rewardCatalogue: DemoRewardCatalogue(core: self, store: rewardCatalogueStore),
+                            passRequests: DemoPassRequests(core: self, store: passRequestStore),
                             studentRewards: DemoStudentRewards(core: self, store: studentRewardsStore,
                                                                you: DemoStudentYou(core: self, store: studentYouStore, rewards: studentRewardsStore,
                                                                    catalogue: rewardCatalogueStore)),

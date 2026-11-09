@@ -178,6 +178,8 @@ struct Repositories: Sendable {
     var adminVotesRewards: any AdminVotesRewardsRepository = UnavailableAdminVotesRewards()
     /// Defaulted, so every existing caller stays as it was. Rewards the Admin adds and deletes; Credits reads them.
     var rewardCatalogue: any RewardCatalogueRepository = UnavailableRewardCatalogue()
+    /// Defaulted, so every existing caller stays as it was. Requests for next week's Special pass.
+    var passRequests: any PassRequestRepository = UnavailablePassRequests()
     /// Defaulted, so every existing caller stays as it was. Reward tickets got with credits.
     var studentRewards: any StudentRewardsRepository = UnavailableStudentRewards()
     /// Defaulted, so every existing caller stays as it was. Good / Not good on a meal or a dish.
