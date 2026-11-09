@@ -13,6 +13,12 @@ enum AdminAccessCopy {
     static let revoked = "Revoked. They can't sign in until you give a new password."
     static let pastRecords = "Past records stay with the mess they were made in."
     static let roles: [Role] = [.admin, .supervisor, .kitchenStaff, .doorScanner, .passDesk, .warden, .gate, .vendor]
+    /// The roles the Invite sheet offers: every role from People and access, only the page's role from a role page.
+    static func inviteRoles(fixedRole: Role?) -> [Role] { fixedRole.map { [$0] } ?? roles }
+    static func inviteTitle(fixedRole: Role?) -> String {
+        fixedRole.map { "Add \(personRole($0).lowercased())" } ?? invite
+    }
+    static func fixedRoleLine(_ role: Role) -> String { "Role · \(personRole(role))" }
     static func personRole(_ role: Role) -> String {
         switch role {
         case .admin: return "Food head"
@@ -244,13 +250,19 @@ struct AdminAccessView: View {
             Text(AdminAccessCopy.cannotShowAgain).font(MLType.body).foregroundStyle(MLColor.inkSecondary)
         }
     }
+    /// The global Invite (People and access) offers every role and every mess. Opened from a role's own page it offers
+    /// only that role: preselected, shown as one line, no role chips (admin_invite_02_role_page).
     private var inviteSheet: some View {
         VStack(alignment: .leading, spacing: MLSpacing.s16) {
-            SheetHeader(title: AdminAccessCopy.invite) { sheet = nil }
+            SheetHeader(title: AdminAccessCopy.inviteTitle(fixedRole: role)) { sheet = nil }
             AdminTextField(placeholder: "Name", text: $name)
             AdminTextField(placeholder: "Phone or email", text: $contact).textInputAutocapitalization(.never).autocorrectionDisabled()
-            Text("Role").font(MLType.body).foregroundStyle(MLColor.inkSecondary)
-            AdminFlow { ForEach(AdminAccessCopy.roles) { role in ChoiceChip(title: AdminAccessCopy.personRole(role), isSelected: role == invitedRole) { invitedRole = role } } }
+            if let role {
+                Text(AdminAccessCopy.fixedRoleLine(role)).font(MLType.body).foregroundStyle(MLColor.ink)
+            } else {
+                Text("Role").font(MLType.body).foregroundStyle(MLColor.inkSecondary)
+                AdminFlow { ForEach(AdminAccessCopy.inviteRoles(fixedRole: nil)) { role in ChoiceChip(title: AdminAccessCopy.personRole(role), isSelected: role == invitedRole) { invitedRole = role } } }
+            }
             Text("Mess").font(MLType.body).foregroundStyle(MLColor.inkSecondary)
             AdminFlow { ForEach(model.state.value?.messes ?? []) { mess in ChoiceChip(title: mess.name, isSelected: selectedMess == mess.id) { selectedMess = mess.id } } }
             Text(AdminAccessCopy.cannotShowAgain).font(MLType.body).foregroundStyle(MLColor.inkSecondary)

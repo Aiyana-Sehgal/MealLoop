@@ -34,7 +34,11 @@ private struct AdminTabsView: View {
     @State private var studentsPath: [AdminPage] = []
     @State private var resultsPath: [AdminPage] = []
     @State private var morePath: [AdminPage] = []
+    @State private var searchPath: [AdminPage] = []
+    /// Where Cancel on Search returns to.
+    @State private var lastTab = RoleRoot.admin.placeholderTabs.first ?? ""
     @State private var toast: String?
+    @Environment(AppEnvironment.self) private var environment
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -45,7 +49,12 @@ private struct AdminTabsView: View {
                     }
                 }
             } else if selectedTab == RoleRoot.searchTab {
-                SearchPlaceholderView(prompt: root.searchPrompt)
+                tab($searchPath) { nav in
+                    AdminSearchView(model: AdminSearchModel(repositories: environment.repositories,
+                                                            session: Session(account: context.account, staff: nil),
+                                                            timeZone: context.mess.timeZone),
+                                    nav: nav, openToday: { selectedTab = todayTab }, onCancel: { selectedTab = lastTab })
+                }
             } else if selectedTab == studentsTab {
                 tab($studentsPath) { nav in
                     if context.allMesses { AdminStudentsScreen(nav: nav) } else { AdminSingleMessStudentsScreen(nav: nav) }
@@ -71,6 +80,9 @@ private struct AdminTabsView: View {
                 }, selection: $selectedTab, searchTab: RoleRoot.searchTab)
                 .padding(.horizontal, MLSpacing.s16)
                 .padding(.bottom, MLSpacing.s8)
+                .onChange(of: selectedTab) { old, _ in
+                    if old != RoleRoot.searchTab { lastTab = old }
+                }
             }
         }
         .mlToast(message: $toast, bottomInset: AdminLayout.tabBarClearance)

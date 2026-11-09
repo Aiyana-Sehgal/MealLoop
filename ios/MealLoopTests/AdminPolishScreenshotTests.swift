@@ -100,5 +100,25 @@ final class AdminPolishScreenshotTests: XCTestCase {
         await today.load()
         try await shot("today_see_all", world, tab: "Today") { AdminNeedsYouView(model: today, nav: world.nav) { _ in } }
     }
+
+    func testCaptureSearchAndInvite() async throws {
+        let world = try await world(.duringMeal)
+        let model = AdminSearchModel(repositories: world.env.repositories, session: world.session,
+                                     timeZone: world.context.mess.timeZone)
+        try await shot("search_empty", world, pushed: false, tab: "Today") {
+            AdminSearchView(model: model, nav: world.nav, openToday: {}, onCancel: {})
+        }
+        let typed = AdminSearchModel(repositories: world.env.repositories, session: world.session,
+                                     timeZone: world.context.mess.timeZone)
+        typed.text = "sam"
+        try await shot("search_results", world, pushed: false, tab: "Today", wait: 2) {
+            AdminSearchView(model: typed, nav: world.nav, openToday: {}, onCancel: {})
+        }
+        let access = AdminAccessModel(session: world.session, repository: world.env.repositories.people)
+        await access.load()
+        try await shot("invite_role_page", world, wait: 2) {
+            AdminAccessView(model: access, nav: world.nav, role: .doorScanner, initialSheet: .invite)
+        }
+    }
 }
 #endif
