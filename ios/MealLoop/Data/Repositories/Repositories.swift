@@ -184,4 +184,6 @@ struct Repositories: Sendable {
     var studentRewards: any StudentRewardsRepository = UnavailableStudentRewards()
     /// Defaulted, so every existing caller stays as it was. Good / Not good on a meal or a dish.
     var feedbackRatings: any FeedbackRatingRepository = UnavailableFeedbackRatings()
+    /// Defaulted, so every existing caller stays as it was. Dish feedback after Not good (2159:149347).
+    var dishFeedback: any DishFeedbackRepository = UnavailableDishFeedback()
 }

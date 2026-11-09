@@ -37,6 +37,8 @@ actor DemoStudentRecordsStore {
 struct DemoStudentRecords: StudentRecordsRepository {
     let core: DemoDataProvider
     let store: DemoStudentRecordsStore
+    /// Dish feedback the student sent in this run, listed as Reported on My feedback.
+    var dishFeedback: DemoDishFeedbackStore? = nil
 
     private func isSample(_ student: StudentID) -> Bool { student == DemoSeed.sampleStudent.id }
 
@@ -101,8 +103,13 @@ struct DemoStudentRecords: StudentRecordsRepository {
 
     func feedback(for student: StudentID) async throws -> StudentFeedbackSummary {
         try await core.requireConnection()
-        guard isSample(student) else { return StudentFeedbackSummary(items: []) }
         var items: [StudentFeedbackItem] = []
+        for receipt in await dishFeedback?.sent(by: student).reversed() ?? [] {
+            items.append(StudentFeedbackItem(id: StudentFeedbackID("sent-\(receipt.submission.key.rawValue)"),
+                                             dish: receipt.submission.dishName, problem: receipt.submission.problem,
+                                             stage: .reported, at: receipt.sentAt, fixNote: nil, recheck: nil))
+        }
+        guard isSample(student) else { return StudentFeedbackSummary(items: items) }
         for item in DemoSeed.sampleFeedback {
             let answer = await store.recheck(item.id)
             items.append(StudentFeedbackItem(id: item.id, dish: item.dish, problem: item.problem, stage: item.stage,

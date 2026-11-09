@@ -391,6 +391,8 @@ actor DemoAdminStore {
 struct DemoAdminRepositories: AdminResultsRepository, AdminStudentsRepository, AdminMoreRepository {
     let core: DemoDataProvider
     let store: DemoAdminStore
+    /// Dish feedback students sent in this run. It adds to the counts of "Feedback to act on"; never a name.
+    var dishFeedback: DemoDishFeedbackStore? = nil
 
     private func requireFoodHead(_ role: Role) throws {
         guard role == .admin else { throw RepositoryError.notAllowed(reason: "Only the Food Head can do this.") }
@@ -586,12 +588,19 @@ struct DemoAdminRepositories: AdminResultsRepository, AdminStudentsRepository, A
 
     func studentsOverview() async throws -> AdminStudentsOverview {
         try await core.requireConnection()
-        return await store.studentsOverview()
+        let overview = await store.studentsOverview()
+        guard let dishFeedback else { return overview }
+        let feedback = DemoDishFeedbackTally.merge(AdminSeed.feedback, with: await dishFeedback.sent)
+        return AdminStudentsOverview(mealTitle: overview.mealTitle, mealLongTitle: overview.mealLongTitle,
+                                     totalStudents: overview.totalStudents, yes: overview.yes, no: overview.no,
+                                     notSure: overview.notSure, reminderMessage: overview.reminderMessage,
+                                     reminderSentAt: overview.reminderSentAt, feedback: feedback, community: overview.community)
     }
 
     func feedback(_ id: FeedbackItemID) async throws -> FeedbackItem {
         try await core.requireConnection()
-        guard let item = AdminSeed.feedback.first(where: { $0.id == id }) else { throw RepositoryError.notFound }
+        let items = DemoDishFeedbackTally.merge(AdminSeed.feedback, with: await dishFeedback?.sent ?? [])
+        guard let item = items.first(where: { $0.id == id }) else { throw RepositoryError.notFound }
         return item
     }
 

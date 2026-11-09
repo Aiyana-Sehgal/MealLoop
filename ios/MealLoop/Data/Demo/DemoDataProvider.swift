@@ -177,6 +177,7 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
     private nonisolated let passRequestStore = DemoPassRequestStore()
     private nonisolated let studentRewardsStore = DemoStudentRewardsStore()
     private nonisolated let feedbackRatingStore = DemoFeedbackRatingStore()
+    private nonisolated let dishFeedbackStore = DemoDishFeedbackStore()
     /// The instant the live pass code is read at, shared by the Student pass and the Pass Desk.
     nonisolated let passCodeTicker = PassCodeTicker()
     private nonisolated let peopleStore = DemoPeopleStore()
@@ -198,13 +199,13 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
     }
 
     nonisolated func makeRepositories() -> Repositories {
-        let admin = DemoAdminRepositories(core: self, store: adminStore)
-        return Repositories(people: DemoPeople(core: self, store: peopleStore), meals: self, mealState: self, headcount: self, entries: self, intentions: self,
+        let admin = DemoAdminRepositories(core: self, store: adminStore, dishFeedback: dishFeedbackStore)
+        var repositories = Repositories(people: DemoPeople(core: self, store: peopleStore), meals: self, mealState: self, headcount: self, entries: self, intentions: self,
                             shortages: self, wasteReports: self, sos: self, auth: self, specialPasses: self,
                             studentExtras: self, studentMeals: self, studentCommunity: self, adminResults: admin, adminStudents: admin, adminMore: admin,
                             adminMesses: DemoAdminMesses(core: self, store: adminMessStore), staffDirectory: self,
                             studentYou: DemoStudentYou(core: self, store: studentYouStore, rewards: studentRewardsStore, catalogue: rewardCatalogueStore),
-                            studentRecords: DemoStudentRecords(core: self, store: studentRecordsStore),
+                            studentRecords: DemoStudentRecords(core: self, store: studentRecordsStore, dishFeedback: dishFeedbackStore),
                             livePassCodes: self, superAdmin: DemoSuperAdmin(core: self, store: superAdminStore),
                             passUse: self,
                             studentSpending: DemoStudentSpending(core: self, store: studentSpendingStore),
@@ -215,6 +216,8 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
                                                                you: DemoStudentYou(core: self, store: studentYouStore, rewards: studentRewardsStore,
                                                                    catalogue: rewardCatalogueStore)),
                             feedbackRatings: DemoFeedbackRatings(core: self, store: feedbackRatingStore))
+        repositories.dishFeedback = DemoDishFeedback(core: self, store: dishFeedbackStore)
+        return repositories
     }
 
     /// For repositories that live outside this actor: throws exactly as the others do with no connection.
