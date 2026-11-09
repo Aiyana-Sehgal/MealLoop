@@ -22,7 +22,7 @@ enum OutingStudentCopy {
     static func seeOuting(_ weekday: String) -> String { "See your \(weekday) outing" }
     static let pickAnotherDay = "Pick another day to send"
     static let needsConnection = "Needs a connection to send"
-    static let newSubtitle = "Pick a day. The ribbon shows what happens next."
+    static let newSubtitle = "Pick a day. The card below shows what happens next."
     static let outBetween = "Out between"
     static let destination = "Destination"
     static let reasons = ["Family", "Shopping", "Medical", "Other"]
@@ -353,7 +353,10 @@ struct StudentNewOutingView: View {
                         .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(MLColor.surface))
                         .accessibilityIdentifier("student.outings.destination")
                     reasonChips
-                    ribbon
+                    // What happens next (student_outing_01_what_happens_next): the guardian is next; nothing is reached early.
+                    OutingNextStepsCard(stage: nil, window: model.selectedDay == nil ? nil
+                                        : "\(OutingRangeSlider.label(model.leaveHour)) – \(OutingRangeSlider.label(model.backHour))")
+                    OutingNothingByWaiting()
                     if case .failed(let message) = model.send {
                         Text(message).font(StudentType.footnote).foregroundStyle(MLColor.danger)
                     }
@@ -405,40 +408,6 @@ struct StudentNewOutingView: View {
                 .accessibilityAddTraits(selected ? .isSelected : [])
             }
         }
-    }
-
-    /// OutingRibbon: who answers, in order. The deadlines need the outing rules (P3), so none is drawn.
-    private var ribbon: some View {
-        VStack(alignment: .leading, spacing: MLSpacing.s12) {
-            HStack(spacing: MLSpacing.s8) {
-                Circle().fill(MLColor.lime).frame(width: 8, height: 8).accessibilityHidden(true)
-                Text(OutingStudentCopy.whatHappensNext).font(StudentType.secondary).foregroundStyle(MLColor.onHeroSecondary)
-            }
-            HStack(spacing: 4) {
-                Capsule().fill(MLColor.surface).frame(height: 24)
-                Capsule().fill(MLColor.surface).frame(height: 24)
-                Capsule().fill(MLColor.lime).frame(height: 24)
-            }
-            .accessibilityHidden(true)
-            HStack(alignment: .top) {
-                stepLabel(OutingStudentCopy.guardian, lime: false)
-                stepLabel(OutingStudentCopy.warden, lime: false)
-                stepLabel(OutingStudentCopy.youreOut, lime: true)
-            }
-            if model.selectedDay != nil {
-                Text("\(OutingRangeSlider.label(model.leaveHour)) – \(OutingRangeSlider.label(model.backHour))")
-                    .font(StudentType.bodySemibold).foregroundStyle(MLColor.lime)
-            }
-        }
-        .padding(MLSpacing.s20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: RecordsTint.cardRadius, style: .continuous).fill(MLColor.heroBackground))
-        .accessibilityElement(children: .combine)
-    }
-
-    private func stepLabel(_ text: String, lime: Bool) -> some View {
-        Text(text).font(StudentType.secondaryMedium).foregroundStyle(lime ? MLColor.lime : MLColor.onHero)
-            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder
@@ -559,6 +528,8 @@ struct StudentOutingSentView: View {
                 VStack(alignment: .leading, spacing: MLSpacing.s16) {
                     YouLargeHeader(title: OutingStudentCopy.sent, subtitle: OutingCardFormat.line(outing), onBack: onBack)
                     OutingTrackerCard(item: outing, now: now)
+                    OutingNextStepsCard(stage: outing.stage, window: OutingFormat.window(outing))
+                    OutingNothingByWaiting()
                     Text(OutingStudentCopy.sentNote).font(StudentType.secondary).foregroundStyle(MLColor.inkSecondary)
                     InkActionButton(title: OutingStudentCopy.seeRequest, action: onSee)
                 }
@@ -642,6 +613,8 @@ struct StudentOutingDetailView: View {
                            subtitle: [item.place, item.leaveAt.flatMap { leave in item.returnBy.map { OutingFormat.window(leave, $0) } }]
                             .compactMap { $0 }.joined(separator: " · "), onBack: onBack)
             OutingTrackerCard(item: item, now: model.now)
+            OutingNextStepsCard(stage: item.stage, window: OutingFormat.window(item))
+            OutingNothingByWaiting()
             if item.stage.studentCanCancel && !offline {
                 VStack(alignment: .leading, spacing: MLSpacing.s8) {
                     Text(OutingStudentCopy.needChange).font(StudentType.bodySemibold).foregroundStyle(MLColor.ink)
@@ -849,5 +822,21 @@ struct OutingPassCard: View {
                 .foregroundStyle(MLColor.ink).lineLimit(1).minimumScaleFactor(0.7)
         }
         .accessibilityElement(children: .combine)
+    }
+}
+
+extension OutingFormat {
+    /// "6 PM – 9 PM", from the request's own times. Nil when the request holds none.
+    static func window(_ item: OutingCase) -> String? {
+        guard let leave = item.leaveAt, let back = item.returnBy else { return nil }
+        return "\(windowHour(leave)) – \(windowHour(back))"
+    }
+
+    private static func windowHour(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = timeZone
+        formatter.dateFormat = "h a"
+        return formatter.string(from: date)
     }
 }

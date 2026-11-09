@@ -264,5 +264,22 @@ final class StudentFinalScreenshotTests: XCTestCase {
             StudentPassScreen(session: world.session) {}.studentPushedPage(usesSystemBar: false)
         }
     }
+
+    // MARK: - Follow-ups P4: What happens next
+
+    func testCaptureOutingNextSteps() async throws {
+        let world = World()
+        let outings = try XCTUnwrap(StudentOutingsViewModel(session: world.session,
+                                                            repository: OutingCaseRepositories.studentSource(for: world.environment)))
+        await outings.load()
+        try await shot("p4_new_outing", world, tab: .you, wait: 2) {
+            StudentNewOutingView(model: outings, onSent: { _ in }, onOpen: { _ in }) {}.studentPushedPage(usesSystemBar: false)
+        }
+        if let first = outings.outings.value?.current.first {
+            try await shot("p4_outing_request", world, tab: .you, wait: 2) {
+                StudentOutingDetailView(model: outings, id: first.id) {}.studentPushedPage(usesSystemBar: false)
+            }
+        }
+    }
 }
 #endif
