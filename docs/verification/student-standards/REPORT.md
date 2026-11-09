@@ -14,8 +14,8 @@ Captures stay outside the repository, in `~/mealloop-captures/student-standards/
 |---|---|---|---|
 | S1 Standards on every Student screen | Done | `03ad4fb` | 22 pages and 3 tab roots moved onto `MLScreen` |
 | S2 Report and SOS as pushed pages | Done | `206f644` | Back goes one step; draft in the view model |
-| S3 Attendance to Discrepancy | Pending | | |
-| S4 Student Search above the keyboard | Pending | | |
+| S3 Attendance to Discrepancy | Done | `3b30ebe` | Tue 13 Aug dinner opens the sheet; VM tests |
+| S4 Student Search above the keyboard | Done | `a8769f6` | Menu rows above the keyboard; tab bar under it |
 | S5 Cheap empty-space audit | Pending | | |
 | S6 Student walk | Pending | | |
 
@@ -94,6 +94,31 @@ The steps used to replace each other on one screen, so the system Back would lea
 Deviation from the brief: Sending is a state of the Details page, not a pushed page. Its frame (221:63541) is the
 Details form with the button in its sending state, and a separate page would let Back abandon a send in flight.
 
+## S3 Attendance to Discrepancy
+
+- `StudentYouViewModel` reads the correctable record (`StudentExtrasRepository.correctableRecord`) with the attendance
+  month. `correctableDay(in:)` gives the day it falls on only when the calendar marks that day "No entry for a meal";
+  in the sample that is Tue 13 Aug, Dinner, the record the Discrepancy frame (221:63082) draws. Days 3, 8 and 10 are
+  also missed but have no correctable record, so they stay plain.
+- That day is a button on the calendar and opens "Something's wrong?" (`EntryDiscrepancySheet`, now given the record,
+  the time zone and a send closure instead of the Home view model, which never hosted it).
+- After sending, the calendar card says "Request recorded. This prototype sends nothing." (`RecordsCopy.requestRecorded`,
+  the existing wording). It changes no entry and no count. Offline the record cannot be read, so no day opens the
+  sheet; a send that fails offline records nothing and the sheet says it did not send.
+- While a day can be corrected, one line under the calendar says so: "Ate but not scanned? Tap the circled day to ask
+  for a correction." This wording is not from a frame; it only points at the existing control.
+- Tests: `StudentYouScreensTests.testTheMissedDayWithACorrectableRecordOpensTheDiscrepancySheet`,
+  `testOfflineNoDayOpensTheSheetAndNothingIsRecorded`.
+
+## S4 Student Search
+
+- Before anything is typed, under the hint and the TRY chips, Search lists the dishes of the meal the Meals tab leads
+  with ("LUNCH ON THE MENU" in the sample), from the menu `StudentMealsViewModel` already loads. Each row opens the
+  dish. No results shows its card, the chips and the same list. Nothing is listed until that menu is published.
+- Content is anchored to the top (`MLScreen`), and the scroll view dismisses the keyboard interactively.
+- The Student tab bar now ignores the keyboard's safe area (`StudentRootView`), so it stays at the bottom edge under
+  the keyboard as an iOS tab bar does, instead of riding up over the results.
+
 ## Validation so far
 
 | Run | Command | Result |
@@ -101,6 +126,7 @@ Details form with the button in its sending state, and a separate page would let
 | Baseline, before changes | Debug tests, `MealLoop` scheme | exit 0; 804 tests, 760 passed, 0 failed, 44 skipped |
 | After S1 | Debug tests | exit 0; 804, 760, 0, 44 |
 | After S2 | Debug tests | exit 0; 806, 762, 0, 44 |
+| After S3 and S4 | Debug tests | exit 0; 808, 764, 0, 44 |
 | S1/S2 captures | `StudentFinalScreenshotTests/testCaptureStudentAudit` with `TEST_RUNNER_STUDENT_FINAL_SHOTS`, `TEST_RUNNER_AUDIT` | exit 0; 34 captures |
 
 The S1 commit was not built on its own; S1 and S2 were pushed together and tested at the S2 tip.
