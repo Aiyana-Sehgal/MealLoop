@@ -1,10 +1,11 @@
 import SwiftUI
 
 /// Entry · Discrepancy (221:63082), Sending and Failed. A request only: it changes no entry and no count.
-/// The drawn host is the Attendance page on the You tab, which a later Student part builds.
+/// Opened from the missed day on Attendance (the drawn host). `send` throws when nothing was recorded (offline).
 struct EntryDiscrepancySheet: View {
-    let model: StudentHomeViewModel
     let record: AttendanceRecord
+    let timeZone: TimeZone
+    let send: (EntryCorrectionReason, String?, IdempotencyKey) async throws -> Void
     let onClose: () -> Void
     let onSent: () -> Void
 
@@ -20,7 +21,7 @@ struct EntryDiscrepancySheet: View {
             SheetHeader(title: StudentCopy.somethingWrong, onClose: onClose)
             HStack(spacing: 8) {
                 fact(StudentCopy.mealEyebrow,
-                     "\(MLFormat.mealSlot(record.slot)) · \(StudentFormat.mediumDay(record.day, in: model.timeZone))")
+                     "\(MLFormat.mealSlot(record.slot)) · \(StudentFormat.mediumDay(record.day, in: timeZone))")
                 fact(StudentCopy.recordEyebrow, record.wasScanned ? StudentCopy.scanned : StudentCopy.notScanned)
             }
             Text(StudentCopy.whatsWrong)
@@ -51,7 +52,7 @@ struct EntryDiscrepancySheet: View {
                 .padding(MLSpacing.s16)
                 .background(RoundedRectangle(cornerRadius: MLRadius.compact, style: .continuous).fill(StudentTint.errorFill))
             }
-            Button(action: send) {
+            Button(action: sendRequest) {
                 HStack(spacing: MLSpacing.s8) {
                     if isSending {
                         ProgressView().tint(MLColor.onHero)
@@ -112,13 +113,13 @@ struct EntryDiscrepancySheet: View {
         .accessibilityAddTraits(reason == option ? .isSelected : [])
     }
 
-    private func send() {
+    private func sendRequest() {
         guard !isSending else { return }
         isSending = true
         didFail = false
         Task {
             do {
-                try await model.sendCorrection(for: record, reason: reason, note: note.isEmpty ? nil : note, key: key)
+                try await send(reason, note.isEmpty ? nil : note, key)
                 isSending = false
                 onSent()
             } catch {

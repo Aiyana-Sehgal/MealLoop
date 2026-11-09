@@ -54,6 +54,8 @@ enum YouCopy {
     /// legend says only that no entry was recorded.
     static let noEntry = "No entry for a meal"
     static let missingScanNote = "No entry means no scan was recorded, not that you were away."
+    /// Under the calendar while a missed day can be corrected (Entry · Discrepancy, 221:63082).
+    static let tapMissedDay = "Ate but not scanned? Tap the circled day to ask for a correction."
     static let weekdays = ["M", "T", "W", "T", "F", "S", "S"]
     static let attendanceOffline = "You're offline. This is the attendance you last saw."
 }

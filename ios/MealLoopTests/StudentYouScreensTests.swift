@@ -73,5 +73,39 @@ final class StudentYouScreensTests: XCTestCase {
         XCTAssertFalse(YouCopy.noEntry.localizedCaseInsensitiveContains("missed"))
         XCTAssertFalse(YouCopy.noEntry.localizedCaseInsensitiveContains("absent"))
     }
+
+    /// S3: the missed day with a correctable record (Dinner, Tue 13 Aug) opens Entry · Discrepancy, and a sent request
+    /// is recorded only.
+    func testTheMissedDayWithACorrectableRecordOpensTheDiscrepancySheet() async throws {
+        let (_, model) = try make()
+        await model.loadAttendance()
+        let month = try XCTUnwrap(model.attendance.value)
+        let record = try XCTUnwrap(model.correctable)
+        XCTAssertEqual(record.slot, .dinner)
+        XCTAssertEqual(model.correctableDay(in: month), 13, "Tue 13 Aug, the day the Discrepancy frame draws.")
+        XCTAssertEqual(month.marks[13], .noEntryForAMeal)
+        for day in [3, 8, 10] {
+            XCTAssertNotEqual(model.correctableDay(in: month), day, "Other missed days have no correctable record.")
+        }
+        XCTAssertFalse(model.correctionRecorded)
+        let key = IdempotencyKey("s3-test")
+        try await model.sendCorrection(for: record, reason: .ateButNotScanned, note: nil, key: key)
+        try await model.sendCorrection(for: record, reason: .ateButNotScanned, note: nil, key: key)
+        XCTAssertTrue(model.correctionRecorded)
+        XCTAssertEqual(RecordsCopy.requestRecorded, "Request recorded. This prototype sends nothing.")
+    }
+
+    func testOfflineNoDayOpensTheSheetAndNothingIsRecorded() async throws {
+        let (_, model) = try make(.offline)
+        await model.loadAttendance()
+        XCTAssertNil(model.correctable, "Offline the record cannot be read, so no day opens the sheet.")
+        do {
+            try await model.sendCorrection(for: DemoSeed.sampleCorrectableRecord, reason: .ateButNotScanned, note: nil,
+                                           key: IdempotencyKey("s3-offline"))
+            XCTFail("Offline sends nothing.")
+        } catch {
+            XCTAssertFalse(model.correctionRecorded)
+        }
+    }
 }
 #endif

@@ -587,6 +587,8 @@ struct StudentCreditsHistoryView: View {
 struct StudentAttendanceView: View {
     @State var model: StudentYouViewModel
     let onBack: () -> Void
+    /// Entry · Discrepancy (221:63082), opened from the missed day that has a correctable record.
+    @State private var correcting: AttendanceRecord?
 
     /// On `MLScreen`: the system back button and swipe-back pop the page; `onBack` stays for callers.
     var body: some View {
@@ -597,6 +599,15 @@ struct StudentAttendanceView: View {
         }
         .refreshable { await model.loadAttendance() }
         .task { await model.loadAttendance() }
+        .mlSheet(isPresented: Binding(get: { correcting != nil }, set: { if !$0 { correcting = nil } })) {
+            if let record = correcting {
+                EntryDiscrepancySheet(record: record, timeZone: model.timeZone,
+                                      send: { try await model.sendCorrection(for: record, reason: $0, note: $1, key: $2) },
+                                      onClose: { correcting = nil }) {
+                    correcting = nil
+                }
+            }
+        }
     }
 
     @ViewBuilder
@@ -675,7 +686,13 @@ struct StudentAttendanceView: View {
                     Text(day).font(StudentType.footnote).foregroundStyle(MLColor.inkSecondary)
                 }
                 ForEach(Array(cells.enumerated()), id: \.offset) { _, day in
-                    if let day {
+                    if let day, day == model.correctableDay(in: month), let record = model.correctable {
+                        Button { correcting = record } label: {
+                            AttendanceDayCell(day: day, mark: month.marks[day] ?? .noRecord)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint(StudentCopy.somethingWrong)
+                    } else if let day {
                         AttendanceDayCell(day: day, mark: month.marks[day] ?? .noRecord)
                     } else {
                         Color.clear.frame(height: 40)
@@ -690,6 +707,17 @@ struct StudentAttendanceView: View {
                 .font(StudentType.footnote)
                 .foregroundStyle(MLColor.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
+            if model.correctionRecorded {
+                Label(RecordsCopy.requestRecorded, systemImage: "checkmark.circle")
+                    .font(StudentType.secondaryMedium)
+                    .foregroundStyle(MLColor.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else if model.correctableDay(in: month) != nil {
+                Text(YouCopy.tapMissedDay)
+                    .font(StudentType.footnote)
+                    .foregroundStyle(MLColor.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding(MLSpacing.s20)
         .background(RoundedRectangle(cornerRadius: StudentMetric.heroRadius, style: .continuous).fill(MLColor.surface))
