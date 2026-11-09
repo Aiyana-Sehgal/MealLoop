@@ -165,5 +165,25 @@ final class AdminPolishScreenshotTests: XCTestCase {
             try await shot("admin_\(name)", world) { AdminPageDestination(page: page, nav: world.nav) }
         }
     }
+
+    // MARK: - Food Head (single mess)
+
+    func testCaptureFoodHead() async throws {
+        let core = DemoDataProvider(scenario: .duringMeal)
+        let session = try await core.signInStaff(email: "foodhead@mealloop.example", password: DemoSeed.prototypePassword)
+        let context = try XCTUnwrap(AdminContext(session: session))
+        let env = AppEnvironment(kind: .review, repositories: core.makeRepositories().scopedAdmin(session, mess: context.mess),
+                                 clock: core.clock, demoControls: nil)
+        let head = World(core: core, session: session, context: context, env: env,
+                         nav: AdminNav(context: context, push: { _ in }, pop: {}, toast: { _ in }))
+        try await shot("fh_today", head, pushed: false, bar: false) { AdminRootView(session: session) }
+        try await shot("fh_students", head, pushed: false, tab: "Students") { AdminSingleMessStudentsScreen(nav: head.nav) }
+        try await shot("fh_results", head, pushed: false, tab: "Results") { AdminScopedResultsScreen(nav: head.nav) }
+        try await shot("fh_more", head, pushed: false) { AdminSingleMessMoreScreen(nav: head.nav) }
+        try await shot("fh_weekly_report", head) { AdminSingleMessReportScreen(nav: head.nav) }
+        try await shot("fh_passes", head) { AdminPassesScreen(nav: head.nav) }
+        try await shot("fh_weekly_menu", head) { AdminMenuScreen(nav: head.nav) }
+        try await shot("fh_announce", head) { AdminAnnounceScreen(nav: head.nav) }
+    }
 }
 #endif

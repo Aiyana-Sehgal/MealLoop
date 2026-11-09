@@ -13,7 +13,7 @@ capture per changed screen on iPhone 18 Pro at about 480 px high.
 | P3 | Ratings open for 2 days | done | FeedbackRatingRepositoryTests: open after the next meal starts, Monday open, Sunday closed; Home card hidden when rated or closed |
 | P4 | Outing "What happens next" | done | `p4_new_outing.png`, `p4_outing_request.png`; OutingNextStepsTests (5) |
 | P5 | Rewards add and delete | done | `p5_rewards_manage.png`, `p5_rewards_add_sheet.png`; RewardCatalogueRepositoryTests |
-| P6 | Food Head gets the Super Admin's scope | done | below |
+| P6 | Food Head scope | reverted (owner, 9 November) | the Food Head stays on one mess; the single-mess screens were redesigned instead (below) |
 | P7 | Spacing audit, Admin and Student | done | 48 screens measured; 7 flagged, 6 fixed, 1 is the keyboard's space; table below |
 | P8 | Open item P-FINAL-10 | done | recorded below; Get unchanged |
 
@@ -120,3 +120,21 @@ Result: no screen above 25% except Student Search, whose band is the keyboard's 
 Skipped: the opt-in screenshot and audit captures. Diff: Student and Admin feature folders, additive `Domain` and
 `Data` pieces (pass requests, reward catalogue), the Food Head scope rule (`AdminDataScope`, `DemoPeople`), tests and
 this folder. Not checked: a live edge swipe, VoiceOver, the camera, a physical device.
+
+
+## Owner correction (9 November): the Food Head stays on one mess
+
+The owner said the Food Head is single-mess. The P6 change (`cd8340e`) is reverted in code and tests: the Food Head
+sees only their own mess and has no People and access; the Super Admin keeps every mess. Instead, the Food Head's own
+screens were rebuilt in the Admin design language, from this mess's data only:
+
+| Screen | Longest blank before | after | What changed |
+|---|---|---|---|
+| Today | 39% | 3% | the tile, an Answers card for the meal (I'm in, Skip, Not sure, No reply yet), Headcount and Live meal rows |
+| Students | 51% | 24% | the Answers card; Feedback and Community as grouped rows with counts and stages; the "unavailable" lines removed |
+| Results | 35% | 6% | a Last meal card (came, planned, plate waste, ran out), meal rows with sent and came, Weekly report |
+| More | 28% | 8% | a who-and-which-mess card, then Planning and Account groups |
+| Weekly report | 18% | 9% | a plate-waste card, then the figures as rows |
+| Passes | | 6% | Requests for next week list only this mess's requests |
+
+Also fixed while measuring: Today › See all (71% → 19%, Jump to rows) and a proposal page (28% → 6%, the other votes).

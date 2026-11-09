@@ -1,27 +1,95 @@
 import SwiftUI
 
-/// Single-mess records reuse the meal report drill-in. Global reason totals have no per-mess provenance.
+// Results for the Food Head's own mess. Meal records reuse the meal report; reason totals are global, so they are not
+// shown here as if they belonged to this mess.
+
+enum AdminScopedResultsCopy {
+    static let lastMeal = "LAST MEAL"
+    static func planned(_ count: String) -> String { "planned \(count)" }
+    static let came = "came"
+    static let plateWaste = "Plate waste"
+    static let ranOut = "Ran out"
+    static let notClosed = "Not closed yet"
+    static let meals = "MEALS"
+    static let noMeals = "No meal records for this meal slot yet."
+    static func mealDetail(_ day: String, sent: String, came: String) -> String { "\(day) · sent \(sent) · came \(came)" }
+    static let thisWeek = "This week"
+    static let lastWeek = "Last week"
+    static let month = "Month"
+    static let mealsThatRanOut = "Meals that ran out"
+    static let dataComplete = "Data complete"
+    static let figures = "FIGURES"
+    static let globalNote = "Only this mess. A figure the record does not hold shows a dash."
+}
+
 struct AdminScopedResultsScreen: View {
     @Environment(AppEnvironment.self) private var environment
     let nav: AdminNav
     @State private var slot: MealSlot = .lunch
+
     var body: some View {
         let results = environment.repositories.adminResults
-        return AdminPageScaffold(title: AdminScreenCopy.results, subtitle: nav.context.mess.name) {
+        AdminPageScaffold(title: AdminScreenCopy.results, subtitle: nav.context.mess.name) {
             AdminFlow {
                 ForEach(MealSlot.allCases, id: \.self) { value in
                     ChoiceChip(title: MLFormat.mealSlot(value), isSelected: slot == value) { slot = value }
                 }
             }
             AdminLoadedPage(model: AdminPageModel { try await results.findMeals(mess: nil, slot: slot) }, timeZone: nav.timeZone,
-                            emptyTitle: "No meal records for this mess") { meals, _ in
-                ForEach(meals) { meal in
-                    QuietRow(title: "\(meal.mess) · \(MLFormat.mealSlot(meal.slot))", value: AdminCopy.dayLine(meal.day, in: nav.timeZone)) { nav.push(.meal(meal.id)) }
+                            emptyTitle: AdminScopedResultsCopy.noMeals) { meals, _ in
+                VStack(alignment: .leading, spacing: MLSpacing.s16) {
+                    if let last = meals.first(where: \.isClosed) ?? meals.first {
+                        lastMeal(last)
+                    }
+                    AdminLabel(text: AdminScopedResultsCopy.meals)
+                    AdminGroupCard {
+                        ForEach(meals) { meal in
+                            AdminHubRow(title: MLFormat.mealSlot(meal.slot),
+                                        value: AdminScopedResultsCopy.mealDetail(AdminFormat.shortDay(meal.day, in: nav.timeZone),
+                                                                                 sent: AdminFormat.count(meal.headcountSent),
+                                                                                 came: AdminFormat.count(meal.finalEntries)),
+                                        isLast: meal.id == meals.last?.id) { nav.push(.meal(meal.id)) }
+                        }
+                    }
                 }
-            }.id(slot)
-            QuietRow(title: "Weekly report") { nav.push(.weeklyReport) }
-            Text("Reason summaries for this mess are unavailable.").font(MLType.body).foregroundStyle(MLColor.inkSecondary)
+            }
+            .id(slot)
+            AdminGroupCard {
+                AdminHubRow(title: AdminScreenCopy.weeklyReport, isLast: true) { nav.push(.weeklyReport) }
+            }
         }
+    }
+
+    private func lastMeal(_ meal: AdminMealFacts) -> some View {
+        Button { nav.push(.meal(meal.id)) } label: {
+            HeroCard {
+                VStack(alignment: .leading, spacing: MLSpacing.s12) {
+                    HeroEyebrow(label: "\(AdminScopedResultsCopy.lastMeal) · \(AdminFormat.shortDay(meal.day, in: nav.timeZone).uppercased())")
+                    HStack(alignment: .firstTextBaseline, spacing: MLSpacing.s8) {
+                        Text(AdminFormat.count(meal.finalEntries)).font(MLType.heroNumber).foregroundStyle(MLColor.onHero)
+                        Text(meal.isClosed ? AdminScopedResultsCopy.came : AdminScopedResultsCopy.notClosed)
+                            .mlFont(.staffBody).foregroundStyle(MLColor.onHeroSecondary)
+                        Spacer(minLength: 0)
+                        Text(AdminScopedResultsCopy.planned(AdminFormat.count(meal.headcountSent)))
+                            .font(MLType.monoBody).foregroundStyle(MLColor.onHeroSecondary)
+                    }
+                    HStack {
+                        fact(AdminScopedResultsCopy.plateWaste, meal.plateWasteKg.map { "\(AdminFormat.decimal($0)) kg" } ?? AdminFormat.missing)
+                        Spacer()
+                        fact(AdminScopedResultsCopy.ranOut, "\(meal.ranOut.count)")
+                    }
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func fact(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label).mlFont(.secondary).foregroundStyle(MLColor.onHeroSecondary)
+            Text(value).font(MLType.monoBody).foregroundStyle(MLColor.onHero)
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -29,27 +97,55 @@ struct AdminSingleMessReportScreen: View {
     @Environment(AppEnvironment.self) private var environment
     let nav: AdminNav
     @State private var period: ReportPeriod = .thisWeek
+
     var body: some View {
         let results = environment.repositories.adminResults
-        return AdminPageScaffold(title: "Weekly report", subtitle: nav.context.mess.name, onBack: nav.pop) {
+        AdminPageScaffold(title: AdminScreenCopy.weeklyReport, subtitle: nav.context.mess.name, onBack: nav.pop) {
             AdminFlow {
                 ForEach(ReportPeriod.allCases, id: \.self) { value in
-                    ChoiceChip(title: value == .thisWeek ? "This week" : value == .lastWeek ? "Last week" : "Month", isSelected: period == value) { period = value }
+                    ChoiceChip(title: value == .thisWeek ? AdminScopedResultsCopy.thisWeek
+                               : value == .lastWeek ? AdminScopedResultsCopy.lastWeek : AdminScopedResultsCopy.month,
+                               isSelected: period == value) { period = value }
                 }
             }
             AdminLoadedPage(model: AdminPageModel {
-                guard let source = results as? any SingleMessReportRepository else { throw RepositoryError.notImplemented(feature: "Single-mess report") }
+                guard let source = results as? any SingleMessReportRepository else {
+                    throw RepositoryError.notImplemented(feature: "Single-mess report")
+                }
                 return try await source.singleMessReport(period)
             }, timeZone: nav.timeZone) { report, _ in
-                Text(report.dates).font(MLType.body).foregroundStyle(MLColor.inkSecondary)
-                QuietRow(title: "Plate waste", value: report.line?.plateWasteKg.map { "\($0) kg" } ?? "—") {}
-                    .disabled(true)
-                QuietRow(title: "Meals that ran out", value: report.line?.ranOutMeals.map(String.init) ?? "—") {}
-                    .disabled(true)
-                QuietRow(title: "Data complete", value: report.line?.dataCompletePercent.map { "\($0)%" } ?? "—") {}
-                    .disabled(true)
-                Text("Missing figures are unavailable. Global totals are not included.").font(MLType.body).foregroundStyle(MLColor.inkSecondary)
-            }.id(period)
+                VStack(alignment: .leading, spacing: MLSpacing.s16) {
+                    HeroCard {
+                        VStack(alignment: .leading, spacing: MLSpacing.s8) {
+                            HeroEyebrow(label: report.dates.uppercased())
+                            HStack(alignment: .firstTextBaseline, spacing: MLSpacing.s8) {
+                                Text(report.line?.plateWasteKg.map(String.init) ?? AdminFormat.missing)
+                                    .font(MLType.heroNumber).foregroundStyle(MLColor.onHero)
+                                Text("kg \(AdminScopedResultsCopy.plateWaste.lowercased())").mlFont(.staffBody)
+                                    .foregroundStyle(MLColor.onHeroSecondary)
+                            }
+                        }
+                    }
+                    AdminLabel(text: AdminScopedResultsCopy.figures)
+                    AdminGroupCard {
+                        row(AdminScopedResultsCopy.mealsThatRanOut, report.line?.ranOutMeals.map(String.init))
+                        row(AdminScopedResultsCopy.dataComplete, report.line?.dataCompletePercent.map { "\($0)%" }, isLast: true)
+                    }
+                    Text(AdminScopedResultsCopy.globalNote).mlFont(.secondary).foregroundStyle(MLColor.inkSecondary)
+                }
+            }
+            .id(period)
         }
+    }
+
+    private func row(_ title: String, _ value: String?, isLast: Bool = false) -> some View {
+        HStack {
+            Text(title).mlFont(.staffBody).foregroundStyle(MLColor.ink)
+            Spacer()
+            Text(value ?? AdminFormat.missing).font(MLType.monoBody).foregroundStyle(MLColor.ink)
+        }
+        .frame(minHeight: 56)
+        .overlay(alignment: .bottom) { if !isLast { Rectangle().fill(MLColor.border).frame(height: 1) } }
+        .accessibilityElement(children: .combine)
     }
 }

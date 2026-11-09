@@ -310,6 +310,11 @@ struct AdminTextField: View {
 /// How Admin writes values. Missing values stay "—".
 enum AdminFormat {
     static let missing = "—"
+    /// "2.4": one decimal, trailing ".0" dropped.
+    static func decimal(_ value: Double) -> String {
+        let text = String(format: "%.1f", value)
+        return text.hasSuffix(".0") ? String(text.dropLast(2)) : text
+    }
 
     private static func formatter(_ pattern: String, _ timeZone: TimeZone) -> DateFormatter {
         let formatter = DateFormatter()

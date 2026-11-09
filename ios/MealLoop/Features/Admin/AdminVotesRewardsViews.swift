@@ -272,7 +272,9 @@ struct AdminProposalScreen: View {
 }
 
 struct AdminProposalView: View {
+    @Environment(AppEnvironment.self) private var environment
     @State var model: AdminVotesModel
+    @State private var votes: VotesPage?
     let id: String
     let nav: AdminNav
 
@@ -311,8 +313,19 @@ struct AdminProposalView: View {
             } else {
                 ProgressView().frame(maxWidth: .infinity)
             }
+            // Blank-band audit: the votes this proposal would join, from the Menu votes page.
+            if let votes {
+                AdminLabel(text: AdminVotesRewardsCopy.otherVotes).padding(.top, MLSpacing.s8)
+                AdminGroupCard {
+                    AdminHubRow(title: votes.closedTitle, value: "\(votes.forPercent)%") { nav.push(.votes) }
+                    AdminHubRow(title: votes.inProgressTitle, value: votes.timeLeft, isLast: true) { nav.push(.votes) }
+                }
+            }
         }
-        .task { await model.load() }
+        .task {
+            await model.load()
+            votes = try? await environment.repositories.adminMore.votes()
+        }
     }
 }
 

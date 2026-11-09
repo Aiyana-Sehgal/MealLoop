@@ -46,7 +46,7 @@ struct AdminMoreScreen: View {
 }
 
 /// A hub row. The value mixes words and counts, so it stays in the body face: mono is for numbers alone.
-private struct AdminHubRow: View {
+struct AdminHubRow: View {
     let title: String
     var value: String?
     var isLast = false

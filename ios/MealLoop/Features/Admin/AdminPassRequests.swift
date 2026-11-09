@@ -64,7 +64,11 @@ struct AdminPassRequestsSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: MLSpacing.s12) {
-            if let queue = model?.queue.value {
+            if let all = model?.queue.value {
+                // The Food Head sees their own mess's requests; the all-mess Admin sees every mess.
+                let queue = nav.context.allMesses ? all
+                    : PassRequestQueue(week: all.week, pending: all.pending.filter { $0.messName == nav.context.mess.name },
+                                       approvedCount: all.approvedCount)
                 HeroCard {
                     VStack(alignment: .leading, spacing: MLSpacing.s8) {
                         HeroEyebrow(label: AdminPassRequestsCopy.requestsForNextWeek)
@@ -75,9 +79,11 @@ struct AdminPassRequestsSection: View {
                                 .mlNumericText(queue.pending.count)
                             Text(AdminPassRequestsCopy.waiting).mlFont(.staffBody).foregroundStyle(MLColor.onHeroSecondary)
                         }
-                        Text(AdminPassRequestsCopy.approvedSoFar(queue.approvedCount))
-                            .mlFont(.body)
-                            .foregroundStyle(MLColor.onHeroSecondary)
+                        if nav.context.allMesses {
+                            Text(AdminPassRequestsCopy.approvedSoFar(queue.approvedCount))
+                                .mlFont(.body)
+                                .foregroundStyle(MLColor.onHeroSecondary)
+                        }
                     }
                 }
                 AdminLabel(text: AdminPassRequestsCopy.waitingForYou)

@@ -107,7 +107,15 @@ struct AdminTodayBody: View {
             if allMesses {
                 AdminMessGrid(content: content, open: open)
             } else {
+                // The Food Head's own mess: the tile, this meal's answers and the two pages behind it.
                 AdminMessTile(content: content, openHeadcount: { open(.headcount) }, openLive: { open(.live) })
+                if let meal = content.meal {
+                    AdminAnswersCard(mealName: mealName, answers: meal.answers)
+                }
+                AdminGroupCard {
+                    AdminHubRow(title: AdminSingleMessCopy.headcountPage) { open(.headcount) }
+                    AdminHubRow(title: AdminSingleMessCopy.liveMeal, isLast: true) { open(.live) }
+                }
             }
             // Today draws the tiles and Needs you only. The six headcount values and the approval and vendor status
             // live on the mess's headcount page and Live meal, where Figma draws them.
@@ -226,6 +234,14 @@ struct AdminNeedsYouView: View {
                             AdminChip(text: AdminScreenCopy.review, style: .outline)
                         }
                     }
+                }
+                // Blank-band audit: the pages that hold the rest of the day, so the list never ends in empty space.
+                AdminLabel(text: AdminSearchCopy.jumpTo).padding(.top, MLSpacing.s16)
+                AdminGroupCard {
+                    AdminHubRow(title: AdminSingleMessCopy.liveMeal) { open(.live) }
+                    AdminHubRow(title: AdminScreenCopy.notAnswered) { open(.page(.notAnswered)) }
+                    AdminHubRow(title: AdminScreenCopy.safetyCases) { open(.page(.safetyCases)) }
+                    AdminHubRow(title: AdminScreenCopy.weeklyReport, isLast: true) { open(.page(.weeklyReport)) }
                 }
             }
         }
