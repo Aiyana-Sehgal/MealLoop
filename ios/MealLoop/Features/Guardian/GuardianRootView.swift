@@ -208,6 +208,17 @@ struct GuardianPageView: View {
                 }
             }
             .overlay(alignment: .top) { Rectangle().fill(MLColor.border).frame(height: 1) }
+            // Counts from the same past answers listed above (Prompt 5, R2).
+            VStack(spacing: 0) {
+                OutingFactRow(label: GuardianInfoCopy.accepted,
+                              value: String(model.pastAnswers.filter { $0.kind == .accepted }.count))
+                OutingFactRow(label: GuardianInfoCopy.rejected,
+                              value: String(model.pastAnswers.filter { $0.kind == .rejected }.count))
+                OutingFactRow(label: GuardianInfoCopy.byVideo,
+                              value: String(model.pastAnswers.filter { $0.method == .liveVideoAutoChecked || $0.method == .videoNeedsReview }.count))
+            }
+            .overlay(alignment: .bottom) { Rectangle().fill(MLColor.border).frame(height: 1) }
+            .padding(.top, MLSpacing.s16)
         } footer: {
             GuardianFootnote(text: GuardianCopy.videosDeleted)
             HStack(spacing: MLSpacing.s32) {

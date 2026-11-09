@@ -134,8 +134,7 @@ struct GuardianEntryFlow: View {
     // MARK: G-0 Sign in
 
     private func signIn(_ model: GuardianModel) -> some View {
-        let name = model.studentName
-        return GuardianLayout(model: model, title: GuardianEntryCopy.signInTitle,
+        GuardianLayout(model: model, title: GuardianEntryCopy.signInTitle,
                               subtitle: GuardianEntryCopy.signInSubtitle, onLanguage: { showsLanguage = true }) {
             VStack(alignment: .leading, spacing: MLSpacing.s8) {
                 Text(GuardianEntryCopy.phoneLabel).font(MLType.secondary).foregroundStyle(MLColor.inkSecondary)
@@ -152,7 +151,16 @@ struct GuardianEntryFlow: View {
             InkActionButton(title: GuardianEntryCopy.sendCode) { push(.verify) }
                 .padding(.top, MLSpacing.s16)
             TextLinkButton(title: GuardianEntryCopy.activateLink) { push(.activate) }
-            VStack(alignment: .leading, spacing: MLSpacing.s16) {
+            howItWorks(model)
+        } footer: {
+            EmptyView()
+        }
+    }
+
+    /// "How it works": the four steps, naming the student and block from the seeded link.
+    private func howItWorks(_ model: GuardianModel) -> some View {
+        let name = model.studentName
+        return VStack(alignment: .leading, spacing: MLSpacing.s16) {
                 Text(GuardianEntryCopy.howItWorks).font(MLType.staffPrimary).foregroundStyle(MLColor.ink)
                     .accessibilityAddTraits(.isHeader)
                 ForEach(Array(GuardianEntryCopy.howSteps(student: name, block: student(model)?.block ?? "hostel")
@@ -176,9 +184,6 @@ struct GuardianEntryFlow: View {
             .background(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).fill(MLColor.surface))
             .overlay(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).stroke(MLColor.border, lineWidth: 1))
             .padding(.top, MLSpacing.s16)
-        } footer: {
-            EmptyView()
-        }
     }
 
     @ViewBuilder
@@ -209,6 +214,7 @@ struct GuardianEntryFlow: View {
             Text(resent ? GuardianEntryCopy.nothingSent : GuardianEntryCopy.codeNotSent)
                 .font(MLType.secondary)
                 .foregroundStyle(MLColor.inkSecondary)
+            howItWorks(model)
         } footer: {
             InkActionButton(title: GuardianEntryCopy.verify) { onFinish(model) }
                 .disabled(code.count < GuardianEntryCopy.codeLength)
@@ -255,22 +261,7 @@ struct GuardianEntryFlow: View {
     private func confirmLink(_ model: GuardianModel) -> some View {
         GuardianLayout(model: model, title: GuardianEntryCopy.linkedTitle(model.studentName, student(model)?.block),
                        subtitle: GuardianEntryCopy.linkedSubtitle, onLanguage: { showsLanguage = true }) {
-            HStack(spacing: MLSpacing.s16) {
-                Image(systemName: "person.crop.circle")
-                    .font(.system(size: 36, weight: .light))
-                    .foregroundStyle(MLColor.ink)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(student(model)?.displayName ?? "—").font(MLType.staffPrimary).foregroundStyle(MLColor.ink)
-                    // G-A2 also draws the year of study; no record holds it, so only the block is shown.
-                    Text(student(model)?.block ?? "—").font(MLType.secondary).foregroundStyle(MLColor.inkSecondary)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(MLSpacing.s20)
-            .background(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).fill(MLColor.surface))
-            .overlay(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).stroke(MLColor.border, lineWidth: 1))
-            .accessibilityElement(children: .combine)
+            studentCard(model)
         } footer: {
             InkActionButton(title: GuardianEntryCopy.yesRight) { push(.done) }
             OutlineActionButton(title: GuardianEntryCopy.noCall) { push(.declined) }
@@ -279,11 +270,38 @@ struct GuardianEntryFlow: View {
         }
     }
 
+    /// The linked student, as G-A2 draws it. The year of study is not shown: no record holds it.
+    private func studentCard(_ model: GuardianModel) -> some View {
+        HStack(spacing: MLSpacing.s16) {
+            Image(systemName: "person.crop.circle")
+                .font(.system(size: 36, weight: .light))
+                .foregroundStyle(MLColor.ink)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(student(model)?.displayName ?? "—").font(MLType.staffPrimary).foregroundStyle(MLColor.ink)
+                // G-A2 also draws the year of study; no record holds it, so only the block is shown.
+                Text(student(model)?.block ?? "—").font(MLType.secondary).foregroundStyle(MLColor.inkSecondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(MLSpacing.s20)
+        .background(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).fill(MLColor.surface))
+        .overlay(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).stroke(MLColor.border, lineWidth: 1))
+        .accessibilityElement(children: .combine)
+    }
+
     // MARK: Declined (generated)
 
     private func declined(_ model: GuardianModel) -> some View {
         GuardianLayout(model: model, title: GuardianEntryCopy.declinedTitle, subtitle: GuardianEntryCopy.declinedDetail,
                        onLanguage: { showsLanguage = true }) {
+            studentCard(model)
+            // What the hostel office will ask about: the guardian's own number and who sent the link (G-A1 rows).
+            VStack(spacing: 0) {
+                OutingFactRow(label: GuardianEntryCopy.yourNumber, value: model.link?.phone)
+                OutingFactRow(label: GuardianEntryCopy.invitedBy, value: GuardianEntryCopy.hostelOffice)
+            }
+            .overlay(alignment: .bottom) { Rectangle().fill(MLColor.border).frame(height: 1) }
             Text(GuardianEntryCopy.declinedPrototype).font(MLType.secondary).foregroundStyle(MLColor.inkSecondary)
         } footer: {
             InkActionButton(title: GuardianEntryCopy.backToSignIn) { path = [] }
@@ -363,6 +381,9 @@ private struct GuardianEntryDoneLayout: View {
                     .font(MLType.staffBody)
                     .foregroundStyle(MLColor.ink)
                     .fixedSize(horizontal: false, vertical: true)
+                if model.request != nil {
+                    GuardianOutingFacts(request: model.request)
+                }
                 Spacer(minLength: 0)
                 InkActionButton(title: GuardianEntryCopy.openRequest, action: onOpen)
             }

@@ -146,6 +146,7 @@ struct GuardianAnsweredView: View {
         return GuardianLayout(model: model, title: GuardianCopy.saidNo(name), subtitle: reason.map(GuardianCopy.reasonLine),
                               onLanguage: onLanguage) {
             iconCard(symbol: "xmark", title: GuardianCopy.iReject, lines: [GuardianCopy.oneTapNoVideoLine, answerTime(request)])
+            GuardianOutingFacts(request: request)
         } footer: {
             OutingCallButton(title: GuardianCopy.callWarden, style: .link)
             TextLinkButton(title: GuardianCopy.pastAnswers) { model.showPastAnswers() }
@@ -159,6 +160,7 @@ struct GuardianAnsweredView: View {
             iconCard(symbol: "arrow.clockwise", title: GuardianCopy.withdrawn,
                      lines: [request.evidence.map { GuardianCopy.was($0.method) } ?? "—",
                              request.withdrawnAt.map { "\(OutingFormat.weekday($0)) \(OutingFormat.clock($0))" } ?? "—"])
+            GuardianOutingFacts(request: request)
         } footer: {
             OutingCallButton(title: GuardianCopy.callWarden, style: .link)
             TextLinkButton(title: GuardianCopy.pastAnswers) { model.showPastAnswers() }

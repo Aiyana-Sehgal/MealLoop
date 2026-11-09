@@ -319,6 +319,7 @@ extension GuardianPageView {
                                      GuardianCopy.tryCode($0.attempt, $0.attemptsAllowed,
                                                           $0.code.map(String.init).joined(separator: " "))
                                  } ?? "—")
+            GuardianOutingFacts(request: model.request)
         } footer: {
             GuardianFootnote(text: GuardianCopy.onlyBlockWarden(model.link?.student.block))
         }

@@ -35,6 +35,11 @@ enum GuardianInfoCopy {
     static func newRequestDetail(_ name: String, _ when: String) -> String { "\(name) wants to go out on \(when)." }
 
     static let help = "Help"
+    static let theOuting = "The outing"
+    static let accepted = "Accepted"
+    static let rejected = "Rejected"
+    static let byVideo = "By video"
+    static let place = "Place"
     static let callWarden = "Call the warden"
     static func helpItems(student: String, block: String?) -> [StaffHelpItem] {
         [StaffHelpItem(question: "What am I approving?",
@@ -221,6 +226,28 @@ private struct GuardianInfoLayout<Content: View>: View {
                 .padding(.top, MLSpacing.s8)
                 .padding(.bottom, MLSpacing.s24)
             }
+        }
+    }
+}
+
+/// The outing this guardian is answering for, from the request record already loaded: place, leave, back by and
+/// reason, as the About sheet shows them. Prompt 5 R2 uses it to fill pages that were mostly empty. Missing is a dash.
+struct GuardianOutingFacts: View {
+    let request: OutingCase?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: MLSpacing.s8) {
+            Text(GuardianInfoCopy.theOuting).font(MLType.secondary).foregroundStyle(MLColor.inkSecondary)
+                .accessibilityAddTraits(.isHeader)
+            VStack(spacing: 0) {
+                OutingFactRow(label: GuardianInfoCopy.place, value: request?.place)
+                OutingFactRow(label: GuardianCopy.leave,
+                              value: request?.leaveAt.map { "\(OutingFormat.dayLong($0)) · \(OutingFormat.clock($0))" })
+                OutingFactRow(label: GuardianCopy.backBy,
+                              value: request?.returnBy.map { "\(OutingFormat.dayLong($0)) · \(OutingFormat.clock($0))" })
+                OutingFactRow(label: GuardianCopy.reason, value: request?.reason)
+            }
+            .overlay(alignment: .bottom) { Rectangle().fill(MLColor.border).frame(height: 1) }
         }
     }
 }
