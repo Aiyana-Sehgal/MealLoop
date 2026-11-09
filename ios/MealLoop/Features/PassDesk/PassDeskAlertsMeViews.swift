@@ -147,7 +147,7 @@ struct PassDeskMeView: View {
     @Environment(SessionStore.self) private var sessionStore
     let model: PassDeskHomeViewModel
     let problems: PassDeskProblemLog
-    @State private var comingSoon: PassDeskComingSoon?
+    @State private var sheet: StaffMeSheet?
 
     private var session: StaffSession { model.session }
 
@@ -169,10 +169,8 @@ struct PassDeskMeView: View {
                     }
                     VStack(spacing: 0) {
                         Rectangle().fill(MLColor.border).frame(height: 1)
-                        StaffMeRow(title: PassDeskCopy.language, value: PassDeskCopy.english) {
-                            comingSoon = PassDeskComingSoon(title: PassDeskCopy.language)
-                        }
-                        StaffMeRow(title: PassDeskCopy.help) { comingSoon = PassDeskComingSoon(title: PassDeskCopy.help) }
+                        StaffMeRow(title: PassDeskCopy.language, value: PassDeskCopy.english) { sheet = .language }
+                        StaffMeRow(title: PassDeskCopy.help) { sheet = .help }
                         signOutRow
                     }
                 }
@@ -180,8 +178,11 @@ struct PassDeskMeView: View {
                 .padding(.bottom, PassDeskLayout.scrollBottomInset)
             }
         }
-        .fullScreenCover(item: $comingSoon) { page in
-            NotImplementedView(title: page.title, actionTitle: PassDeskCopy.backToHome) { comingSoon = nil }
+        .mlSheet(item: $sheet) { page in
+            switch page {
+            case .language: StaffLanguageSheet { sheet = nil }
+            case .help: StaffHelpSheet(items: StaffHelpContent.passDesk) { sheet = nil }
+            }
         }
     }
 
@@ -201,11 +202,4 @@ struct PassDeskMeView: View {
             Rectangle().fill(MLColor.border).frame(height: 1)
         }
     }
-}
-
-/// A title to show a "Coming soon" page for.
-private struct PassDeskComingSoon: Identifiable {
-    let title: String
-
-    var id: String { title }
 }

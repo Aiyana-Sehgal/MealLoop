@@ -94,7 +94,7 @@ struct DoorMeView: View {
     @Environment(SessionStore.self) private var sessionStore
     let model: DoorHomeViewModel
     let problems: DoorProblemLog
-    @State private var comingSoon: DoorComingSoon?
+    @State private var sheet: StaffMeSheet?
 
     private var session: StaffSession { model.session }
 
@@ -116,10 +116,8 @@ struct DoorMeView: View {
                     }
                     VStack(spacing: 0) {
                         Rectangle().fill(MLColor.border).frame(height: 1)
-                        StaffMeRow(title: DoorScannerCopy.language, value: DoorScannerCopy.english) {
-                            comingSoon = DoorComingSoon(title: DoorScannerCopy.language)
-                        }
-                        StaffMeRow(title: DoorScannerCopy.help) { comingSoon = DoorComingSoon(title: DoorScannerCopy.help) }
+                        StaffMeRow(title: DoorScannerCopy.language, value: DoorScannerCopy.english) { sheet = .language }
+                        StaffMeRow(title: DoorScannerCopy.help) { sheet = .help }
                         signOutRow
                     }
                 }
@@ -127,8 +125,11 @@ struct DoorMeView: View {
                 .padding(.bottom, DoorLayout.scrollBottomInset)
             }
         }
-        .fullScreenCover(item: $comingSoon) { page in
-            NotImplementedView(title: page.title, actionTitle: DoorScannerCopy.backToHome) { comingSoon = nil }
+        .mlSheet(item: $sheet) { page in
+            switch page {
+            case .language: StaffLanguageSheet { sheet = nil }
+            case .help: StaffHelpSheet(items: StaffHelpContent.doorScanner) { sheet = nil }
+            }
         }
     }
 
@@ -148,11 +149,4 @@ struct DoorMeView: View {
             Rectangle().fill(MLColor.border).frame(height: 1)
         }
     }
-}
-
-/// A title to show a "Coming soon" page for.
-private struct DoorComingSoon: Identifiable {
-    let title: String
-
-    var id: String { title }
 }

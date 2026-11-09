@@ -155,19 +155,13 @@ struct KitchenAlertsView: View {
     }
 }
 
-/// A page with no screen yet, opened from Me.
-private struct KitchenComingSoon: Identifiable {
-    let title: String
-    var id: String { title }
-}
-
-/// Me (K13). Meal history and Sign out work; Switch role, Language and Help have no screens yet.
+/// Me (K13). Meal history, Language, Help and Sign out work; Switch role waits for a decision on who may hold two roles.
 struct KitchenMeView: View {
     @Environment(AppRouter.self) private var router
     @Environment(SessionStore.self) private var sessionStore
     let session: StaffSession
     let open: (KitchenRoute) -> Void
-    @State private var comingSoon: KitchenComingSoon?
+    @State private var sheet: StaffMeSheet?
 
     var body: some View {
         ZStack {
@@ -182,9 +176,11 @@ struct KitchenMeView: View {
                     VStack(spacing: 0) {
                         Rectangle().fill(MLColor.border).frame(height: 1)
                         QuietRow(title: KitchenCopy.historyTitle) { open(.history) }
-                        QuietRow(title: KitchenCopy.switchRole) { comingSoon = .init(title: KitchenCopy.switchRole) }
-                        QuietRow(title: KitchenCopy.language, value: KitchenCopy.english) { comingSoon = .init(title: KitchenCopy.language) }
-                        QuietRow(title: KitchenCopy.help) { comingSoon = .init(title: KitchenCopy.help) }
+                        // Switch role needs a decision on who may hold two roles (Needs a decision); the row says so.
+                        QuietRow(title: KitchenCopy.switchRole, value: StaffMeCopy.notAvailableYet) {}
+                            .disabled(true)
+                        QuietRow(title: KitchenCopy.language, value: KitchenCopy.english) { sheet = .language }
+                        QuietRow(title: KitchenCopy.help) { sheet = .help }
                         signOutRow
                     }
                 }
@@ -192,8 +188,11 @@ struct KitchenMeView: View {
                 .padding(.bottom, KitchenLayout.scrollBottomInset)
             }
         }
-        .fullScreenCover(item: $comingSoon) { page in
-            NotImplementedView(title: page.title, actionTitle: KitchenCopy.backToHome) { comingSoon = nil }
+        .mlSheet(item: $sheet) { page in
+            switch page {
+            case .language: StaffLanguageSheet { sheet = nil }
+            case .help: StaffHelpSheet(items: StaffHelpContent.kitchen) { sheet = nil }
+            }
         }
     }
 
