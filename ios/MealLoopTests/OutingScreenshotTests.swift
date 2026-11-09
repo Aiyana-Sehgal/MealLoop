@@ -322,6 +322,21 @@ final class OutingScreenshotTests: XCTestCase {
         return model
     }
 
+    func testCaptureGuardianEntry() async throws {
+        let world = World()
+        let model = await guardianModel(world)
+        func entry(_ path: [GuardianEntryStep], code: String = "") -> some View {
+            GuardianEntryFlow(account: OutingSeed.guardianAccount, preparedModel: model, initialPath: path,
+                              initialCode: code) { _ in }
+        }
+        try await shot("G0_guardian_sign_in", world) { entry([]) }
+        try await shot("G0_guardian_verify_code", world) { entry([.verify], code: "482916") }
+        try await shot("GA1_guardian_activate", world) { entry([.activate]) }
+        try await shot("GA2_guardian_confirm_link", world) { entry([.activate, .confirmLink]) }
+        try await shot("GA2_guardian_declined", world) { entry([.activate, .confirmLink, .declined]) }
+        try await shot("GA3_guardian_done", world) { entry([.activate, .confirmLink, .done]) }
+    }
+
     func testCaptureGuardianChooseAndSheets() async throws {
         let world = World()
         var model = await guardianModel(world)

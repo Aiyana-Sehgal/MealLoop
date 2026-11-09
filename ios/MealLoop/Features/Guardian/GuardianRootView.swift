@@ -1,17 +1,24 @@
 import SwiftUI
 
 /// The Guardian root: one page, no tabs (spec: the guardian opens a link). Only a Guardian session reaches it; any
-/// other session gets the plain placeholder. Guardian authority comes from the seeded SRM-verified contact only:
-/// production guardian sign-in is not decided, so the sign-in and activation frames are not built here.
+/// other session gets the plain placeholder. Guardian authority comes from the seeded SRM-verified contact only.
+/// Production guardian sign-in is not decided (P71), so the sign-in and activation frames run as a simulated
+/// first-run flow (`GuardianEntryFlow`) once per launch, then the decision page opens.
 struct GuardianRootView: View {
     let session: Session
+    /// The model the first-run flow loaded; nil until the flow is finished.
+    @State private var entered: GuardianModel?
 
     /// The one check for who may see the Guardian page.
     static func allows(_ session: Session) -> Bool { session.account.role == .guardian }
 
     var body: some View {
         if Self.allows(session) {
-            GuardianPageView(account: session.account.id)
+            if let entered {
+                GuardianPageView(account: session.account.id, preparedModel: entered)
+            } else {
+                GuardianEntryFlow(account: session.account.id) { entered = $0 }
+            }
         } else {
             NotImplementedView(title: MLFormat.roleName(session.account.role))
         }
