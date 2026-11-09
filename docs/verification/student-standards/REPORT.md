@@ -17,7 +17,7 @@ Captures stay outside the repository, in `~/mealloop-captures/student-standards/
 | S3 Attendance to Discrepancy | Done | `3b30ebe` | Tue 13 Aug dinner opens the sheet; VM tests |
 | S4 Student Search above the keyboard | Done | `a8769f6` | Menu rows above the keyboard; tab bar under it |
 | S5 Cheap empty-space audit | Done | see below | 2 flagged before (Search 48%, Dish 41%); 0 after |
-| S6 Student walk | Pending | | |
+| S6 Student walk | Done | report only | 41 of 41 pages reached; 0 crashes; 0 placeholders; 4 swipe-backs one level |
 
 ## S1 Standards on every Student screen
 
@@ -179,14 +179,81 @@ collapse on those tab roots was checked in the S6 walk instead.
 
 Test added: `StudentMealsScreensTests.testTheDishPageListsTheRestOfItsMealFromTheLoadedMenu`.
 
-## Validation so far
+## S6 Student walk
+
+A scratch copy of this worktree (outside the repository) with a temporary XCUITest target, `MealLoopWalk`, grafted into
+its `project.pbxproj` and the `MealLoop Review` scheme. Never committed. It signs in with SRM as the Student, opens
+every tab and the deepest pages of each flow, and logs each page as reached, crashed or placeholder ("Coming soon",
+"Not implemented", "isn't part of this prototype"). Simulator: a temporary iPhone 18 Pro, iOS 27.2, Review build.
+Screenshots in `~/mealloop-captures/student-standards/walk/`.
+
+| Area | Pages opened | Result |
+|---|---|---|
+| Home | Home; Answer; Entry QR; Special pass; Crowd; Notifications (system Back, then edge swipe); Credits > Get > ticket | all reached |
+| Report | What's wrong > Details > Send report > Receipt > Done | all reached |
+| Meals | Meals; Dish (Chappati) > Also at lunch > Dish (Veg Pulao) | all reached |
+| Community | Community; an issue; How Community works sheet | all reached |
+| You | You; Outings > New outing; Outings > a request; Credits; Attendance > 13 Aug > Something's wrong? > Send request; Spending; My feedback > My reports > ML-1031; Help; Privacy | all reached |
+| Search | Search with the keyboard up; results for "sambar"; a result's dish | all reached |
+
+- Pages reached: 41 of 41. Crashed: 0. Placeholder text: 0.
+- One lookup was "not found": the Crowd row inside the Special pass page. The available pass draws no Crowd row (it
+  shows only on used, expired and wrong-mess states), so this is not a defect.
+- Swipe-back, checked by a drag from the left screen edge (`press(forDuration:thenDragTo:)` from x = 2 pt) on a pushed
+  page, then checking which page is hittable:
+
+  | From | To | Result |
+  |---|---|---|
+  | Notifications | Home | one level |
+  | Report · Details | What's wrong? (not out of the report) | one level |
+  | Dish (Veg Pulao, opened from Also at lunch) | Dish (Chappati) | one level |
+  | Community issue | Community | one level |
+
+- Title collapse: after scrolling up, the large title of Meals, Community and You is gone and the same title shows in
+  the bar (walk screenshots `collapse_Meals`, `collapse_Community`, `collapse_You`).
+- S3 in the app: the 13 Aug cell opens "Something's wrong?" with Dinner · Tue 13 Aug; after Send request the
+  calendar card says "Request recorded. This prototype sends nothing."
+- S4 in the app: with the software keyboard up, the tab bar is under the keyboard and "LUNCH ON THE MENU" fills the
+  space between the field and the keyboard; typing "sambar" lists the matches there.
+- A first walk run stopped short on the You tab because swiping down did not close the Community info sheet in the
+  test; the second run closes it with its Close button. Both logs are kept (`walk_run1/`, `walk/`).
+
+## Validation
+
+All runs on a temporary iPhone 18 Pro simulator (iOS 27.2), one at a time, with
+`-parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1`.
 
 | Run | Command | Result |
 |---|---|---|
-| Baseline, before changes | Debug tests, `MealLoop` scheme | exit 0; 804 tests, 760 passed, 0 failed, 44 skipped |
+| Baseline, before changes | `xcodebuild test`, scheme `MealLoop` (Debug) | exit 0; 804 tests, 760 passed, 0 failed, 44 skipped |
 | After S1 | Debug tests | exit 0; 804, 760, 0, 44 |
-| After S2 | Debug tests | exit 0; 806, 762, 0, 44 |
-| After S3 and S4 | Debug tests | exit 0; 808, 764, 0, 44 |
-| S1/S2 captures | `StudentFinalScreenshotTests/testCaptureStudentAudit` with `TEST_RUNNER_STUDENT_FINAL_SHOTS`, `TEST_RUNNER_AUDIT` | exit 0; 34 captures |
+| After S2, before the first push | Debug tests | exit 0; 806, 762, 0, 44 |
+| After S3 and S4, before the second push | Debug tests | exit 0; 808, 764, 0, 44 |
+| After S5, before the third push | Debug tests | exit 0; 809, 765, 0, 44 |
+| Final | `xcodebuild test`, scheme `MealLoop Review` | exit 0; 807 tests, 764 passed, 0 failed, 43 skipped |
+| Final | `xcodebuild build`, scheme `MealLoop`, `-configuration Release` | exit 0; BUILD SUCCEEDED |
+| Captures | `StudentFinalScreenshotTests/testCaptureStudentAudit` with `TEST_RUNNER_STUDENT_FINAL_SHOTS`, `TEST_RUNNER_AUDIT` | exit 0; 36 captures |
+| Walk | scratch copy, `MealLoopWalk/StudentWalk`, scheme `MealLoop Review` | exit 0; 41 of 41 pages reached |
 
-The S1 commit was not built on its own; S1 and S2 were pushed together and tested at the S2 tip.
+The S1 commit was not built on its own; it was pushed together with S2 and tested at the S2 commit.
+
+- Files changed (all allowed): the Student feature folder, four Student test files, and
+  `docs/verification/student-standards/`. No backend, shared component, token, `GlassTabBar`, `MLScreen`,
+  `RoleRootView`, `openapi.yaml`, ADR, `docs/OPEN_DECISIONS.md` or other role's file changed.
+- No image file was added anywhere; captures stay in `~/mealloop-captures/student-standards/`.
+- `git ls-remote --heads origin`: `refs/heads/main` only.
+
+Not checked: a physical device; the camera (the SOS camera is a static preview); VoiceOver; iPhone SE; Dynamic Type at
+the largest size for the pages moved in this run (`MLScreen` already moves pinned actions into the scroll at
+accessibility sizes, and earlier runs captured Spending, Attendance and the ticket at that size). The edge swipe was
+driven by XCUITest in the simulator, not by a finger.
+
+## Open questions
+
+- Pages whose frames draw a small centred bar title now open with a large title that collapses into it (standards,
+  section 1). If the owner wants those frames kept compact, `MLScreen` would need an inline-only title option, which
+  is a shared-component change outside this run.
+- The hint under the Attendance calendar ("Ate but not scanned? Tap the circled day to ask for a correction.") and the
+  "LUNCH ON THE MENU" and "ALSO AT LUNCH" labels are wording this run added; no frame draws them.
+- Receipt and SOS · Sent have no Back (Done closes the report). Whether the owner wants Back there, and to where, is
+  not decided by a frame.
