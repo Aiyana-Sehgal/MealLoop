@@ -17,6 +17,8 @@ struct DemoStudentYou: StudentYouRepository {
     /// Reward tickets got in this run. Their cost comes off the balance and each one is a history line. Nil keeps the
     /// balance as it was before reward tickets existed.
     var rewards: DemoStudentRewardsStore?
+    /// The Admin's reward catalogue. Nil keeps the seeded tickets.
+    var catalogue: DemoRewardCatalogueStore?
 
     /// Today's meals a student can answer, in the order the day serves them.
     private static let todaysMeals = [DemoSeed.breakfast.id, DemoSeed.lunch.id, DemoSeed.dinner.id]
@@ -53,8 +55,9 @@ struct DemoStudentYou: StudentYouRepository {
 
     func credits(for student: StudentID) async throws -> StudentCredits {
         try await core.requireConnection()
+        let tickets = await catalogue?.items ?? DemoSeed.sampleCreditTickets
         guard student == DemoSeed.sampleStudent.id else {
-            return StudentCredits(balance: nil, tickets: DemoSeed.sampleCreditTickets, history: [])
+            return StudentCredits(balance: nil, tickets: tickets, history: [])
         }
         // Answers given in this run (after the story starts) earn; the sample balance already holds earlier ones.
         var earned: [StudentCreditEntry] = []
@@ -71,7 +74,7 @@ struct DemoStudentYou: StudentYouRepository {
         }
         let lines = earned + redeemed
         let balance = DemoSeed.sampleCredits + lines.reduce(0) { $0 + $1.points }
-        return StudentCredits(balance: balance, tickets: DemoSeed.sampleCreditTickets,
+        return StudentCredits(balance: balance, tickets: tickets,
                               history: lines.sorted { $0.day > $1.day } + DemoSeed.sampleCreditHistory)
     }
 

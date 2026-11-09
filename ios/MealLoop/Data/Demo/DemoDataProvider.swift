@@ -173,6 +173,7 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
     private nonisolated let studentRecordsStore = DemoStudentRecordsStore()
     private nonisolated let studentSpendingStore = DemoStudentSpendingStore()
     private nonisolated let adminVotesRewardsStore = DemoAdminVotesRewardsStore()
+    private nonisolated let rewardCatalogueStore = DemoRewardCatalogueStore()
     private nonisolated let studentRewardsStore = DemoStudentRewardsStore()
     private nonisolated let feedbackRatingStore = DemoFeedbackRatingStore()
     /// The instant the live pass code is read at, shared by the Student pass and the Pass Desk.
@@ -201,15 +202,16 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
                             shortages: self, wasteReports: self, sos: self, auth: self, specialPasses: self,
                             studentExtras: self, studentMeals: self, studentCommunity: self, adminResults: admin, adminStudents: admin, adminMore: admin,
                             adminMesses: DemoAdminMesses(core: self, store: adminMessStore), staffDirectory: self,
-                            studentYou: DemoStudentYou(core: self, store: studentYouStore, rewards: studentRewardsStore),
+                            studentYou: DemoStudentYou(core: self, store: studentYouStore, rewards: studentRewardsStore, catalogue: rewardCatalogueStore),
                             studentRecords: DemoStudentRecords(core: self, store: studentRecordsStore),
                             livePassCodes: self, superAdmin: DemoSuperAdmin(core: self, store: superAdminStore),
                             passUse: self,
                             studentSpending: DemoStudentSpending(core: self, store: studentSpendingStore),
                             adminVotesRewards: DemoAdminVotesRewards(core: self, store: adminVotesRewardsStore),
+                            rewardCatalogue: DemoRewardCatalogue(core: self, store: rewardCatalogueStore),
                             studentRewards: DemoStudentRewards(core: self, store: studentRewardsStore,
-                                                               you: DemoStudentYou(core: self, store: studentYouStore,
-                                                                                   rewards: studentRewardsStore)),
+                                                               you: DemoStudentYou(core: self, store: studentYouStore, rewards: studentRewardsStore,
+                                                                   catalogue: rewardCatalogueStore)),
                             feedbackRatings: DemoFeedbackRatings(core: self, store: feedbackRatingStore))
     }
 
