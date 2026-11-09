@@ -45,6 +45,8 @@ enum AdminLayout {
     static let scrollBottomInset: CGFloat = 120
     static let tabBarClearance: CGFloat = 86
     static let scrollFadeHeight: CGFloat = 130
+    /// Today's mess tiles (2257:158261): one height for all four.
+    static let tileHeight: CGFloat = 164
 }
 
 /// Wraps its children like text, for chips.

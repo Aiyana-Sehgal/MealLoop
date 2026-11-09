@@ -102,22 +102,14 @@ struct AdminTodayBody: View {
             ForEach(content.safetyCases) { safetyCase in
                 safetyCard(safetyCase)
             }
-            if let due = content.otherMesses?.headcountDue {
-                Text(AdminCopy.headcountDue(meal: mealName, time: MLFormat.time(due, in: timeZone)))
-                    .font(MLType.bodyEmphasis)
-                    .foregroundStyle(MLColor.ink)
-            }
             if allMesses {
                 AdminMessGrid(content: content, open: open)
             } else {
                 AdminMessTile(content: content, openHeadcount: { open(.headcount) }, openLive: { open(.live) })
             }
+            // Today draws the tiles and Needs you only. The six headcount values and the approval and vendor status
+            // live on the mess's headcount page and Live meal, where Figma draws them.
             needsYou
-            VStack(alignment: .leading, spacing: MLSpacing.s8) {
-                AdminLabel(text: AdminCopy.headcountSection(mealName))
-                AdminHeadcountValuesCard(values: content.values)
-                AdminHeadcountStatusRows(headcount: content.meal?.headcount, timeZone: timeZone)
-            }
         }
     }
 
@@ -152,14 +144,8 @@ struct AdminTodayBody: View {
 
     @ViewBuilder
     private var needsYou: some View {
-        if content.visibleShortages.isEmpty && content.visibleReviews.isEmpty {
-            Text(AdminCopy.nothingNeedsYou)
-                .font(MLType.staffPrimary)
-                .foregroundStyle(MLColor.ink)
-                .padding(MLSpacing.s20)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).fill(MLColor.surface))
-        } else {
+        // No filler when nothing needs the admin: the section is simply not drawn.
+        if !(content.visibleShortages.isEmpty && content.visibleReviews.isEmpty) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack {
                     AdminLabel(text: AdminCopy.needsYou)

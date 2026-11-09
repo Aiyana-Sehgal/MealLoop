@@ -157,7 +157,8 @@ struct AdminTileCard<Content: View>: View {
             content
         }
         .padding(MLSpacing.s16)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        // Today 2257:158261: four tiles of one width and one height.
+        .frame(maxWidth: .infinity, minHeight: AdminLayout.tileHeight, maxHeight: .infinity, alignment: .topLeading)
         .background { background }
     }
 
@@ -189,24 +190,27 @@ struct AdminMessTile: View {
     private var isServing: Bool { meal?.status.state == .inService }
 
     var body: some View {
+        tileCard
+            // The whole tile opens its page (Live meal while serving), as the other mess tiles do.
+            .contentShape(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous))
+            .onTapGesture { isServing ? openLive() : openHeadcount() }
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction { isServing ? openLive() : openHeadcount() }
+    }
+
+    private var tileCard: some View {
         AdminTileCard(isHero: isHero, hasData: hasData || forecastDue != nil) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(AdminCopy.tileName(content.mess.name))
-                    .font(MLType.staffBody)
-                    .foregroundStyle(isHero ? MLColor.onHero : MLColor.ink)
-                if hasData, let lead = meal?.leadValue {
-                    Text(lead.name)
-                        .font(MLType.secondary)
-                        .foregroundStyle(isHero ? MLColor.onHeroSecondary : MLColor.inkSecondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.85)
-                }
-            }
+            Text(AdminCopy.tileName(content.mess.name))
+                .font(MLType.staffBody)
+                .foregroundStyle(isHero ? MLColor.onHero : MLColor.ink)
+            // The frame draws the number alone; its name stays for VoiceOver, so one headcount value never passes for
+            // another.
             Text((hasData ? meal?.leadValue.count : nil).map { String($0) } ?? "—")
                 .font(AdminType.tileMetric)
                 .foregroundStyle(isHero ? MLColor.onHero : (hasData ? MLColor.ink : MLColor.inkSecondary))
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
+                .accessibilityLabel(hasData ? (meal?.leadValue.name ?? "") : AdminCopy.noData)
             SegmentedProgress(current: meal?.filledSteps ?? (forecastDue == nil ? nil : 0), total: 4, surface: isHero ? .hero : .light,
                               missingText: AdminCopy.noData)
             bottomLine
@@ -222,10 +226,14 @@ struct AdminMessTile: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
         } else if let meal, hasData {
-            Text(statusLine(meal))
-                .font(MLType.body)
-                .foregroundStyle(isHero ? MLColor.onHeroSecondary : MLColor.ink)
-                .fixedSize(horizontal: false, vertical: true)
+            // With an action the tile shows the button only, as North's Send on the frame.
+            if meal.nextAction == nil {
+                Text(statusLine(meal))
+                    .font(MLType.body)
+                    .foregroundStyle(isHero ? MLColor.onHeroSecondary : MLColor.ink)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
+            }
             action(meal)
         } else {
             Text(AdminCopy.noData)
@@ -245,11 +253,6 @@ struct AdminMessTile: View {
                 // A safety case holds the black place, so the action steps back to an outline.
                 CompactPillButton(title: title, action: openHeadcount)
             }
-        }
-        if isServing {
-            TextLinkButton(title: AdminCopy.liveMeal, action: openLive)
-        } else if meal.nextAction == nil {
-            TextLinkButton(title: AdminCopy.seeHeadcount, action: openHeadcount)
         }
     }
 
@@ -359,7 +362,7 @@ struct AdminHeadcountValuesCard: View {
 
     var body: some View {
         FactCard(rows: values.map { value in
-            FactRow(label: value.name, value: value.count.map { String($0) } ?? AdminCopy.notAvailableYet,
+            FactRow(label: value.name, value: value.count.map { String($0) } ?? "—",
                     isMono: value.count != nil)
         })
     }
