@@ -133,5 +133,37 @@ final class AdminPolishScreenshotTests: XCTestCase {
         let world = try await world(.duringMeal)
         try await shot("p2_admin_passes_requests", world, wait: 2) { AdminPassesScreen(nav: world.nav) }
     }
+
+    // MARK: - P7 audit: every Admin page once, at 1x
+
+    func testCaptureAdminAudit() async throws {
+        guard ProcessInfo.processInfo.environment["AUDIT"] != nil else { throw XCTSkip("Audit walk only.") }
+        let world = try await world(.duringMeal)
+        try await shot("admin_today", world, pushed: false, bar: false) { AdminRootView(session: world.session) }
+        try await shot("admin_students", world, pushed: false, tab: "Students") { AdminStudentsScreen(nav: world.nav) }
+        try await shot("admin_results", world, pushed: false, tab: "Results") { AdminResultsScreen(nav: world.nav) }
+        try await shot("admin_more", world, pushed: false) { AdminMoreScreen(nav: world.nav) }
+        let search = AdminSearchModel(repositories: world.env.repositories, session: world.session, timeZone: world.context.mess.timeZone)
+        try await shot("admin_search", world, pushed: false, tab: "Today") {
+            AdminSearchView(model: search, nav: world.nav, openToday: {}, onCancel: {})
+        }
+        let today = AdminTodayViewModel(context: world.context, repositories: world.env.repositories, clock: world.core.clock)
+        await today.load()
+        try await shot("admin_headcount", world, tab: "Today") { AdminHeadcountView(model: today) {} }
+        try await shot("admin_live_meal", world, tab: "Today") { AdminLiveMealView(model: today, nav: world.nav) }
+        let overview = try await world.env.repositories.adminStudents.studentsOverview()
+        var pages: [(String, AdminPage)] = [
+            ("people", .people), ("people_door_staff", .peopleRole(Role.doorScanner.rawValue)), ("weekly_menu", .weeklyMenu),
+            ("passes", .passes), ("votes", .votes), ("rewards", .rewards), ("spare_food", .spareFood), ("history", .history),
+            ("outings", .outings), ("announce", .announce), ("safety_cases", .safetyCases), ("find_meal", .findMeal),
+            ("weekly_report", .weeklyReport), ("skip_reasons", .skipReasons), ("not_answered", .notAnswered),
+            ("mess_north_lunch", .messHeadcount("North", .lunch)), ("proposals", .proposals), ("redemptions", .redemptions),
+        ]
+        if let feedback = overview.feedback.first { pages.append(("feedback", .feedback(feedback.id))) }
+        if let issue = overview.community.first { pages.append(("community_issue", .community(issue.id))) }
+        for (name, page) in pages {
+            try await shot("admin_\(name)", world) { AdminPageDestination(page: page, nav: world.nav) }
+        }
+    }
 }
 #endif

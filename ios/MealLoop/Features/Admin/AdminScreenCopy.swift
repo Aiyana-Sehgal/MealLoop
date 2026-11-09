@@ -469,6 +469,14 @@ enum AdminScreenCopy {
     static func seeAllCount(_ count: Int) -> String { "See all · \(count)" }
     /// Said by a control the frame draws but the prototype has no page for.
     static let notInPrototype = "This isn't part of this prototype."
+    static let answeredSoFar = "ANSWERED SO FAR"
+    static func ofStudents(_ total: String) -> String { "of \(total)" }
+    static let answerYes = "Yes"
+    static let answerNo = "No"
+    static let answerNotSure = "Not sure"
+    static let notAnsweredPerMess = "NOT ANSWERED, BY MESS"
+    static let lastFourWeeks = "LAST 4 WEEKS"
+    static func casesSummary(open: Int, closed: Int) -> String { "\(open) open · \(closed) closed" }
     static func historyNotHeld(_ held: Int, _ total: Int) -> String {
         "The record holds the last \(held) of today's \(total) entries."
     }

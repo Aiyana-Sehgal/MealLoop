@@ -6,6 +6,8 @@ enum AdminAccessCopy {
     static let title = "People and access"
     static let allMesses = "All messes"
     static let invite = "Invite someone"
+    static let byMess = "BY MESS"
+    static func peopleCount(_ count: Int) -> String { "\(count) \(count == 1 ? "person" : "people")" }
     static let give = "Give password"
     static let revoke = "Revoke password"
     static let shownOnce = "Shown once."
@@ -181,6 +183,17 @@ struct AdminAccessView: View {
             }
             if model.people(role).isEmpty { Text("No people in this role").font(MLType.body).foregroundStyle(MLColor.inkSecondary) }
             InkActionButton(title: "Add \(AdminAccessCopy.title(role).lowercased())") { beginInvite(role: role) }.padding(.top, MLSpacing.s16)
+            // Blank-band audit (P7): how this role is spread across the messes, from the directory.
+            VStack(alignment: .leading, spacing: 0) {
+                AdminLabel(text: AdminAccessCopy.byMess).padding(.bottom, MLSpacing.s8)
+                ForEach(model.state.value?.messes ?? []) { mess in
+                    let count = model.people(role).filter { $0.account.scope == .mess(mess.id) }.count
+                    AdminRow(title: mess.name, showsChevron: false, action: nil) {
+                        Text(AdminAccessCopy.peopleCount(count)).font(MLType.monoBody).foregroundStyle(MLColor.ink)
+                    }
+                }
+            }
+            .padding(.top, MLSpacing.s24)
         }
     }
     private func personPage(_ person: AccessPerson) -> some View {

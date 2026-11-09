@@ -14,6 +14,11 @@ enum AdminSearchCopy {
     static let todayAllMesses = "Today, all messes"
     static let peopleAndAccess = "People and access"
     static let weeklyReport = "Weekly report"
+    static let weeklyMenu = "Weekly menu"
+    static let menuVotes = "Menu votes"
+    static let passes = "Special passes"
+    static let rewards = "Rewards"
+    static let safetyCases = "Safety cases"
     static let today = "Today"
     static func noMatch(_ scope: AdminSearchScope, _ text: String) -> String {
         switch scope {
@@ -249,6 +254,11 @@ struct AdminSearchView: View {
             AdminRow(title: AdminSearchCopy.todayAllMesses, action: openToday) { EmptyView() }
             AdminRow(title: AdminSearchCopy.peopleAndAccess, action: { nav.push(.people) }) { EmptyView() }
             AdminRow(title: AdminSearchCopy.weeklyReport, action: { nav.push(.weeklyReport) }) { EmptyView() }
+            AdminRow(title: AdminSearchCopy.weeklyMenu, action: { nav.push(.weeklyMenu) }) { EmptyView() }
+            AdminRow(title: AdminSearchCopy.menuVotes, action: { nav.push(.votes) }) { EmptyView() }
+            AdminRow(title: AdminSearchCopy.passes, action: { nav.push(.passes) }) { EmptyView() }
+            AdminRow(title: AdminSearchCopy.rewards, action: { nav.push(.rewards) }) { EmptyView() }
+            AdminRow(title: AdminSearchCopy.safetyCases, action: { nav.push(.safetyCases) }) { EmptyView() }
         }
     }
 

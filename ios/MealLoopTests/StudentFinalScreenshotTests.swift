@@ -281,5 +281,47 @@ final class StudentFinalScreenshotTests: XCTestCase {
             }
         }
     }
+
+    // MARK: - P7 audit: every Student route once, at 1x
+
+    func testCaptureStudentAudit() async throws {
+        guard ProcessInfo.processInfo.environment["AUDIT"] != nil else { throw XCTSkip("Audit walk only.") }
+        let world = World()
+        let records = try XCTUnwrap(StudentRecordsViewModel(session: world.session, repositories: world.environment.repositories,
+                                                            clock: world.clock))
+        let outings = try XCTUnwrap(StudentOutingsViewModel(session: world.session,
+                                                            repository: OutingCaseRepositories.studentSource(for: world.environment)))
+        try await shot("student_home", world, tab: .home, pushed: false) { StudentHomeScreen(session: world.session) }
+        try await shot("student_meals", world, tab: .meals, pushed: false) { StudentMealsScreen(session: world.session) }
+        try await shot("student_community", world, tab: .community, pushed: false) { StudentCommunityScreen(session: world.session) }
+        try await shot("student_you", world, tab: .you, pushed: false) { StudentYouScreen(session: world.session) {} }
+        try await shot("student_search", world, tab: .search, pushed: false) { StudentSearchScreen(session: world.session) {} }
+        try await shot("student_notifications", world, tab: .home) { StudentNotificationsView(model: world.you) {} }
+        try await shot("student_credits", world, tab: .you) {
+            StudentCreditsView(model: world.you, rewards: world.rewards, onHistory: {}, onTicket: { _ in })
+        }
+        try await shot("student_credits_history", world, tab: .you) { StudentCreditsHistoryView(model: world.you, rewards: world.rewards) {} }
+        try await shot("student_attendance", world, tab: .you) { StudentAttendanceView(model: world.you) {} }
+        try await shot("student_spending", world, tab: .you) { StudentSpendingView(model: world.spending) }
+        try await shot("student_my_feedback", world, tab: .you) { StudentMyFeedbackView(model: records, onReports: {}) {} }
+        try await shot("student_my_reports", world, tab: .you) { StudentMyReportsView(model: records, onOpen: { _ in }) {} }
+        try await shot("student_help", world, tab: .you) { StudentHelpView(model: records) {} }
+        try await shot("student_privacy", world, tab: .you) { StudentPrivacyView(model: records) {} }
+        await outings.load()
+        try await shot("student_outings", world, tab: .you) { StudentOutingsView(model: outings, onNew: {}, onOpen: { _ in }) {} }
+        try await shot("student_new_outing", world, tab: .you) {
+            StudentNewOutingView(model: outings, onSent: { _ in }, onOpen: { _ in }) {}
+        }
+        try await shot("student_pass", world, tab: .home) { StudentPassScreen(session: world.session) {} }
+        try await shot("student_crowd", world, tab: .home) { StudentCrowdScreen(session: world.session) {} }
+        try await shot("student_report", world, tab: .home) { StudentReportScreen(session: world.session) {} }
+        let after = World(.afterMeal)
+        try await shot("student_pass_request", after, tab: .home) { StudentPassScreen(session: after.session) {} }
+        try await shot("student_rate_meal", after, tab: .home) {
+            StudentRateMealView(model: StudentRatingViewModel(session: after.session, repositories: after.environment.repositories,
+                                                              day: DemoSeed.lunch.startsAt, slot: .lunch)!,
+                                onNotGood: { _ in }) {}
+        }
+    }
 }
 #endif

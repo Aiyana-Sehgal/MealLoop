@@ -44,6 +44,8 @@ enum AdminVotesRewardsCopy {
     static func redeemedIn(_ period: String) -> String { "Redeemed in \(period)" }
     static let needsYouTitle = "Needs you"
     static let nothingNeedsYou = "Nothing needs you right now."
+    static let otherVotes = "VOTES"
+    static func closedVote(_ percent: Int) -> String { "Vote closed · \(percent)% for · advice only" }
 }
 
 // MARK: - Rules sheets
@@ -201,12 +203,23 @@ struct AdminProposalsScreen: View {
 }
 
 struct AdminProposalsView: View {
+    @Environment(AppEnvironment.self) private var environment
     @State var model: AdminVotesModel
+    @State private var votes: VotesPage?
     let nav: AdminNav
 
     var body: some View {
         AdminPageScaffold(title: AdminVotesRewardsCopy.newProposalsTitle, onBack: nav.pop) {
             AsyncContentView(state: model.proposals, timeZone: nav.timeZone, retry: { await model.load() }) { list in
+                // Blank-band audit (P7): the count the votes page holds, first.
+                HeroCard {
+                    VStack(alignment: .leading, spacing: MLSpacing.s8) {
+                        HeroEyebrow(label: AdminVotesRewardsCopy.newProposalsTitle.uppercased())
+                        Text("\(list.counted)").font(MLType.heroNumber).foregroundStyle(MLColor.onHero)
+                        Text(AdminVotesRewardsCopy.adviceOnly).mlFont(.body).foregroundStyle(MLColor.onHeroSecondary)
+                    }
+                }
+                .padding(.bottom, MLSpacing.s16)
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(list.proposals) { proposal in
                         AdminRow(title: proposal.title, detail: proposalDetail(proposal),
@@ -220,8 +233,20 @@ struct AdminProposalsView: View {
                     }
                 }
             }
+            // Blank-band audit (P7): the votes these proposals sit beside, from the Menu votes page.
+            if let votes {
+                AdminLabel(text: AdminVotesRewardsCopy.otherVotes).padding(.top, MLSpacing.s8)
+                AdminRow(title: votes.closedTitle, detail: AdminVotesRewardsCopy.closedVote(votes.forPercent),
+                         showsChevron: false, action: nil) { EmptyView() }
+                AdminRow(title: votes.inProgressTitle, detail: votes.inProgressDetail, showsChevron: false, action: nil) {
+                    Text(votes.timeLeft).font(MLType.monoBody).foregroundStyle(MLColor.ink)
+                }
+            }
         }
-        .task { await model.load() }
+        .task {
+            await model.load()
+            votes = try? await environment.repositories.adminMore.votes()
+        }
     }
 
     private func proposalDetail(_ proposal: VoteProposal) -> String {
@@ -295,6 +320,7 @@ struct AdminProposalView: View {
 
 struct AdminRedemptionsScreen: View {
     @Environment(AppEnvironment.self) private var environment
+    @State private var budget: RewardsPage?
     let nav: AdminNav
 
     var body: some View {
@@ -319,6 +345,18 @@ struct AdminRedemptionsScreen: View {
                     }
                 }
             }
+            // Blank-band audit (P7): what the redemptions cost against the budget, from the Rewards page.
+            if let budget {
+                AdminCard {
+                    VStack(alignment: .leading, spacing: MLSpacing.s4) {
+                        Text(budget.budgetTitle).mlFont(.bodyEmphasis).foregroundStyle(MLColor.ink)
+                        Text("\(budget.spent) \(AdminScreenCopy.ofBudget(budget.budget))").font(MLType.monoBody).foregroundStyle(MLColor.ink)
+                        Text(budget.detail).mlFont(.secondary).foregroundStyle(MLColor.inkSecondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
         }
+        .task { budget = try? await environment.repositories.adminMore.rewards() }
     }
 }

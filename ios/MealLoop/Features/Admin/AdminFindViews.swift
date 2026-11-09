@@ -124,6 +124,16 @@ struct AdminSafetyCasesScreen: View {
                 let open = cases.filter { $0.closedAt == nil }
                 let closed = cases.filter { $0.closedAt != nil }
                 VStack(alignment: .leading, spacing: MLSpacing.s8) {
+                    // Blank-band audit (P7): the period's count first, from the same cases.
+                    HeroCard {
+                        VStack(alignment: .leading, spacing: MLSpacing.s8) {
+                            HeroEyebrow(label: AdminScreenCopy.lastFourWeeks)
+                            Text("\(cases.count)").font(MLType.heroNumber).foregroundStyle(MLColor.onHero)
+                            Text(AdminScreenCopy.casesSummary(open: open.count, closed: closed.count))
+                                .mlFont(.body).foregroundStyle(MLColor.onHeroSecondary)
+                        }
+                    }
+                    .padding(.bottom, MLSpacing.s8)
                     AdminLabel(text: AdminScreenCopy.open)
                     ForEach(open) { item in row(item, now: now) }
                     AdminLabel(text: AdminScreenCopy.closed)

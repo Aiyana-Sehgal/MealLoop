@@ -301,6 +301,19 @@ struct AdminNotAnsweredScreen: View {
         }, timeZone: nav.timeZone) { value, _ in
             AdminPageScaffold(title: AdminScreenCopy.notAnswered,
                               subtitle: AdminScreenCopy.notAnsweredSubtitle(value.1.mealTitle, AdminFormat.count(value.1.notAnswered)), onBack: nav.pop) {
+                // Blank-band audit (P7): who has answered, from the same overview the Students tab reads.
+                HeroCard {
+                    VStack(alignment: .leading, spacing: MLSpacing.s8) {
+                        HeroEyebrow(label: AdminScreenCopy.answeredSoFar)
+                        Text("\(AdminFormat.count(value.1.answered)) \(AdminScreenCopy.ofStudents(AdminFormat.count(value.1.totalStudents)))")
+                            .font(AdminType.count)
+                            .foregroundStyle(MLColor.onHero)
+                        FactLine(label: AdminScreenCopy.answerYes, value: AdminFormat.count(value.1.yes))
+                        FactLine(label: AdminScreenCopy.answerNo, value: AdminFormat.count(value.1.no))
+                        FactLine(label: AdminScreenCopy.answerNotSure, value: AdminFormat.count(value.1.notSure))
+                    }
+                }
+                AdminLabel(text: AdminScreenCopy.notAnsweredPerMess)
                 VStack(spacing: 0) {
                     ForEach(value.0) { mess in
                         AdminRow(title: mess.name, action: nil) {
@@ -315,5 +328,20 @@ struct AdminNotAnsweredScreen: View {
             }
         }
         .frame(maxHeight: .infinity, alignment: .top)
+    }
+}
+
+/// One white-on-black fact: a label and a mono number.
+private struct FactLine: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        HStack {
+            Text(label).mlFont(.body).foregroundStyle(MLColor.onHeroSecondary)
+            Spacer()
+            Text(value).font(MLType.monoBody).foregroundStyle(MLColor.onHero)
+        }
+        .accessibilityElement(children: .combine)
     }
 }
