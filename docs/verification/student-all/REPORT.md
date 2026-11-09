@@ -22,8 +22,8 @@ Pro simulator, iOS 27.2, created for this run).
 | G5 Standards and blank audit | done | report only | 0 pages above 25% |
 | G6 Tests and walk | partial | with each group | View-model tests done; the simulator walk was not run |
 
-**Not pushed.** `git push origin HEAD:main` was refused by this session's permission classifier ("Git Destructive").
-The commits are on the detached HEAD of this run's worktree; nothing reached `origin/main`, so CI did not run on them.
+**Pushed after the run.** The first `git push origin HEAD:main` was refused by the session's permission classifier;
+the owner then asked for the push, and `420af7c..f6d2f24` reached `main` (fast-forward, no rebase needed).
 
 ## G1 · Dish feedback (owner, 9 November)
 
@@ -228,7 +228,7 @@ Xcode 27.2 (27B52); iPhone 18 Pro simulator, iOS 27.2, created for this run and 
 | Files changed | `git diff --name-only origin/main HEAD` | Student folder, additive backend (`DishFeedback*`, wiring in `Repositories`, `DemoDataProvider`, `DemoStudentRecords`, `AdminSeed`), tests, this report |
 | Images outside `ios/` | same diff | none |
 | Remote branches | `git ls-remote --heads origin` | `main` only |
-| CI | not run | nothing was pushed (see Progress) |
+| CI | `gh run list --branch main` | see the run for this commit |
 
 Not checked: a physical device, the real camera and location, a real finger gesture, VoiceOver, iPhone SE, the
 largest Dynamic Type size on the new pages.
