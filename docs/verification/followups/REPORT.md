@@ -108,3 +108,15 @@ Result: no screen above 25% except Student Search, whose band is the keyboard's 
   catalogue holds the credit cost only. Keep the ₹ line?
 - Parallel Student session: its 5 unpushed commits (outing pages on MLScreen) will meet P4's outing edits when it
   rebases; keep both: the MLScreen move and the What happens next card.
+
+## Commands and counts (final code `84b0a1f`)
+
+| Run | Exit | Tests | Passed | Failed | Skipped |
+|---|---|---|---|---|---|
+| Debug, `MealLoop` | 0 | 792 | 753 | 0 | 39 |
+| Review, `MealLoop Review` | 0 | 790 | 752 | 0 | 38 |
+| Release build | 0 | n/a | `** BUILD SUCCEEDED **` | n/a | n/a |
+
+Skipped: the opt-in screenshot and audit captures. Diff: Student and Admin feature folders, additive `Domain` and
+`Data` pieces (pass requests, reward catalogue), the Food Head scope rule (`AdminDataScope`, `DemoPeople`), tests and
+this folder. Not checked: a live edge swipe, VoiceOver, the camera, a physical device.
