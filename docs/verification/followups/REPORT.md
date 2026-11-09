@@ -8,11 +8,11 @@ capture per changed screen on iPhone 18 Pro at about 480 px high.
 
 | Group | What | Status | Evidence |
 |---|---|---|---|
-| P1 | Special pass keeps the long press | not started | |
+| P1 | Special pass keeps the long press | done | `iphone18pro/p1_pass_hold_sheet.png`; PassHoldTrackerTests (complete, release early, cancel) |
 | P2 | Special pass approval for next week | not started | |
-| P3 | Ratings open for 2 days | not started | |
+| P3 | Ratings open for 2 days | done | FeedbackRatingRepositoryTests: open after the next meal starts, Monday open, Sunday closed; Home card hidden when rated or closed |
 | P4 | Outing "What happens next" | not started | |
-| P5 | Rewards add and delete | not started | |
+| P5 | Rewards add and delete | done | `p5_rewards_manage.png`, `p5_rewards_add_sheet.png`; RewardCatalogueRepositoryTests |
 | P6 | Food Head gets the Super Admin's scope | done | below |
 | P7 | Spacing audit, Admin and Student | not started | |
 | P8 | Open item P-FINAL-10 | not started | |
