@@ -22,32 +22,18 @@ struct StudentAnswerView: View {
 
     private var card: StudentMealCard? { model.card(id: mealID) }
 
+    /// On `MLScreen`: the system back button and swipe-back pop the page; `onBack` stays for callers.
     var body: some View {
-        ZStack {
-            OrbitBackground()
-            ScrollView {
-                VStack(alignment: .leading, spacing: MLSpacing.s12) {
-                    if let card {
-                        StudentNavHeader(title: MLFormat.mealSlot(card.meal.slot), subtitle: subtitle(card), onBack: onBack)
-                        VStack(alignment: .leading, spacing: MLSpacing.s16) {
-                            dishes
-                            if model.isOffline {
-                                StudentOfflineBanner(text: StudentCopy.answerWaiting)
-                            } else {
-                                Color.clear.frame(height: MLSpacing.s4)
-                            }
-                            answer(card)
-                        }
-                        .padding(.top, MLSpacing.s8)
-                    } else {
-                        BackButton(action: onBack).padding(.leading, -MLSpacing.s4)
+        MLScreen(card.map { MLFormat.mealSlot($0.meal.slot) }, subtitle: card.map(subtitle), bottomClearance: .tabBar) {
+            if let card {
+                VStack(alignment: .leading, spacing: MLSpacing.s16) {
+                    dishes
+                    if model.isOffline {
+                        StudentOfflineBanner(text: StudentCopy.answerWaiting)
                     }
+                    answer(card)
                 }
-                .padding(.horizontal, MLSpacing.margin)
-                .padding(.top, MLSpacing.s4)
-                .padding(.bottom, StudentMetric.scrollBottom)
             }
-            StudentScrollFade()
         }
         .task(id: mealID) { await model.loadAnswerMenu(for: mealID) }
         .mlSheet(isPresented: $isSkipping) {

@@ -192,7 +192,6 @@ final class StudentFinalScreenshotTests: XCTestCase {
         try await shot("report_from_not_good", world, tab: .meals) {
             StudentReportScreen(session: world.session,
                                 subject: StudentReportSubject(slot: .lunch, day: DemoSeed.lunch.startsAt, dishName: rice.name)) {}
-                .studentPushedPage(usesSystemBar: false)
         }
         let early = World()
         try await shot("rate_meal_not_yet", early, tab: .home) {
@@ -212,18 +211,15 @@ final class StudentFinalScreenshotTests: XCTestCase {
         let world = World(at: DemoSeed.time(12, 32))
         try await shot("pass_available_redrawn", world, tab: .home) {
             StudentPassScreen(session: world.session) {}
-                .studentPushedPage(usesSystemBar: false)
         }
         try await shot("pass_hold_sheet", world, tab: .home, wait: 2) {
             StudentPassScreen(session: world.session) {}
-                .studentPushedPage(usesSystemBar: false)
                 .mlSheet(isPresented: .constant(true)) {
                     PassHoldSheet(phase: .holding, refusal: nil, tracker: PassHoldTracker(), onUse: {}, onCancel: {})
                 }
         }
         try await shot("pass_available_largest_text", world, tab: .home, largestText: true) {
             StudentPassScreen(session: world.session) {}
-                .studentPushedPage(usesSystemBar: false)
         }
     }
 
@@ -257,11 +253,11 @@ final class StudentFinalScreenshotTests: XCTestCase {
     func testCapturePassRequest() async throws {
         let world = World(.afterMeal)
         try await shot("p2_pass_request", world, tab: .home, wait: 2) {
-            StudentPassScreen(session: world.session) {}.studentPushedPage(usesSystemBar: false)
+            StudentPassScreen(session: world.session) {}
         }
         _ = try await world.environment.repositories.passRequests.request(for: DemoSeed.sampleStudent, at: DemoSeed.mess)
         try await shot("p2_pass_requested", world, tab: .home, wait: 2) {
-            StudentPassScreen(session: world.session) {}.studentPushedPage(usesSystemBar: false)
+            StudentPassScreen(session: world.session) {}
         }
     }
 
@@ -273,11 +269,11 @@ final class StudentFinalScreenshotTests: XCTestCase {
                                                             repository: OutingCaseRepositories.studentSource(for: world.environment)))
         await outings.load()
         try await shot("p4_new_outing", world, tab: .you, wait: 2) {
-            StudentNewOutingView(model: outings, onSent: { _ in }, onOpen: { _ in }) {}.studentPushedPage(usesSystemBar: false)
+            StudentNewOutingView(model: outings, onSent: { _ in }, onOpen: { _ in }) {}
         }
         if let first = outings.outings.value?.current.first {
             try await shot("p4_outing_request", world, tab: .you, wait: 2) {
-                StudentOutingDetailView(model: outings, id: first.id) {}.studentPushedPage(usesSystemBar: false)
+                StudentOutingDetailView(model: outings, id: first.id) {}
             }
         }
     }
@@ -315,12 +311,62 @@ final class StudentFinalScreenshotTests: XCTestCase {
         try await shot("student_pass", world, tab: .home) { StudentPassScreen(session: world.session) {} }
         try await shot("student_crowd", world, tab: .home) { StudentCrowdScreen(session: world.session) {} }
         try await shot("student_report", world, tab: .home) { StudentReportScreen(session: world.session) {} }
+        try await auditStandardsRoutes(world, records: records, outings: outings)
         let after = World(.afterMeal)
         try await shot("student_pass_request", after, tab: .home) { StudentPassScreen(session: after.session) {} }
         try await shot("student_rate_meal", after, tab: .home) {
             StudentRateMealView(model: StudentRatingViewModel(session: after.session, repositories: after.environment.repositories,
                                                               day: DemoSeed.lunch.startsAt, slot: .lunch)!,
                                 onNotGood: { _ in }) {}
+        }
+    }
+
+    /// The pages moved onto `MLScreen` in the standards run (docs/verification/student-standards/): one shot each,
+    /// plus the tab roots with their large titles collapsed.
+    private func auditStandardsRoutes(_ world: World, records: StudentRecordsViewModel,
+                                      outings: StudentOutingsViewModel) async throws {
+        let home = try XCTUnwrap(StudentHomeViewModel(session: world.session, repositories: world.environment.repositories,
+                                                      clock: world.clock))
+        await home.load()
+        try await shot("student_answer", world, tab: .home) {
+            StudentAnswerView(model: home, mealID: DemoSeed.lunch.id, onShowEntry: {}) {}
+        }
+        try await shot("student_entry_qr", world, tab: .home) { EntryQRView(model: home) {} }
+        let meals = try XCTUnwrap(StudentMealsViewModel(session: world.session, repositories: world.environment.repositories,
+                                                        clock: world.clock))
+        let matches = try await world.environment.repositories.studentMeals.findDishes("Steamed Rice", mess: DemoSeed.mess.id)
+        if let match = matches.first {
+            try await shot("student_dish", world, tab: .meals) {
+                StudentDishDetailView(load: { try await meals.dishDetail(match.dish.id, day: match.day, slot: match.slot) },
+                                      timeZone: DemoSeed.mess.timeZone, onRate: {}) {}
+            }
+        }
+        let community = try XCTUnwrap(StudentCommunityViewModel(session: world.session,
+                                                                repositories: world.environment.repositories, clock: world.clock))
+        await community.load()
+        if let issue = community.issues(fixed: false).first {
+            try await shot("student_issue", world, tab: .community) {
+                StudentIssueView(model: community, id: issue.id, records: records) {}
+            }
+        }
+        await records.loadReports()
+        if let filed = records.activeReports.first {
+            try await shot("student_filed_report", world, tab: .you) { StudentFiledReportView(model: records, id: filed.id) {} }
+        }
+        if let first = outings.outings.value?.current.first {
+            try await shot("student_outing", world, tab: .you) { StudentOutingDetailView(model: outings, id: first.id) {} }
+            try await shot("student_outing_sent", world, tab: .you) {
+                StudentOutingSentView(outing: first, now: world.clock.now(), onSee: {}) {}
+            }
+        }
+        try await shot("student_meals_collapsed", world, tab: .meals, pushed: false, scrolledToEnd: true) {
+            StudentMealsScreen(session: world.session)
+        }
+        try await shot("student_community_collapsed", world, tab: .community, pushed: false, scrolledToEnd: true) {
+            StudentCommunityScreen(session: world.session)
+        }
+        try await shot("student_you_collapsed", world, tab: .you, pushed: false, scrolledToEnd: true) {
+            StudentYouScreen(session: world.session) {}
         }
     }
 }

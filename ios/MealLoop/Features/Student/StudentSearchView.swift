@@ -35,22 +35,23 @@ struct StudentSearchView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            ZStack {
-                OrbitBackground()
-                ScrollView {
-                    VStack(alignment: .leading, spacing: MLSpacing.s16) {
-                        MealsCompactHeader(title: MealsCopy.search, onBack: onBack)
-                        field
-                        results
-                    }
-                    .padding(.horizontal, MLSpacing.margin)
-                    .padding(.top, MLSpacing.s8)
-                    .padding(.bottom, StudentMetric.scrollBottom)
+            // Search is selected like a tab, so it is a stack root: its Back returns to the tab it was opened from.
+            MLScreen(MealsCopy.search, bottomClearance: .tabBar) {
+                VStack(alignment: .leading, spacing: MLSpacing.s16) {
+                    field
+                    results
                 }
-                .scrollDismissesKeyboard(.interactively)
-                StudentScrollFade()
             }
-            .toolbar(.hidden, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(action: onBack) {
+                        Image(systemName: "chevron.left")
+                            .font(MLType.staffPrimary)
+                            .foregroundStyle(MLColor.ink)
+                    }
+                    .accessibilityLabel(StudentCopy.back)
+                }
+            }
             .navigationDestination(for: StudentMealsRoute.self) { route in
                 destination(route)
                     .studentPushedPage(usesSystemBar: route.usesSystemBar)

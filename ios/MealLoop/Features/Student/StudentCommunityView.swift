@@ -57,6 +57,14 @@ enum StudentCommunityRoute: Hashable {
     case issue(CommunityIssueID)
     case report
     case comingSoon(String)
+
+    /// Pages built on `MLScreen`: the system bar, its back button and the swipe-back gesture.
+    var usesSystemBar: Bool {
+        switch self {
+        case .issue: true
+        default: false
+        }
+    }
 }
 
 /// Builds the view model from the environment.
@@ -90,26 +98,19 @@ struct StudentCommunityView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            ZStack {
-                OrbitBackground()
-                ScrollView {
-                    VStack(alignment: .leading, spacing: MLSpacing.s16) {
-                        header
-                        CommunitySegments(showsFixed: $showsFixed)
-                        content
-                    }
-                    .padding(.horizontal, MLSpacing.margin)
-                    .padding(.top, MLSpacing.s8)
-                    .padding(.bottom, StudentMetric.scrollBottom)
+            // The tab root: a large title that collapses into the bar, the info button in the bar.
+            MLScreen(CommunityCopy.title, subtitle: CommunityCopy.subtitle, bottomClearance: .tabBar) {
+                StudentGlassButton(symbol: "info.circle", label: CommunityCopy.about) { showsInfo = true }
+            } content: {
+                VStack(alignment: .leading, spacing: MLSpacing.s16) {
+                    CommunitySegments(showsFixed: $showsFixed)
+                    content
                 }
-                .refreshable { await model.load() }
-                StudentScrollFade()
             }
-            .toolbar(.hidden, for: .navigationBar)
+            .refreshable { await model.load() }
             .navigationDestination(for: StudentCommunityRoute.self) { route in
                 destination(route)
-                    .toolbar(.hidden, for: .navigationBar)
-                    .navigationBarBackButtonHidden(true)
+                    .studentPushedPage(usesSystemBar: route.usesSystemBar)
             }
         }
         .task(id: environment.dataRevision) {
@@ -131,13 +132,6 @@ struct StudentCommunityView: View {
             StudentReportScreen(session: session, onShowIssue: { path.append(.issue($0)) }) { path.removeLast() }
         case .comingSoon(let title):
             StudentComingSoonView(title: title) { path.removeLast() }
-        }
-    }
-
-    private var header: some View {
-        HStack(alignment: .top) {
-            MealsLargeHeader(title: CommunityCopy.title, subtitle: CommunityCopy.subtitle, onBack: nil)
-            StudentGlassButton(symbol: "info.circle", label: CommunityCopy.about) { showsInfo = true }
         }
     }
 
@@ -339,21 +333,16 @@ struct StudentIssueView: View {
     var records: StudentRecordsViewModel?
     let onBack: () -> Void
 
+    /// On `MLScreen`: the issue's title is the large title, and the system back button and swipe-back pop the page.
     var body: some View {
-        ZStack {
-            OrbitBackground()
-            ScrollView {
-                VStack(alignment: .leading, spacing: MLSpacing.s16) {
-                    MealsCompactHeader(title: CommunityCopy.issue, onBack: onBack)
-                    if let issue = model.issue(id) {
-                        details(issue)
-                    } else {
-                        MealsStateCard(symbol: "exclamationmark.circle", title: CommunityCopy.issue, detail: "")
-                    }
+        MLScreen(model.issue(id)?.title ?? CommunityCopy.issue, subtitle: model.issue(id).map(reportedLine),
+                 bottomClearance: .tabBar) {
+            VStack(alignment: .leading, spacing: MLSpacing.s16) {
+                if let issue = model.issue(id) {
+                    details(issue)
+                } else {
+                    MealsStateCard(symbol: "exclamationmark.circle", title: CommunityCopy.issue, detail: "")
                 }
-                .padding(.horizontal, MLSpacing.margin)
-                .padding(.top, MLSpacing.s8)
-                .padding(.bottom, StudentMetric.scrollBottom)
             }
         }
         .task {
@@ -362,17 +351,12 @@ struct StudentIssueView: View {
         }
     }
 
+    private func reportedLine(_ issue: StudentIssue) -> String {
+        CommunityCopy.messReported(issue.messName, StudentFormat.mediumDay(issue.reportedOn, in: model.timeZone))
+    }
+
     @ViewBuilder
     private func details(_ issue: StudentIssue) -> some View {
-        VStack(alignment: .leading, spacing: MLSpacing.s8) {
-            Text(issue.title)
-                .font(MLType.largeTitle)
-                .foregroundStyle(MLColor.ink)
-                .fixedSize(horizontal: false, vertical: true)
-            Text(CommunityCopy.messReported(issue.messName, StudentFormat.mediumDay(issue.reportedOn, in: model.timeZone)))
-                .font(StudentType.secondary)
-                .foregroundStyle(MLColor.inkSecondary)
-        }
         if let hidden = issue.hiddenReason {
             HStack(alignment: .top, spacing: MLSpacing.s12) {
                 Image(systemName: "lock").accessibilityHidden(true)

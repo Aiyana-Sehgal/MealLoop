@@ -177,23 +177,19 @@ struct RecordsTimelineRow: View {
     }
 }
 
-/// Page scaffold: the backdrop, a scroll view, the bottom fade.
+/// Page scaffold on `MLScreen`: a large title that collapses into the bar, the system back button and swipe-back,
+/// and clearance for the floating tab bar.
 private struct RecordsPage<Content: View>: View {
+    let title: String
+    var subtitle: String?
     @ViewBuilder let content: Content
     var onRefresh: (() async -> Void)?
 
     var body: some View {
-        ZStack {
-            OrbitBackground()
-            ScrollView {
-                VStack(alignment: .leading, spacing: MLSpacing.s16) { content }
-                    .padding(.horizontal, MLSpacing.margin)
-                    .padding(.top, MLSpacing.s8)
-                    .padding(.bottom, StudentMetric.scrollBottom)
-            }
-            .refreshable { await onRefresh?() }
-            StudentScrollFade()
+        MLScreen(title, subtitle: subtitle, bottomClearance: .tabBar) {
+            VStack(alignment: .leading, spacing: MLSpacing.s16) { content }
         }
+        .refreshable { await onRefresh?() }
     }
 }
 
@@ -206,8 +202,7 @@ struct StudentMyReportsView: View {
     let onBack: () -> Void
 
     var body: some View {
-        RecordsPage(content: {
-            MealsCompactHeader(title: RecordsCopy.myReports, onBack: onBack)
+        RecordsPage(title: RecordsCopy.myReports, content: {
             content
         }, onRefresh: { await model.loadReports() })
         .task { await model.loadReports() }
@@ -286,14 +281,12 @@ struct StudentFiledReportView: View {
     @State private var replying = false
 
     var body: some View {
-        RecordsPage(content: {
-            MealsCompactHeader(title: model.report.value?.reference ?? "", onBack: onBack)
+        RecordsPage(title: model.report.value?.reference ?? RecordsCopy.myReports, content: {
             content
         }, onRefresh: { await model.loadReport(id) })
         .task { await model.loadReport(id) }
-        .sheet(isPresented: $replying) {
+        .mlSheet(isPresented: $replying, isWorking: model.replySend == .sending) {
             RecordsReplySheet(model: model, id: id) { replying = false }
-                .presentationDetents([.medium])
         }
     }
 
@@ -466,9 +459,6 @@ struct RecordsReplySheet: View {
                 .font(StudentType.bodySemibold).foregroundStyle(MLColor.ink)
                 .frame(maxWidth: .infinity, minHeight: MLSize.hit)
         }
-        .padding(MLSpacing.margin)
-        .frame(maxHeight: .infinity, alignment: .top)
-        .background(MLColor.canvas)
     }
 }
 
@@ -481,8 +471,7 @@ struct StudentMyFeedbackView: View {
     let onBack: () -> Void
 
     var body: some View {
-        RecordsPage(content: {
-            YouLargeHeader(title: YouCopy.myFeedback, subtitle: RecordsCopy.feedbackSubtitle, onBack: onBack)
+        RecordsPage(title: YouCopy.myFeedback, subtitle: RecordsCopy.feedbackSubtitle, content: {
             content
         }, onRefresh: { await model.loadFeedback() })
         .task { await model.loadFeedback() }
@@ -631,8 +620,7 @@ struct StudentHelpView: View {
     @State private var seeded = false
 
     var body: some View {
-        RecordsPage(content: {
-            YouLargeHeader(title: YouCopy.help, subtitle: RecordsCopy.helpSubtitle, onBack: onBack)
+        RecordsPage(title: YouCopy.help, subtitle: RecordsCopy.helpSubtitle, content: {
             content
         }, onRefresh: { await model.loadHelp() })
         .task {
@@ -726,8 +714,7 @@ struct StudentPrivacyView: View {
     let onBack: () -> Void
 
     var body: some View {
-        RecordsPage(content: {
-            MealsCompactHeader(title: RecordsCopy.privacyTitle, onBack: onBack)
+        RecordsPage(title: RecordsCopy.privacyTitle, content: {
             listCard(RecordsCopy.sharedWithMess, RecordsCopy.shared)
             listCard(RecordsCopy.onlyYou, RecordsCopy.onlyYouItems)
             Text(RecordsCopy.noNames).font(StudentType.footnote).foregroundStyle(MLColor.inkSecondary)

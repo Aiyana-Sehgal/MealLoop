@@ -121,21 +121,14 @@ struct StudentOutingsView: View {
     let onOpen: (OutingRequestID) -> Void
     let onBack: () -> Void
 
+    /// On `MLScreen`: the system back button and swipe-back pop the page; `onBack` stays for callers.
     var body: some View {
-        ZStack {
-            OrbitBackground()
-            ScrollView {
-                VStack(alignment: .leading, spacing: MLSpacing.s16) {
-                    YouLargeHeader(title: OutingStudentCopy.title, subtitle: OutingStudentCopy.subtitle, onBack: onBack)
-                    content
-                }
-                .padding(.horizontal, MLSpacing.margin)
-                .padding(.top, MLSpacing.s8)
-                .padding(.bottom, StudentMetric.scrollBottom)
+        MLScreen(OutingStudentCopy.title, subtitle: OutingStudentCopy.subtitle, bottomClearance: .tabBar) {
+            VStack(alignment: .leading, spacing: MLSpacing.s16) {
+                content
             }
-            .refreshable { await model.load() }
-            StudentScrollFade()
         }
+        .refreshable { await model.load() }
         .task { await model.load() }
     }
 
@@ -321,12 +314,10 @@ struct StudentNewOutingView: View {
     let onOpen: (OutingRequestID) -> Void
     let onBack: () -> Void
 
+    /// On `MLScreen`: the send action is pinned above the tab bar; the system back button and swipe-back pop the page.
     var body: some View {
-        ZStack {
-            OrbitBackground()
-            ScrollView {
+        MLScreen(OutingStudentCopy.newOuting, subtitle: OutingStudentCopy.newSubtitle) {
                 VStack(alignment: .leading, spacing: MLSpacing.s12) {
-                    YouLargeHeader(title: OutingStudentCopy.newOuting, subtitle: OutingStudentCopy.newSubtitle, onBack: onBack)
                     if model.isOffline { StudentOfflineBanner(text: OutingStudentCopy.needsConnection) }
                     if model.outings.value?.eligibility == .noGuardian {
                         OutingNoticeCard(symbol: "exclamationmark.triangle", title: OutingStudentCopy.noGuardianTitle,
@@ -360,13 +351,10 @@ struct StudentNewOutingView: View {
                     if case .failed(let message) = model.send {
                         Text(message).font(StudentType.footnote).foregroundStyle(MLColor.danger)
                     }
-                    sendButton
                 }
-                .padding(.horizontal, MLSpacing.margin)
-                .padding(.top, MLSpacing.s8)
-                .padding(.bottom, StudentMetric.scrollBottom)
-            }
-            StudentScrollFade()
+        } bottom: {
+            sendButton
+                .studentAboveTabBar()
         }
         .task { await model.load() }
     }
@@ -521,22 +509,18 @@ struct StudentOutingSentView: View {
     let onSee: () -> Void
     let onBack: () -> Void
 
+    /// On `MLScreen`. The route is pushed straight after Outings, so the system Back returns to the list.
     var body: some View {
-        ZStack {
-            OrbitBackground()
-            ScrollView {
-                VStack(alignment: .leading, spacing: MLSpacing.s16) {
-                    YouLargeHeader(title: OutingStudentCopy.sent, subtitle: OutingCardFormat.line(outing), onBack: onBack)
-                    OutingTrackerCard(item: outing, now: now)
-                    OutingNextStepsCard(stage: outing.stage, window: OutingFormat.window(outing))
-                    OutingNothingByWaiting()
-                    Text(OutingStudentCopy.sentNote).font(StudentType.secondary).foregroundStyle(MLColor.inkSecondary)
-                    InkActionButton(title: OutingStudentCopy.seeRequest, action: onSee)
-                }
-                .padding(.horizontal, MLSpacing.margin)
-                .padding(.top, MLSpacing.s8)
-                .padding(.bottom, StudentMetric.scrollBottom)
+        MLScreen(OutingStudentCopy.sent, subtitle: OutingCardFormat.line(outing)) {
+            VStack(alignment: .leading, spacing: MLSpacing.s16) {
+                OutingTrackerCard(item: outing, now: now)
+                OutingNextStepsCard(stage: outing.stage, window: OutingFormat.window(outing))
+                OutingNothingByWaiting()
+                Text(OutingStudentCopy.sentNote).font(StudentType.secondary).foregroundStyle(MLColor.inkSecondary)
             }
+        } bottom: {
+            InkActionButton(title: OutingStudentCopy.seeRequest, action: onSee)
+                .studentAboveTabBar()
         }
     }
 }
@@ -550,23 +534,18 @@ struct StudentOutingDetailView: View {
     let onBack: () -> Void
     @State private var confirmingCancel = false
 
+    /// On `MLScreen`: the title follows the request's state; the system back button and swipe-back pop the page.
     var body: some View {
-        ZStack {
-            OrbitBackground()
-            ScrollView {
-                VStack(alignment: .leading, spacing: MLSpacing.s16) {
-                    content
-                }
-                .padding(.horizontal, MLSpacing.margin)
-                .padding(.top, MLSpacing.s8)
-                .padding(.bottom, StudentMetric.scrollBottom)
+        MLScreen(title, subtitle: subtitle, bottomClearance: .tabBar) {
+            VStack(alignment: .leading, spacing: MLSpacing.s16) {
+                content
             }
-            .refreshable { await model.loadDetail(id) }
-            StudentScrollFade()
         }
+        .refreshable { await model.loadDetail(id) }
         .task { await model.loadDetail(id) }
-        .sheet(isPresented: $confirmingCancel) {
-            VStack(alignment: .leading, spacing: 14) {
+        // A compact sheet sized to its two buttons; it cannot be swiped away while the cancel is sent.
+        .mlSheet(isPresented: $confirmingCancel, isWorking: model.cancelling) {
+            VStack(alignment: .leading, spacing: MLSpacing.s16) {
                 Text(OutingStudentCopy.cancelSheet).font(StudentType.body).foregroundStyle(MLColor.ink)
                     .fixedSize(horizontal: false, vertical: true)
                 if let error = model.cancelError {
@@ -578,26 +557,37 @@ struct StudentOutingDetailView: View {
                 .accessibilityIdentifier("student.outings.confirmCancel")
                 OutlineActionButton(title: OutingStudentCopy.keepIt) { confirmingCancel = false }
             }
-            .padding(MLSpacing.margin)
-            .presentationDetents([.height(300)])
         }
+    }
+
+    /// The request currently shown, when there is one.
+    private var item: OutingCase? { model.detail.value }
+
+    private var title: String {
+        guard let item else { return OutingStudentCopy.title }
+        if item.pass != nil, item.stage == .passSigned || item.stage == .out { return OutingStudentCopy.passTitle }
+        return OutingStudentCopy.outingTitle(item.leaveAt.map { OutingFormat.weekdayLong($0) } ?? OutingStudentCopy.title)
+    }
+
+    private var subtitle: String? {
+        guard let item else { return nil }
+        if item.pass != nil, item.stage == .passSigned || item.stage == .out { return OutingStudentCopy.passSubtitle }
+        return [item.place, item.leaveAt.flatMap { leave in item.returnBy.map { OutingFormat.window(leave, $0) } }]
+            .compactMap { $0 }.joined(separator: " · ")
     }
 
     @ViewBuilder
     private var content: some View {
         switch model.detail {
         case .idle, .loading:
-            YouLargeHeader(title: OutingStudentCopy.title, subtitle: nil, onBack: onBack)
             YouSkeleton(heights: [360, 145], label: OutingStudentCopy.title)
         case .failed(let failure):
-            YouLargeHeader(title: OutingStudentCopy.title, subtitle: nil, onBack: onBack)
             MealsStateCard(symbol: "exclamationmark.circle", title: failure.message, detail: "")
         case .empty:
-            YouLargeHeader(title: OutingStudentCopy.title, subtitle: nil, onBack: onBack)
+            EmptyView()
         case .loaded(let item), .stale(let item, _):
             page(item, offline: false)
         case .offline(let item, _):
-            YouLargeHeader(title: OutingStudentCopy.title, subtitle: nil, onBack: onBack)
             StudentOfflineBanner(text: OutingStudentCopy.offline)
             if let item { page(item, offline: true) }
         }
@@ -606,12 +596,8 @@ struct StudentOutingDetailView: View {
     @ViewBuilder
     private func page(_ item: OutingCase, offline: Bool) -> some View {
         if let pass = item.pass, item.stage == .passSigned || item.stage == .out {
-            YouLargeHeader(title: OutingStudentCopy.passTitle, subtitle: OutingStudentCopy.passSubtitle, onBack: onBack)
             OutingPassCard(item: item, pass: pass, onCancel: item.stage.studentCanCancel && !offline ? { confirmingCancel = true } : nil)
         } else {
-            YouLargeHeader(title: OutingStudentCopy.outingTitle(item.leaveAt.map { OutingFormat.weekdayLong($0) } ?? OutingStudentCopy.title),
-                           subtitle: [item.place, item.leaveAt.flatMap { leave in item.returnBy.map { OutingFormat.window(leave, $0) } }]
-                            .compactMap { $0 }.joined(separator: " · "), onBack: onBack)
             OutingTrackerCard(item: item, now: model.now)
             OutingNextStepsCard(stage: item.stage, window: OutingFormat.window(item))
             OutingNothingByWaiting()

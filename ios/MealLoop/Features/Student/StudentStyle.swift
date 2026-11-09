@@ -186,30 +186,6 @@ struct StudentScrollFade: View {
     }
 }
 
-/// Back, a large title and one line (NavHeader 74:136). Back sits 4 pt outside the margin, as drawn.
-struct StudentNavHeader: View {
-    let title: String
-    let subtitle: String
-    let onBack: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: MLSpacing.s8) {
-            BackButton(action: onBack)
-                .padding(.leading, -MLSpacing.s4)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(MLType.largeTitle)
-                    .foregroundStyle(MLColor.ink)
-                    .accessibilityAddTraits(.isHeader)
-                Text(subtitle)
-                    .font(StudentType.secondary)
-                    .foregroundStyle(MLColor.inkSecondary)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
 /// A destination another Student part will build. It says so, and Back works.
 struct StudentComingSoonView: View {
     let title: String

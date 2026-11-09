@@ -159,38 +159,6 @@ enum YouFormat {
     }
 }
 
-/// Back (or the space it takes on a tab root), a large title and an optional line.
-struct YouLargeHeader: View {
-    let title: String
-    let subtitle: String?
-    let onBack: (() -> Void)?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: MLSpacing.s8) {
-            if let onBack {
-                BackButton(action: onBack).padding(.leading, -MLSpacing.s4)
-            } else {
-                Color.clear.frame(height: MLSize.hit).accessibilityHidden(true)
-            }
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(MLType.largeTitle)
-                    .foregroundStyle(MLColor.ink)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                    .accessibilityAddTraits(.isHeader)
-                if let subtitle {
-                    Text(subtitle)
-                        .font(StudentType.secondary)
-                        .foregroundStyle(MLColor.inkSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
 /// Grey cards while a page loads.
 struct YouSkeleton: View {
     let heights: [CGFloat]

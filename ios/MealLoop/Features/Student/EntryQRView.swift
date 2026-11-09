@@ -54,36 +54,25 @@ struct EntryQRView: View {
     }
 
     /// 254 pt as drawn, smaller on a short phone so the card stays near the tab bar.
+    /// On `MLScreen`: the system back button and swipe-back pop the page; `onBack` stays for callers.
     private func page(zoneSize: CGFloat) -> some View {
-        ZStack {
-            OrbitBackground()
-            ScrollView {
-                VStack(alignment: .leading, spacing: MLSpacing.s12) {
-                    StudentNavHeader(title: StudentCopy.entryQR,
-                                     subtitle: StudentCopy.entrySubtitle(meal?.meal.slot, mess: model.context.mess.name),
-                                     onBack: onBack)
-                    VStack(spacing: MLSpacing.s16) {
-                        if entryCase == .savedOffline {
-                            StudentOfflineBanner(text: StudentCopy.offlineQRBanner)
-                        }
-                        AsyncContentView(state: model.entryCode, timeZone: model.timeZone,
-                                         retry: { await model.loadEntryCode() }) { code in
-                            EntryQRCard(model: model, code: code, entryCase: entryCase, zoneSize: zoneSize)
-                        }
-                        Text(StudentCopy.cantScan)
-                            .font(StudentType.secondaryMedium)
-                            .underline()
-                            .foregroundStyle(MLColor.ink)
-                            .multilineTextAlignment(.center)
-                            .frame(maxWidth: .infinity)
-                    }
-                    .padding(.top, MLSpacing.s8)
+        MLScreen(StudentCopy.entryQR, subtitle: StudentCopy.entrySubtitle(meal?.meal.slot, mess: model.context.mess.name),
+                 bottomClearance: .tabBar) {
+            VStack(spacing: MLSpacing.s16) {
+                if entryCase == .savedOffline {
+                    StudentOfflineBanner(text: StudentCopy.offlineQRBanner)
                 }
-                .padding(.horizontal, MLSpacing.margin)
-                .padding(.top, MLSpacing.s4)
-                .padding(.bottom, StudentMetric.scrollBottom)
+                AsyncContentView(state: model.entryCode, timeZone: model.timeZone,
+                                 retry: { await model.loadEntryCode() }) { code in
+                    EntryQRCard(model: model, code: code, entryCase: entryCase, zoneSize: zoneSize)
+                }
+                Text(StudentCopy.cantScan)
+                    .font(StudentType.secondaryMedium)
+                    .underline()
+                    .foregroundStyle(MLColor.ink)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
             }
-            StudentScrollFade()
         }
     }
 }

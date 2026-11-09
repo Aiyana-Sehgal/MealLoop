@@ -14,8 +14,8 @@ enum StudentMealsRoute: Hashable {
     /// Pages built on `MLScreen`: the system bar, its back button and the swipe-back gesture.
     var usesSystemBar: Bool {
         switch self {
-        case .rateDish: true
-        default: false
+        case .comingSoon, .report: false
+        default: true
         }
     }
 }
@@ -49,29 +49,21 @@ struct StudentMealsView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            ZStack {
-                OrbitBackground()
-                ScrollView {
-                    VStack(alignment: .leading, spacing: MLSpacing.s16) {
-                        MealsLargeHeader(title: MealsCopy.title, subtitle: model.context.mess.name, onBack: nil)
-                        if let week = model.week {
-                            MealsWeekStrip(week: week, selected: model.selectedDay, timeZone: model.timeZone) { day in
-                                Task { await model.select(day: day) }
-                            }
+            // The tab root: a large title that collapses into the bar as the week scrolls under it.
+            MLScreen(MealsCopy.title, subtitle: model.context.mess.name, bottomClearance: .tabBar) {
+                VStack(alignment: .leading, spacing: MLSpacing.s16) {
+                    if let week = model.week {
+                        MealsWeekStrip(week: week, selected: model.selectedDay, timeZone: model.timeZone) { day in
+                            Task { await model.select(day: day) }
                         }
-                        MealsSegments(selected: model.selectedSlot) { slot in
-                            Task { await model.select(slot: slot) }
-                        }
-                        content
                     }
-                    .padding(.horizontal, MLSpacing.margin)
-                    .padding(.top, MLSpacing.s8)
-                    .padding(.bottom, StudentMetric.scrollBottom)
+                    MealsSegments(selected: model.selectedSlot) { slot in
+                        Task { await model.select(slot: slot) }
+                    }
+                    content
                 }
-                .refreshable { await model.load() }
-                StudentScrollFade()
             }
-            .toolbar(.hidden, for: .navigationBar)
+            .refreshable { await model.load() }
             .navigationDestination(for: StudentMealsRoute.self) { route in
                 destination(route)
                     .studentPushedPage(usesSystemBar: route.usesSystemBar)
@@ -711,11 +703,10 @@ struct StudentDishDetailView: View {
     let onBack: () -> Void
     @State private var state: LoadState<StudentDishDetail> = .idle
 
+    /// On `MLScreen`: the system back button and swipe-back pop the page; `onBack` stays for callers.
     var body: some View {
-        ZStack {
-            OrbitBackground()
+        MLScreen(MealsCopy.dish) {
             VStack(alignment: .leading, spacing: MLSpacing.s16) {
-                MealsCompactHeader(title: MealsCopy.dish, onBack: onBack)
                 switch state {
                 case .idle, .loading:
                     RoundedRectangle(cornerRadius: StudentMetric.highlightRadius, style: .continuous)
@@ -727,14 +718,12 @@ struct StudentDishDetailView: View {
                 case .failed(let failure):
                     MealsStateCard(symbol: "exclamationmark.circle", title: failure.message, detail: "")
                 }
-                Spacer(minLength: 0)
-                if state.value != nil {
-                    InkActionButton(title: MealsCopy.rateDish, action: onRate)
-                        .padding(.bottom, 78)
-                }
             }
-            .padding(.horizontal, MLSpacing.margin)
-            .padding(.top, MLSpacing.s8)
+        } bottom: {
+            if state.value != nil {
+                InkActionButton(title: MealsCopy.rateDish, action: onRate)
+                    .studentAboveTabBar()
+            }
         }
         .task {
             do {

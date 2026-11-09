@@ -22,8 +22,8 @@ enum StudentYouRoute: Hashable {
     /// Pages built on `MLScreen`: the system bar, its back button and the swipe-back gesture.
     var usesSystemBar: Bool {
         switch self {
-        case .spending, .credits, .creditsHistory, .rewardTicket, .attendance: true
-        default: false
+        case .comingSoon: false
+        default: true
         }
     }
 }
@@ -61,21 +61,13 @@ struct StudentYouView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            ZStack {
-                OrbitBackground()
-                ScrollView {
-                    VStack(alignment: .leading, spacing: MLSpacing.s16) {
-                        YouLargeHeader(title: YouCopy.you, subtitle: nil, onBack: nil)
-                        content
-                    }
-                    .padding(.horizontal, MLSpacing.margin)
-                    .padding(.top, MLSpacing.s8)
-                    .padding(.bottom, StudentMetric.scrollBottom)
+            // The tab root: a large title that collapses into the bar.
+            MLScreen(YouCopy.you, bottomClearance: .tabBar) {
+                VStack(alignment: .leading, spacing: MLSpacing.s16) {
+                    content
                 }
-                .refreshable { await model.loadProfile() }
-                StudentScrollFade()
             }
-            .toolbar(.hidden, for: .navigationBar)
+            .refreshable { await model.loadProfile() }
             .navigationDestination(for: StudentYouRoute.self) { route in
                 destination(route)
                     .studentPushedPage(usesSystemBar: route.usesSystemBar)
@@ -102,7 +94,7 @@ struct StudentYouView: View {
             }
         case .newOuting:
             if let outingsModel {
-                StudentNewOutingView(model: outingsModel, onSent: { path.append(.outingSent($0)) },
+                StudentNewOutingView(model: outingsModel, onSent: { path = [.outings, .outingSent($0)] },
                                      onOpen: { path.append(.outing($0)) }) { path.removeLast() }
             }
         case .outingSent(let outing):

@@ -4,6 +4,8 @@ import Foundation
 /// Sources: design/audit/export_redesign 03, 04, 07 and 08, and the redesign prompt's stage P5 for the locked state.
 enum StudentCopy {
     static let brand = "MealLoop"
+    /// The label of the leading Back on Search, which is a stack root.
+    static let back = "Back"
 
     static func greeting(_ name: String) -> String { "Hey \(name)" }
 

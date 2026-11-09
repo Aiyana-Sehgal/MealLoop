@@ -27,20 +27,14 @@ struct StudentCrowdView: View {
         self.onBack = onBack
     }
 
+    /// On `MLScreen`: the system back button and swipe-back pop the page; `onBack` stays for callers.
     var body: some View {
-        ZStack {
-            OrbitBackground()
-            ScrollView {
-                VStack(alignment: .leading, spacing: MLSpacing.s16) {
-                    MealsLargeHeader(title: MealsCopy.crowd, subtitle: model.context.mess.name, onBack: onBack)
-                    content
-                }
-                .padding(.horizontal, MLSpacing.margin)
-                .padding(.top, MLSpacing.s8)
-                .padding(.bottom, StudentMetric.scrollBottom)
+        MLScreen(MealsCopy.crowd, subtitle: model.context.mess.name, bottomClearance: .tabBar) {
+            VStack(alignment: .leading, spacing: MLSpacing.s16) {
+                content
             }
-            .refreshable { await model.load() }
         }
+        .refreshable { await model.load() }
         .task(id: environment.dataRevision) {
             await model.load()
         }

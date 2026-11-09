@@ -55,19 +55,16 @@ struct StudentPassView: View {
         self.onBack = onBack
     }
 
+    /// On `MLScreen`: the action is pinned above the tab bar, and the system back button and swipe-back pop the page.
+    /// Hold-to-use is unchanged (owner decision, 9 November).
     var body: some View {
-        ZStack {
-            OrbitBackground()
-            ScrollView {
-                VStack(alignment: .leading, spacing: MLSpacing.s16) {
-                    content
-                }
-                .padding(.horizontal, MLSpacing.margin)
-                .padding(.top, MLSpacing.s8)
-                .padding(.bottom, StudentMetric.scrollBottom + 64)
+        MLScreen(MealsCopy.specialPass, subtitle: liveTicket.map(subtitle)) {
+            VStack(alignment: .leading, spacing: MLSpacing.s16) {
+                content
             }
-            .scrollBounceBehavior(.basedOnSize)
+        } bottom: {
             bottomButton
+                .studentAboveTabBar()
         }
         .task(id: environment.dataRevision) {
             await model.load()
@@ -99,11 +96,9 @@ struct StudentPassView: View {
     private var content: some View {
         switch model.state {
         case .idle, .loading:
-            MealsCompactHeader(title: MealsCopy.specialPass, onBack: onBack)
             RoundedRectangle(cornerRadius: StudentMetric.highlightRadius, style: .continuous)
                 .fill(MLColor.track.opacity(0.8)).frame(height: 304)
         case .failed, .empty, .offline(nil, _):
-            MealsCompactHeader(title: MealsCopy.specialPass, onBack: onBack)
             PassStatusCard(symbol: "wifi.slash", detail: MealsCopy.couldntLoadPass)
         case .loaded(let standing), .stale(let standing, _), .offline(let standing?, _):
             standingBody(standing)
@@ -114,7 +109,6 @@ struct StudentPassView: View {
     private func standingBody(_ standing: StudentPassStanding) -> some View {
         switch standing {
         case .available(let ticket):
-            MealsCompactHeader(title: MealsCopy.specialPass, onBack: onBack)
             PassAvailableCard(ticket: ticket, timeZone: model.timeZone)
             PassHowItWorks(ticket: ticket, timeZone: model.timeZone)
             Text(MealsCopy.oneUse)
@@ -122,37 +116,30 @@ struct StudentPassView: View {
                 .foregroundStyle(MLColor.inkSecondary)
                 .frame(maxWidth: .infinity)
         case .live(let ticket, _):
-            MealsLargeHeader(title: MealsCopy.specialPass, subtitle: subtitle(ticket), onBack: onBack)
             PassLiveTicket(ticket: ticket, code: model.liveCode, secondsLeft: model.secondsLeft, window: model.codeWindow,
                            reduceMotion: reduceMotion, usedAt: nil, timeZone: model.timeZone)
             PassFooter(title: MealsCopy.noScanNeeded, detail: MealsCopy.markedWhenYouComeIn)
         case .used(let ticket, _, _) where model.inUseSecondsLeft != nil:
             // Owner ruling (Prompt 2B): In use for the backend's validity, on the Live card the frames draw.
-            MealsLargeHeader(title: MealsCopy.specialPass, subtitle: subtitle(ticket), onBack: onBack)
             PassLiveTicket(ticket: ticket, code: model.liveCode, secondsLeft: model.secondsLeft, window: model.codeWindow,
                            reduceMotion: reduceMotion, usedAt: nil, timeZone: model.timeZone)
             PassInUseLine(secondsLeft: model.inUseSecondsLeft ?? 0)
         case .used(let ticket, let at, true):
-            MealsLargeHeader(title: MealsCopy.specialPass, subtitle: subtitle(ticket), onBack: onBack)
             PassLiveTicket(ticket: ticket, code: model.liveCode, secondsLeft: nil, window: nil, reduceMotion: reduceMotion,
                            usedAt: at, timeZone: model.timeZone)
             PassFooter(title: MealsCopy.thisPassIsUsed, detail: MealsCopy.markedUsedAt(MLFormat.time(at, in: model.timeZone)))
         case .used(_, let at, false):
-            MealsCompactHeader(title: MealsCopy.specialPass, onBack: onBack)
             PassStatusCard(symbol: "checkmark.circle", detail: MealsCopy.alreadyUsed(MLFormat.time(at, in: model.timeZone)))
             requestSection
             nextRows
         case .expired(_, let endedAt):
-            MealsCompactHeader(title: MealsCopy.specialPass, onBack: onBack)
             PassStatusCard(symbol: "clock", detail: MealsCopy.expired(MLFormat.time(endedAt, in: model.timeZone)))
             requestSection
             nextRows
         case .wrongMess(let passMess):
-            MealsCompactHeader(title: MealsCopy.specialPass, onBack: onBack)
             PassStatusCard(symbol: "xmark", detail: MealsCopy.passIsFor(passMess), isWarning: true)
             nextRows
         case .notEligible:
-            MealsCompactHeader(title: MealsCopy.specialPass, onBack: onBack)
             PassStatusCard(symbol: "minus", detail: MealsCopy.noPassThisWeek)
             requestSection
         }
@@ -170,6 +157,15 @@ struct StudentPassView: View {
         switch model.state.value {
         case .used(_, _, false)?, .expired?, .notEligible?: return request?.isLoaded == true
         default: return false
+        }
+    }
+
+    /// The ticket of the states whose frames draw the meal line under the title: Live, In use and Used.
+    private var liveTicket: StudentPassTicket? {
+        switch model.state.value {
+        case .live(let ticket, _)?: return ticket
+        case .used(let ticket, _, let mine)? where mine || model.inUseSecondsLeft != nil: return ticket
+        default: return nil
         }
     }
 
@@ -258,8 +254,6 @@ struct PassBottomButton: View {
     let action: () -> Void
 
     var body: some View {
-        VStack {
-            Spacer()
             Button(action: action) {
                 Text(title)
                     .font(StudentType.bodySemibold)
@@ -276,9 +270,6 @@ struct PassBottomButton: View {
                     .contentShape(Capsule())
             }
             .buttonStyle(.plain)
-            .padding(.horizontal, MLSpacing.margin)
-            .padding(.bottom, 78)
-        }
     }
 }
 
