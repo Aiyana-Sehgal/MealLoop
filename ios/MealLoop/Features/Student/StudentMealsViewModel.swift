@@ -45,6 +45,17 @@ final class StudentMealsViewModel {
 
     private func key(_ day: Date, _ slot: MealSlot) -> String { "\(day.timeIntervalSince1970)-\(slot.rawValue)" }
 
+    /// The other dishes of the meal a dish belongs to, from a menu this model has already loaded (the one on screen or
+    /// another meal of that day). Empty when that menu is not loaded or not published: nothing is fetched or invented.
+    func otherDishes(than dish: DishID, day: Date, slot: MealSlot) -> [Dish] {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let menus = [state.value].compactMap { $0 } + Array(dayMenus.values)
+        guard let menu = menus.first(where: { $0.slot == slot && $0.status == .published
+                                              && calendar.isDate($0.day, inSameDayAs: day) }) else { return [] }
+        return ([menu.highlight].compactMap { $0 } + menu.mains + menu.curries + menu.slimRows).filter { $0.id != dish }
+    }
+
     func load() async {
         do {
             if week == nil {

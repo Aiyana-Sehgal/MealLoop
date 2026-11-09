@@ -82,6 +82,22 @@ final class StudentMealsScreensTests: XCTestCase {
         XCTAssertNil(model.serviceEnded)
     }
 
+    /// S5: the dish page lists the rest of its meal from the menu already loaded, never a menu it did not load.
+    func testTheDishPageListsTheRestOfItsMealFromTheLoadedMenu() async throws {
+        let (_, _, repositories, clock) = try make()
+        let model = try XCTUnwrap(StudentMealsViewModel(session: try session, repositories: repositories, clock: clock))
+        await model.load()
+        let menu = try XCTUnwrap(model.state.value)
+        let all = [menu.highlight].compactMap { $0 } + menu.mains + menu.curries + menu.slimRows
+        let first = try XCTUnwrap(all.first)
+        let others = model.otherDishes(than: first.id, day: menu.day, slot: menu.slot)
+        XCTAssertEqual(others.map(\.id), all.dropFirst().map(\.id), "Every other dish of the meal, in menu order.")
+        XCTAssertFalse(others.contains { $0.id == first.id })
+        let otherDay = menu.day.addingTimeInterval(86_400 * 3)
+        XCTAssertTrue(model.otherDishes(than: first.id, day: otherDay, slot: menu.slot).isEmpty,
+                      "A menu that was not loaded lists nothing.")
+    }
+
     func testAfterLunchTheMealsTabSaysServiceEndedAndWhenDinnerOpens() async throws {
         let (_, _, repositories, clock) = try make(at: DemoSeed.time(14, 10))
         let model = try XCTUnwrap(StudentMealsViewModel(session: try session, repositories: repositories, clock: clock))

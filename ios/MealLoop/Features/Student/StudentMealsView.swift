@@ -82,6 +82,8 @@ struct StudentMealsView: View {
         switch route {
         case .dish(let dish, let day, let slot):
             StudentDishDetailView(load: { try await model.dishDetail(dish, day: day, slot: slot) }, timeZone: model.timeZone,
+                                  others: model.otherDishes(than: dish, day: day, slot: slot),
+                                  onOther: { path.append(.dish($0.id, day: day, slot: slot)) },
                                   onRate: { path.append(.rateDish(dish, day: day, slot: slot)) }) { path.removeLast() }
         case .pass:
             StudentPassScreen(session: session) { path.removeLast() }
@@ -650,6 +652,9 @@ struct HighlightInfoSheet: View {
 struct StudentDishDetailView: View {
     let load: () async throws -> StudentDishDetail
     let timeZone: TimeZone
+    /// The meal's other dishes, from the menu the host already loaded. Empty hides the section.
+    var others: [Dish] = []
+    var onOther: ((Dish) -> Void)?
     let onRate: () -> Void
     let onBack: () -> Void
     @State private var state: LoadState<StudentDishDetail> = .idle
@@ -664,6 +669,7 @@ struct StudentDishDetailView: View {
                         .fill(MLColor.track.opacity(0.8)).frame(height: 162)
                 case .loaded(let detail), .stale(let detail, _), .offline(let detail?, _):
                     details(detail)
+                    alsoServed(detail)
                 case .empty, .offline(nil, _):
                     StudentOfflineBanner(text: MealsCopy.offlineNothingSaved)
                 case .failed(let failure):
@@ -684,6 +690,46 @@ struct StudentDishDetailView: View {
             } catch {
                 state = .failed(LoadFailure(error))
             }
+        }
+    }
+
+    /// The rest of the meal, so the page is not a lone card over a blank band (blank audit, S5).
+    @ViewBuilder
+    private func alsoServed(_ detail: StudentDishDetail) -> some View {
+        if !others.isEmpty {
+            Text(MealsCopy.alsoAt(MLFormat.mealSlot(detail.slot)))
+                .font(StudentType.eyebrow)
+                .tracking(1.2)
+                .foregroundStyle(MLColor.inkSecondary)
+                .padding(.top, MLSpacing.s8)
+                .accessibilityAddTraits(.isHeader)
+            VStack(spacing: 0) {
+                ForEach(Array(others.enumerated()), id: \.element.id) { index, dish in
+                    if index > 0 { Rectangle().fill(MLColor.border).frame(height: 1).padding(.leading, 52) }
+                    Button { onOther?(dish) } label: {
+                        HStack(spacing: MLSpacing.s12) {
+                            StudentDietMark(diet: dish.diet, onDark: false)
+                            Text(dish.name)
+                                .font(StudentType.body)
+                                .foregroundStyle(MLColor.ink)
+                                .multilineTextAlignment(.leading)
+                            Spacer(minLength: 0)
+                            if onOther != nil {
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(MLColor.inkSecondary)
+                                    .accessibilityHidden(true)
+                            }
+                        }
+                        .padding(.horizontal, MLSpacing.s20)
+                        .frame(minHeight: 52)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(onOther == nil)
+                }
+            }
+            .background(RoundedRectangle(cornerRadius: StudentMetric.rowRadius, style: .continuous).fill(MLColor.surface))
         }
     }
 

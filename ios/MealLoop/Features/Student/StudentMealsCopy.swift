@@ -53,6 +53,8 @@ enum MealsCopy {
     static let tryLabel = "TRY"
     /// Over the dishes of the meal the Meals tab leads with, listed under the Search field before anything is typed.
     static func onTheMenu(_ slot: String) -> String { "\(slot.uppercased()) ON THE MENU" }
+    /// Over the meal's other dishes on the dish page.
+    static func alsoAt(_ slot: String) -> String { "ALSO AT \(slot.uppercased())" }
     static let searchHint = "Type a dish name, like sambar or paneer."
     static let searchOffline = "You're offline. Search needs a connection."
     static let searchSuggestions = ["sambar", "paneer"]

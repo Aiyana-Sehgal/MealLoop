@@ -73,6 +73,8 @@ struct StudentSearchView: View {
         switch route {
         case .dish(let dish, let day, let slot):
             StudentDishDetailView(load: { try await meals.dishDetail(dish, day: day, slot: slot) }, timeZone: model.timeZone,
+                                  others: meals.otherDishes(than: dish, day: day, slot: slot),
+                                  onOther: { path.append(.dish($0.id, day: day, slot: slot)) },
                                   onRate: { path.append(.rateDish(dish, day: day, slot: slot)) }) { path.removeLast() }
         case .rateDish(let dish, let day, let slot):
             if let rating = StudentRatingViewModel(session: session, repositories: environment.repositories, day: day,

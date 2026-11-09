@@ -335,11 +335,14 @@ final class StudentFinalScreenshotTests: XCTestCase {
         try await shot("student_entry_qr", world, tab: .home) { EntryQRView(model: home) {} }
         let meals = try XCTUnwrap(StudentMealsViewModel(session: world.session, repositories: world.environment.repositories,
                                                         clock: world.clock))
-        let matches = try await world.environment.repositories.studentMeals.findDishes("Steamed Rice", mess: DemoSeed.mess.id)
-        if let match = matches.first {
+        await meals.load()
+        // A dish of the meal the Meals tab opens on, with the rest of that meal under it (S5).
+        if let menu = meals.state.value, let dish = ([menu.highlight].compactMap { $0 } + menu.mains).dropFirst().first {
             try await shot("student_dish", world, tab: .meals) {
-                StudentDishDetailView(load: { try await meals.dishDetail(match.dish.id, day: match.day, slot: match.slot) },
-                                      timeZone: DemoSeed.mess.timeZone, onRate: {}) {}
+                StudentDishDetailView(load: { try await meals.dishDetail(dish.id, day: menu.day, slot: menu.slot) },
+                                      timeZone: DemoSeed.mess.timeZone,
+                                      others: meals.otherDishes(than: dish.id, day: menu.day, slot: menu.slot),
+                                      onOther: { _ in }, onRate: {}) {}
             }
         }
         let community = try XCTUnwrap(StudentCommunityViewModel(session: world.session,
