@@ -13,8 +13,8 @@ actor DemoFeedbackRatingStore {
 }
 
 /// SIMULATED. Ratings on top of the prototype data source. The window comes from the day's meals in
-/// `DemoDataProvider`: open once the meal is closed or past its end, closed when the next meal starts. Credits are not
-/// touched.
+/// `DemoDataProvider`: open once the meal is closed or past its end, and for 2 days after it ends (owner decision,
+/// 9 November). Credits are not touched.
 struct DemoFeedbackRatings: FeedbackRatingRepository {
     let core: DemoDataProvider
     let store: DemoFeedbackRatingStore
@@ -25,21 +25,27 @@ struct DemoFeedbackRatings: FeedbackRatingRepository {
         return calendar
     }
 
+    /// How long a meal stays open for ratings after its service ends (owner decision, 9 November).
+    static let ratingDays = 2
+
     func ratingWindow(day: Date, slot: MealSlot, at mess: MessID) async throws -> StudentRatingWindow {
         let now = core.clock.now()
         let statuses = try await core.meals(for: mess)
         let day = calendar.startOfDay(for: day)
-        guard let status = statuses.first(where: {
-            $0.meal.slot == slot && calendar.startOfDay(for: $0.meal.startsAt) == day
-        }) else {
-            // A meal of another day: earlier days are closed (a later meal has started); later days are not yet.
-            return day < calendar.startOfDay(for: now) ? .closed : .notYet
+        let today = calendar.startOfDay(for: now)
+        let endsAt: Date
+        if let status = statuses.first(where: { $0.meal.slot == slot && calendar.startOfDay(for: $0.meal.startsAt) == day }) {
+            guard status.state == .closed || now >= status.meal.endsAt else { return .notYet }
+            endsAt = status.closedAt ?? status.meal.endsAt
+        } else {
+            // A meal of another day ends at the same time of day as today's meal of that slot; a slot today does not
+            // serve ends with its day. Later days are not rated yet.
+            guard day < today else { return .notYet }
+            let offset = statuses.first(where: { $0.meal.slot == slot }).map { $0.meal.endsAt.timeIntervalSince(today) }
+            endsAt = offset.map { day.addingTimeInterval($0) } ?? (calendar.date(byAdding: .day, value: 1, to: day) ?? day)
         }
-        let ended = status.state == .closed || now >= status.meal.endsAt
-        guard ended else { return .notYet }
-        let next = statuses.map(\.meal.startsAt).filter { $0 > status.meal.startsAt }.min()
-        if let next, now >= next { return .closed }
-        return .open(closesAt: next)
+        guard let closesAt = calendar.date(byAdding: .day, value: Self.ratingDays, to: endsAt) else { return .closed }
+        return now < closesAt ? .open(closesAt: closesAt) : .closed
     }
 
     func rateMeal(day: Date, slot: MealSlot, _ answer: StudentRatingAnswer, at mess: MessID, for student: StudentID)

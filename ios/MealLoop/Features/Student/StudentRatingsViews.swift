@@ -18,7 +18,7 @@ enum RatingCopy {
     static let rated = "You said Good. Thanks."
     static func notYet(_ slot: MealSlot) -> String { "You can rate \(MLFormat.mealSlot(slot).lowercased()) after it ends." }
     static func closed(_ slot: MealSlot) -> String {
-        "Ratings for \(MLFormat.mealSlot(slot).lowercased()) closed when the next meal started."
+        "Ratings for \(MLFormat.mealSlot(slot).lowercased()) closed 2 days after it ended."
     }
     static let didNotSave = "Didn't save. Try again."
     static func dayAndMess(_ day: String, _ mess: String) -> String { "\(day) · \(mess)" }

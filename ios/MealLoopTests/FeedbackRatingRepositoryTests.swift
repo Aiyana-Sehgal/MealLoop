@@ -26,13 +26,20 @@ final class FeedbackRatingRepositoryTests: XCTestCase {
         } catch RepositoryError.notAllowed {}
     }
 
-    func testTheWindowClosesWhenTheNextMealStarts() async throws {
+    /// Owner decision (9 November): no restriction by the next meal; open for 2 days after the meal ends.
+    func testTheWindowStaysOpenForTwoDaysAfterTheMeal() async throws {
         let (provider, repositories) = make(at: DemoSeed.time(10, 0))
-        let open = try await repositories.feedbackRatings.ratingWindow(day: day, slot: .breakfast, at: mess)
-        XCTAssertEqual(open, .open(closesAt: DemoSeed.lunch.startsAt))
+        let ratings = repositories.feedbackRatings
+        let open = try await ratings.ratingWindow(day: day, slot: .breakfast, at: mess)
+        XCTAssertEqual(open, .open(closesAt: DemoSeed.date(16, 9, 30)))
         provider.clock.set(DemoSeed.time(12, 30))
-        let closed = try await repositories.feedbackRatings.ratingWindow(day: day, slot: .breakfast, at: mess)
-        XCTAssertEqual(closed, .closed)
+        let afterLunchStarts = try await ratings.ratingWindow(day: day, slot: .breakfast, at: mess)
+        XCTAssertTrue(afterLunchStarts.isOpen, "The next meal starting no longer closes it.")
+        _ = try await ratings.rateMeal(day: day, slot: .breakfast, .good, at: mess, for: aarav)
+        let monday = try await ratings.ratingWindow(day: DemoSeed.date(12, 0, 0), slot: .lunch, at: mess)
+        XCTAssertTrue(monday.isOpen, "Monday's lunch ended under 2 days before Wednesday 12:30 PM.")
+        let sunday = try await ratings.ratingWindow(day: DemoSeed.date(11, 0, 0), slot: .lunch, at: mess)
+        XCTAssertEqual(sunday, .closed, "More than 2 days after it ended.")
     }
 
     func testGoodIsRecordedOncePerMealAndAChangeReplacesIt() async throws {

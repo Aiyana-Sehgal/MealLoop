@@ -6,8 +6,8 @@ import Foundation
 // - Good records a positive rating and nothing else.
 // - Not good records nothing by itself; it hands off to the report form. It does take back an earlier Good.
 // - Skip for now records nothing (no operation exists for it).
-// - At most one rating per meal and one per dish per meal, replaceable until the next meal starts.
-// - Allowed only after that meal's service has ended.
+// - At most one rating per meal and one per dish per meal, replaceable while the window is open.
+// - Allowed from when that meal's service ends until 2 days later (owner decision, 9 November).
 // - Private to the student; staff see a count only. No credits for ratings. No AI decides anything.
 
 /// What is rated: a meal of a day, or one dish of it.
@@ -34,9 +34,9 @@ struct StudentRating: Codable, Sendable, Hashable {
 enum StudentRatingWindow: Codable, Sendable, Hashable {
     /// The meal has not ended yet (or has not started).
     case notYet
-    /// Open; `closesAt` is when the next meal starts, nil when no next meal is known.
+    /// Open; `closesAt` is 2 days after the meal ended.
     case open(closesAt: Date?)
-    /// The next meal has started.
+    /// More than 2 days have passed since the meal ended.
     case closed
 
     var isOpen: Bool { if case .open = self { return true } else { return false } }

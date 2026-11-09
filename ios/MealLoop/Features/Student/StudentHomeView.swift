@@ -97,6 +97,9 @@ struct StudentHomeView: View {
                     .studentPushedPage(usesSystemBar: route.usesSystemBar)
             }
         }
+        .task(id: model.state.value?.lastClosedMeal?.id) {
+            await hideRatingCardIfDone()
+        }
         .task(id: environment.dataRevision) {
             await model.load()
             await you?.loadCredits()
@@ -187,6 +190,17 @@ struct StudentHomeView: View {
             }
         case .comingSoon(let title):
             StudentComingSoonView(title: title) { path.removeLast() }
+        }
+    }
+
+    /// The How was … card shows only while the 2-day window is open and the meal is unrated.
+    private func hideRatingCardIfDone() async {
+        guard let session, let meal = model.state.value?.lastClosedMeal,
+              let rating = StudentRatingViewModel(session: session, repositories: environment.repositories,
+                                                  day: meal.startsAt, slot: meal.slot) else { return }
+        await rating.load()
+        if rating.window?.isOpen != true || rating.isGood {
+            skippedRatings.insert(Self.ratingKey(meal.startsAt, meal.slot))
         }
     }
 
