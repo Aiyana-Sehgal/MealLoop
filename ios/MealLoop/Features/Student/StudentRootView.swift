@@ -30,6 +30,8 @@ struct StudentRootView: View {
     @State private var tab: StudentTab = .home
     /// Where Back on Search returns to.
     @State private var lastTab: StudentTab = .home
+    /// Swipe-to-remind reminders (local, simulated), kept across tab switches.
+    @State private var reminders = StudentMealReminders()
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -60,5 +62,6 @@ struct StudentRootView: View {
                 .ignoresSafeArea(.keyboard, edges: .bottom)
         }
         .environment(\.studentSelectTab, { tab = $0 })
+        .studentReminders(reminders)
     }
 }

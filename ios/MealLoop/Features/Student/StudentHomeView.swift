@@ -56,6 +56,10 @@ struct StudentHomeView: View {
     /// Thanks after Good, or Which dish after Not good, on the How was … card (2159:159, 2159:285).
     @State private var feedback: StudentDishFeedbackRequest?
     @Environment(\.studentSelectTab) private var selectTab
+    /// The Student root's reminders, so they outlive a tab switch; a local set where Home is shown alone.
+    @Environment(StudentMealReminders.self) private var sharedReminders: StudentMealReminders?
+    @State private var localReminders = StudentMealReminders()
+    private var reminders: StudentMealReminders { sharedReminders ?? localReminders }
     /// For the pages that build their own view models: Special pass and Crowd.
     private let session: Session?
     /// The credits chip reads the Student You balance, so Home, You and Credits show one number (owner ruling,
@@ -105,6 +109,7 @@ struct StudentHomeView: View {
         }
         .task(id: environment.dataRevision) {
             await model.load()
+            reminders.cancelAnswered(model.state.value?.cards ?? [])
             await you?.loadCredits()
             await sendKeptFeedback()
         }
@@ -277,7 +282,11 @@ struct StudentHomeView: View {
                             onOpenCrowd: { path.append(.crowd) },
                             showsRating: { !skippedRatings.contains(Self.ratingKey($0.startsAt, $0.slot)) },
                             onRating: rating,
-                            onOpenMyFeedback: { path.append(.myFeedback) })
+                            onOpenMyFeedback: { path.append(.myFeedback) },
+                            reminderState: { reminders.state(for: $0, now: content.today) },
+                            canRemind: { reminders.canOffer($0, now: content.today) },
+                            onRemind: { reminders.set($0, now: content.today) },
+                            onUndoReminder: { reminders.undo($0) })
         } else if model.isLoadingHome {
             StudentHomeLoading()
         } else {
@@ -358,6 +367,12 @@ struct StudentHomeBody: View {
     var showsRating: (Meal) -> Bool = { _ in true }
     var onRating: (Meal, StudentHomeRatingAction) -> Void = { _, _ in }
     var onOpenMyFeedback: () -> Void = {}
+    /// Swipe-to-remind (2222:158038 to 2222:158543). Off unless Home passes its reminders.
+    var reminderState: (StudentMealCard) -> StudentReminderState = { _ in .none }
+    var canRemind: (StudentMealCard) -> Bool = { _ in false }
+    var onRemind: (StudentMealCard) -> Void = { _ in }
+    var onUndoReminder: (MealID) -> Void = { _ in }
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var extras: StudentHomeExtras? { content.extras }
 
@@ -366,8 +381,7 @@ struct StudentHomeBody: View {
             if isOffline {
                 StudentOfflineBanner(text: StudentCopy.offlineSaved(savedAt))
             }
-            StudentHomeHero(content: content, mess: mess, timeZone: timeZone, isOffline: isOffline, answerState: heroAnswerState,
-                            onAnswer: onAnswer, onShowEntry: onShowEntry)
+            hero
             if let closed = content.lastClosedMeal, content.heroCase == .nextMeal, showsRating(closed) {
                 StudentHowWasCard(slot: closed.slot, onOpen: { onRating(closed, .open) },
                                   onGood: { onRating(closed, .good) }, onNotGood: { onRating(closed, .notGood) },
@@ -376,7 +390,7 @@ struct StudentHomeBody: View {
             }
             Group {
                 if let row = content.answerRow {
-                    StudentAnswerRow(card: row, now: content.today, timeZone: timeZone) { onOpenAnswer(row.id) }
+                    answerRow(row)
                 }
                 if let pass = extras?.pass {
                     StudentTicketRow(pass: pass, timeZone: timeZone, onOpen: onOpenPass)
@@ -395,6 +409,56 @@ struct StudentHomeBody: View {
                 StudentRecheckRow(recheck: recheck, onOpen: onOpenMyFeedback)
             }
         }
+    }
+}
+
+extension StudentHomeBody {
+    /// The top card. Unanswered, it can be swiped for a reminder; once set, the Reminder set row takes its place
+    /// (2222:158135) until the hour is up, and then it comes back with the Reminder chip (2222:158236).
+    @ViewBuilder
+    fileprivate var hero: some View {
+        let card = content.shownHero
+        let asks = content.heroCase == .question && !isOffline
+        let state: StudentReminderState = asks ? reminderState(card) : .none
+        if case .set(let at) = state {
+            StudentReminderSetRow(time: MLFormat.time(at, in: timeZone)) { onUndoReminder(card.id) }
+                .mlTransition(.fade)
+        } else {
+            VStack(alignment: .leading, spacing: MLSpacing.s12) {
+                if state == .fired {
+                    StudentReminderChip().mlTransition(.fade)
+                }
+                StudentRemindSwipe(enabled: asks && canRemind(card), radius: StudentMetric.heroRadius,
+                                   onRemind: { remind(card) }) {
+                    StudentHomeHero(content: content, mess: mess, timeZone: timeZone, isOffline: isOffline,
+                                    answerState: heroAnswerState, onAnswer: onAnswer, onShowEntry: onShowEntry)
+                }
+            }
+        }
+    }
+
+    /// The answer row (AnswerRow 2135:2382), with the same swipe (2222:158351 to 2222:158543).
+    @ViewBuilder
+    fileprivate func answerRow(_ row: StudentMealCard) -> some View {
+        let state: StudentReminderState = isOffline ? .none : reminderState(row)
+        if case .set(let at) = state {
+            StudentReminderSetRow(time: MLFormat.time(at, in: timeZone)) { onUndoReminder(row.id) }
+                .mlTransition(.fade)
+        } else {
+            VStack(alignment: .leading, spacing: MLSpacing.s12) {
+                if state == .fired {
+                    StudentReminderChip().mlTransition(.fade)
+                }
+                StudentRemindSwipe(enabled: !isOffline && canRemind(row), radius: StudentMetric.rowRadius,
+                                   onRemind: { remind(row) }) {
+                    StudentAnswerRow(card: row, now: content.today, timeZone: timeZone) { onOpenAnswer(row.id) }
+                }
+            }
+        }
+    }
+
+    private func remind(_ card: StudentMealCard) {
+        MLMotion.animate(.snappy, reduceMotion: reduceMotion) { onRemind(card) }
     }
 }
 

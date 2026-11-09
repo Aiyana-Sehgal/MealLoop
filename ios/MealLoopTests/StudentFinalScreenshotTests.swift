@@ -329,6 +329,22 @@ final class StudentFinalScreenshotTests: XCTestCase {
         offline.problem = "Too salty"
         _ = await offline.send()
         try await sheet("g1_offline_saved", offlineWorld, offline)
+        // G2: swipe-to-remind on the lunch row (the breakfast card's cutoff has passed at 7:00 AM).
+        let morning = World(.storyStart)
+        let lunchCard = StudentMealCard(meal: DemoSeed.lunch, response: .noResponse, isAnswerOpen: true,
+                                        cutoff: IntentionPolicy.cutoff(for: DemoSeed.lunch))
+        try await shot("g2_home_before", morning, tab: .home, pushed: false) {
+            StudentHomeScreen(session: morning.session).studentReminders(StudentMealReminders())
+        }
+        let set = StudentMealReminders()
+        set.set(lunchCard, now: DemoSeed.time(7, 0))
+        try await shot("g2_lunch_reminder_set", morning, tab: .home, pushed: false) {
+            StudentHomeScreen(session: morning.session).studentReminders(set)
+        }
+        let eight = World(.storyStart, at: DemoSeed.time(8, 0))
+        try await shot("g2_lunch_reminder_fired", eight, tab: .home, pushed: false) {
+            StudentHomeScreen(session: eight.session).studentReminders(set)
+        }
     }
 
     func testCaptureStudentAudit() async throws {
