@@ -55,6 +55,9 @@ struct StudentRootView: View {
                 }
                 .padding(.horizontal, MLSpacing.s16)
                 .padding(.bottom, MLSpacing.s8)
+                // The bar stays at the bottom edge under the keyboard, as an iOS tab bar does, so Search's results
+                // and the forms keep the whole space above the keyboard.
+                .ignoresSafeArea(.keyboard, edges: .bottom)
         }
     }
 }

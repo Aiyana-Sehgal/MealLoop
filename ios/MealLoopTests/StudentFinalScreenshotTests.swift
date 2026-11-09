@@ -81,6 +81,7 @@ final class StudentFinalScreenshotTests: XCTestCase {
                         selection: .constant(tab), searchTab: .search)
                 .padding(.horizontal, MLSpacing.s16)
                 .padding(.bottom, MLSpacing.s8)
+                .ignoresSafeArea(.keyboard, edges: .bottom) // as StudentRootView
         }
         .dynamicTypeSize(largestText ? .accessibility5 : .large)
         window.rootViewController = UIHostingController(rootView: framed
@@ -374,6 +375,20 @@ final class StudentFinalScreenshotTests: XCTestCase {
         _ = await report.raiseSOS(.foundInFood)
         try await shot("student_sos_sent", world, tab: .home) {
             StudentSOSSentPage(model: report, category: .foundInFood) {}
+        }
+        // S3: Attendance's missed day opens Entry · Discrepancy; after sending, the page says it was recorded only.
+        let you = world.you
+        await you.loadAttendance()
+        if let record = you.correctable {
+            try await shot("student_attendance_discrepancy", world, tab: .you, wait: 2) {
+                StudentAttendanceView(model: you) {}
+                    .mlSheet(isPresented: .constant(true)) {
+                        EntryDiscrepancySheet(record: record, timeZone: DemoSeed.mess.timeZone, send: { _, _, _ in },
+                                              onClose: {}) {}
+                    }
+            }
+            try await you.sendCorrection(for: record, reason: .ateButNotScanned, note: nil, key: IdempotencyKey("audit"))
+            try await shot("student_attendance_recorded", world, tab: .you, scrolledToEnd: true) { StudentAttendanceView(model: you) {} }
         }
         try await shot("student_meals_collapsed", world, tab: .meals, pushed: false, scrolledToEnd: true) {
             StudentMealsScreen(session: world.session)

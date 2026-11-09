@@ -63,6 +63,8 @@ struct StudentSearchView: View {
             guard !Task.isCancelled else { return }
             await model.search()
         }
+        // The meal the Meals tab leads with, so the space above the keyboard lists real dishes instead of a blank band.
+        .task { await meals.load() }
         .onAppear { focused = true }
     }
 
@@ -124,6 +126,7 @@ struct StudentSearchView: View {
                 .font(StudentType.secondary)
                 .foregroundStyle(MLColor.inkSecondary)
             suggestions
+            onTheMenu
         case .loading:
             ProgressView().frame(maxWidth: .infinity).padding(.top, MLSpacing.s24)
         case .empty:
@@ -196,6 +199,34 @@ struct StudentSearchView: View {
             .background(RoundedRectangle(cornerRadius: StudentMetric.heroRadius, style: .continuous).fill(MLColor.surface))
             .accessibilityElement(children: .combine)
             suggestions
+            onTheMenu
+        }
+    }
+
+    /// The dishes of the meal the Meals tab leads with, from the menu the Meals view model already loads. Nothing is
+    /// listed until that menu is published; a missing menu is never drawn as an empty one.
+    @ViewBuilder
+    private var onTheMenu: some View {
+        if let menu = meals.state.value, menu.status == .published {
+            let dishes = ([menu.highlight].compactMap { $0 } + menu.mains + menu.curries + menu.slimRows)
+                .map { StudentDishMatch(dish: $0, day: menu.day, slot: menu.slot) }
+            if !dishes.isEmpty {
+                VStack(alignment: .leading, spacing: MLSpacing.s12) {
+                    Text(MealsCopy.onTheMenu(MLFormat.mealSlot(menu.slot)))
+                        .font(StudentType.eyebrow)
+                        .tracking(1.2)
+                        .foregroundStyle(MLColor.inkSecondary)
+                        .accessibilityAddTraits(.isHeader)
+                    VStack(spacing: 0) {
+                        ForEach(Array(dishes.enumerated()), id: \.element.id) { index, match in
+                            if index > 0 { Rectangle().fill(MLColor.border).frame(height: 1).padding(.leading, 52) }
+                            resultRow(match)
+                        }
+                    }
+                    .background(RoundedRectangle(cornerRadius: StudentMetric.rowRadius, style: .continuous).fill(MLColor.surface))
+                }
+                .padding(.top, MLSpacing.s8)
+            }
         }
     }
 
