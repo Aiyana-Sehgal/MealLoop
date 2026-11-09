@@ -450,9 +450,9 @@ struct AdminRewardsScreen: View {
                             }
                         }
                     }
-                    ForEach(page.rewards) { reward in
-                        AdminRewardTicket(reward: reward)
-                    }
+                    // Manage the catalogue (admin_rewards_03_manage): what students can get, with add and delete.
+                    AdminLabel(text: AdminRewardsCopy.subtitle.uppercased())
+                    AdminRewardCatalogueSection(nav: nav)
                 }
             }
         }

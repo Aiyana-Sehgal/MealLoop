@@ -120,5 +120,13 @@ final class AdminPolishScreenshotTests: XCTestCase {
             AdminAccessView(model: access, nav: world.nav, role: .doorScanner, initialSheet: .invite)
         }
     }
+
+    func testCaptureRewardsManage() async throws {
+        let world = try await world(.duringMeal)
+        try await shot("p5_rewards_manage", world, wait: 2) { AdminRewardsScreen(nav: world.nav) }
+        try await shot("p5_rewards_add_sheet", world, wait: 2) {
+            AdminPageScaffold(title: AdminScreenCopy.rewards) { AdminRewardCatalogueSection(nav: world.nav, addOpen: true) }
+        }
+    }
 }
 #endif
