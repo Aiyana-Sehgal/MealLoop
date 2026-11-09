@@ -169,26 +169,26 @@ final class StudentFinalScreenshotTests: XCTestCase {
                                    day: DemoSeed.lunch.startsAt, slot: .lunch, dish: dish)!
         }
         try await shot("rate_meal_how_was_lunch", world, tab: .home) {
-            StudentRateMealView(model: rating(), onNotGood: { _ in }) {}
+            StudentRateMealView(model: rating(), onSOS: {}) {}
         }
         let meals = StudentMealsViewModel(session: world.session, repositories: world.environment.repositories,
                                           clock: world.clock)!
         try await shot("rate_dish", world, tab: .meals) {
             StudentRateDishView(model: rating(rice.id),
                                 loadDish: { try await meals.dishDetail(rice.id, day: match.day, slot: .lunch) },
-                                onNotGood: { _ in }) {}
+                                onSOS: {}) {}
         }
         let good = rating(rice.id)
         _ = await good.rate(.good)
         try await shot("rate_dish_good", world, tab: .meals) {
             StudentRateDishView(model: good,
                                 loadDish: { try await meals.dishDetail(rice.id, day: match.day, slot: .lunch) },
-                                onNotGood: { _ in }) {}
+                                onSOS: {}) {}
         }
         try await shot("rate_dish_largest_text", world, tab: .meals, largestText: true) {
             StudentRateDishView(model: rating(rice.id),
                                 loadDish: { try await meals.dishDetail(rice.id, day: match.day, slot: .lunch) },
-                                onNotGood: { _ in }) {}
+                                onSOS: {}) {}
         }
         try await shot("report_from_not_good", world, tab: .meals) {
             StudentReportScreen(session: world.session,
@@ -198,7 +198,7 @@ final class StudentFinalScreenshotTests: XCTestCase {
         try await shot("rate_meal_not_yet", early, tab: .home) {
             StudentRateMealView(model: StudentRatingViewModel(session: early.session, repositories: early.environment.repositories,
                                                               day: DemoSeed.lunch.startsAt, slot: .lunch)!,
-                                onNotGood: { _ in }) {}
+                                onSOS: {}) {}
         }
         let home = World(at: DemoSeed.time(10, 0))
         try await shot("home_how_was_breakfast_card", home, tab: .home, pushed: false) {
@@ -281,6 +281,56 @@ final class StudentFinalScreenshotTests: XCTestCase {
 
     // MARK: - P7 audit: every Student route once, at 1x
 
+    /// The Student-all run (docs/verification/student-all/): the dish feedback sheets, swipe-to-remind and the SOS
+    /// pages. Set TEST_RUNNER_STUDENT_ALL as well.
+    func testCaptureStudentAll() async throws {
+        guard ProcessInfo.processInfo.environment["STUDENT_ALL"] != nil else { throw XCTSkip("Student-all captures only.") }
+        let world = World(.afterMeal)
+        let context = try XCTUnwrap(world.session.student)
+        func feedback(_ kind: StudentDishFeedbackRequest.Kind, _ w: World? = nil) -> StudentDishFeedbackViewModel {
+            let w = w ?? world
+            return StudentDishFeedbackViewModel(context: context, repositories: w.environment.repositories, clock: w.clock,
+                                                request: StudentDishFeedbackRequest(day: DemoSeed.lunch.startsAt, slot: .lunch,
+                                                                                    kind: kind))
+        }
+        func sheet(_ name: String, _ w: World, _ model: StudentDishFeedbackViewModel) async throws {
+            try await shot(name, w, tab: .home, pushed: false, wait: 2.0) {
+                Color.clear.mlSheet(isPresented: .constant(true)) {
+                    StudentDishFeedbackSheet(model: model, onClose: {}, onSOS: {}, onCommunity: {}, onMyFeedback: {})
+                }
+            }
+        }
+        try await sheet("g1_which_dish", world, feedback(.meal))
+        let more = feedback(.meal)
+        await more.loadMeal()
+        more.showMoreDishes()
+        try await sheet("g1_which_dish_more", world, more)
+        let sambar = feedback(.dish("Masala Sambar"))
+        await sambar.load()
+        sambar.problem = "Too salty"
+        try await sheet("g1_whats_wrong_sambar", world, sambar)
+        let note = feedback(.dish("Masala Sambar"))
+        await note.load()
+        note.problem = "Too salty"
+        note.showsNote = true
+        note.note = "Much saltier than usual. Could not finish it."
+        try await sheet("g1_whats_wrong_note", world, note)
+        try await sheet("g1_whats_wrong_pongal", world, feedback(.dish("Pongal")))
+        try await sheet("g1_whats_wrong_milk", world, feedback(.dish("Milk")))
+        let sent = feedback(.dish("Masala Sambar"))
+        await sent.load()
+        sent.problem = "Too salty"
+        _ = await sent.send()
+        try await sheet("g1_sent", world, sent)
+        try await sheet("g1_thanks", world, feedback(.thanks))
+        let offlineWorld = World(.offline)
+        let offline = feedback(.dish("Masala Sambar"), offlineWorld)
+        await offline.load()
+        offline.problem = "Too salty"
+        _ = await offline.send()
+        try await sheet("g1_offline_saved", offlineWorld, offline)
+    }
+
     func testCaptureStudentAudit() async throws {
         guard ProcessInfo.processInfo.environment["AUDIT"] != nil else { throw XCTSkip("Audit walk only.") }
         let world = World()
@@ -318,7 +368,7 @@ final class StudentFinalScreenshotTests: XCTestCase {
         try await shot("student_rate_meal", after, tab: .home) {
             StudentRateMealView(model: StudentRatingViewModel(session: after.session, repositories: after.environment.repositories,
                                                               day: DemoSeed.lunch.startsAt, slot: .lunch)!,
-                                onNotGood: { _ in }) {}
+                                onSOS: {}) {}
         }
     }
 

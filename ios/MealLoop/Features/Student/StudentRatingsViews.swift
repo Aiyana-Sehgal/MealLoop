@@ -11,8 +11,9 @@ enum RatingCopy {
     static let notGood = "Not good"
     static let itWasFine = "It was fine"
     static let tellUs = "Tell us what was wrong"
-    static let notGoodOpensForm = "Not good opens the report form."
-    static let notGoodOpensFormDish = "Not good opens the report form with this dish selected."
+    /// Not good opens What's wrong (Feedback · Which dish 2159:285, What's wrong 2159:149347), never the Report form.
+    static let notGoodOpensForm = "Not good asks which dish and what was wrong."
+    static let notGoodOpensFormDish = "Not good asks what was wrong with this dish."
     static let skipForNow = "Skip for now"
     static let done = "Done"
     static let rated = "You said Good. Thanks."
@@ -55,9 +56,16 @@ final class StudentRatingViewModel {
     var isGood: Bool { rating != nil }
     var canRate: Bool { window?.isOpen == true && write != .saving }
 
-    /// The subject a Not good hands to the report form.
-    var reportSubject: StudentReportSubject {
-        StudentReportSubject(slot: target.slot, day: target.day, dishName: dishName)
+    /// What Good (Thanks) or Not good (Which dish, or this dish's What's wrong) opens next.
+    func feedbackRequest(after answer: StudentRatingAnswer) -> StudentDishFeedbackRequest {
+        switch answer {
+        case .good: return StudentDishFeedbackRequest(day: target.day, slot: target.slot, kind: .thanks)
+        case .notGood:
+            if target.dish != nil, let dishName {
+                return StudentDishFeedbackRequest(day: target.day, slot: target.slot, kind: .dish(dishName))
+            }
+            return StudentDishFeedbackRequest(day: target.day, slot: target.slot, kind: .meal)
+        }
     }
 
     func load() async {
@@ -147,10 +155,15 @@ private struct RatingPill: View {
 
 // MARK: - How was lunch?
 
-/// The full page (student_feedback_01_how_was_lunch).
+/// The full page (student_feedback_01_how_was_lunch). Good shows Thanks (2159:159); Not good opens Which dish
+/// (2159:285). Only "Unsafe or unwell? Use SOS" leads from there to SOS.
 struct StudentRateMealView: View {
+    @Environment(AppEnvironment.self) private var environment
     @State var model: StudentRatingViewModel
-    let onNotGood: (StudentReportSubject) -> Void
+    @State private var feedback: StudentDishFeedbackRequest?
+    @State private var doneAfterThanks = false
+    let onSOS: () -> Void
+    var onMyFeedback: (() -> Void)?
     let onDone: () -> Void
 
     var body: some View {
@@ -161,11 +174,16 @@ struct StudentRateMealView: View {
             VStack(spacing: MLSpacing.s16) {
                 RatingChoiceRow(symbol: "hand.thumbsup", title: RatingCopy.good, detail: RatingCopy.itWasFine,
                                 accent: true, selected: model.isGood) {
-                    Task { if await model.rate(.good) { onDone() } }
+                    Task {
+                        if await model.rate(.good) {
+                            doneAfterThanks = true
+                            feedback = model.feedbackRequest(after: .good)
+                        }
+                    }
                 }
                 RatingChoiceRow(symbol: "hand.thumbsdown", title: RatingCopy.notGood, detail: RatingCopy.tellUs,
                                 accent: false, selected: false) {
-                    Task { if await model.rate(.notGood) { onNotGood(model.reportSubject) } }
+                    Task { if await model.rate(.notGood) { feedback = model.feedbackRequest(after: .notGood) } }
                 }
                 RatingStatusLine(model: model, helper: RatingCopy.notGoodOpensForm)
                 Button(RatingCopy.skipForNow, action: onDone)
@@ -179,6 +197,13 @@ struct StudentRateMealView: View {
         }
         .task { await model.load() }
         .sensoryFeedback(.success, trigger: model.isGood) { _, good in good }
+        .studentDishFeedback($feedback, context: model.context, repositories: environment.repositories,
+                             clock: environment.clock, onSOS: onSOS, onMyFeedback: onMyFeedback) {
+            if doneAfterThanks {
+                doneAfterThanks = false
+                onDone()
+            }
+        }
     }
 }
 
@@ -250,11 +275,15 @@ private struct RatingStatusLine: View {
 
 // MARK: - Rate a dish
 
-/// Rate a dish (student_feedback_02_rate_a_dish), from the dish page in Meals and from Search.
+/// Rate a dish (student_feedback_02_rate_a_dish), from the dish page in Meals and from Search. Good shows Thanks
+/// (2159:159); Not good opens this dish's What's wrong (2159:149347) straight away, never the Report form.
 struct StudentRateDishView: View {
+    @Environment(AppEnvironment.self) private var environment
     @State var model: StudentRatingViewModel
+    @State private var feedback: StudentDishFeedbackRequest?
     let loadDish: () async throws -> StudentDishDetail
-    let onNotGood: (StudentReportSubject) -> Void
+    let onSOS: () -> Void
+    var onMyFeedback: (() -> Void)?
     let onDone: () -> Void
 
     var body: some View {
@@ -280,10 +309,10 @@ struct StudentRateDishView: View {
                 .padding(.top, MLSpacing.s24)
                 HStack(spacing: MLSpacing.s16) {
                     tile(symbol: "hand.thumbsup", title: RatingCopy.good, accent: true, selected: model.isGood) {
-                        Task { await model.rate(.good) }
+                        Task { if await model.rate(.good) { feedback = model.feedbackRequest(after: .good) } }
                     }
                     tile(symbol: "hand.thumbsdown", title: RatingCopy.notGood, accent: false, selected: false) {
-                        Task { if await model.rate(.notGood) { onNotGood(model.reportSubject) } }
+                        Task { if await model.rate(.notGood) { feedback = model.feedbackRequest(after: .notGood) } }
                     }
                 }
                 .disabled(!model.canRate)
@@ -298,6 +327,8 @@ struct StudentRateDishView: View {
             await model.load()
         }
         .sensoryFeedback(.success, trigger: model.isGood) { _, good in good }
+        .studentDishFeedback($feedback, context: model.context, repositories: environment.repositories,
+                             clock: environment.clock, onSOS: onSOS, onMyFeedback: onMyFeedback)
     }
 
     private func tile(symbol: String, title: String, accent: Bool, selected: Bool,

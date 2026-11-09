@@ -14,8 +14,8 @@ enum StudentHomeRoute: Hashable {
     case rewardTicket(StudentRewardTicketID)
     /// How was lunch? (image student_feedback_01_how_was_lunch).
     case rateMeal(day: Date, slot: MealSlot)
-    /// Report · What's wrong with the meal already selected, from Not good.
-    case reportAbout(StudentReportSubject)
+    /// SOS, from "Unsafe or unwell? Use SOS" on the dish feedback sheets (the only way there from them).
+    case sos
     /// My feedback, from the follow-up row on the student's own feedback.
     case myFeedback
     /// A page another Student part builds. Until then it says Coming soon.
@@ -53,6 +53,9 @@ struct StudentHomeView: View {
     /// Meals whose How was … card was answered Good or skipped in this run. Skip for now records nothing.
     @State private var skippedRatings: Set<String> = []
     @State private var skipping: MealID?
+    /// Thanks after Good, or Which dish after Not good, on the How was … card (2159:159, 2159:285).
+    @State private var feedback: StudentDishFeedbackRequest?
+    @Environment(\.studentSelectTab) private var selectTab
     /// For the pages that build their own view models: Special pass and Crowd.
     private let session: Session?
     /// The credits chip reads the Student You balance, so Home, You and Credits show one number (owner ruling,
@@ -103,7 +106,12 @@ struct StudentHomeView: View {
         .task(id: environment.dataRevision) {
             await model.load()
             await you?.loadCredits()
+            await sendKeptFeedback()
         }
+        .studentDishFeedback($feedback, context: model.context, repositories: environment.repositories,
+                             clock: environment.clock, onSOS: { path.append(.sos) },
+                             onCommunity: selectTab.map { select in { select(.community) } },
+                             onMyFeedback: { path.append(.myFeedback) })
         .mlSheet(isPresented: Binding(get: { skipping != nil }, set: { if !$0 { skipping = nil } })) {
             if let meal = skipping, let card = model.card(id: meal) {
                 WhySkippingSheet(slot: card.meal.slot, onClose: { skipping = nil }) { reason in
@@ -167,14 +175,15 @@ struct StudentHomeView: View {
         case .rateMeal(let day, let slot):
             if let session, let rating = StudentRatingViewModel(session: session, repositories: environment.repositories,
                                                                 day: day, slot: slot) {
-                StudentRateMealView(model: rating, onNotGood: { path.append(.reportAbout($0)) }) {
+                StudentRateMealView(model: rating, onSOS: { path.append(.sos) },
+                                    onMyFeedback: { path.append(.myFeedback) }) {
                     skippedRatings.insert(Self.ratingKey(day, slot))
                     path.removeLast()
                 }
             }
-        case .reportAbout(let subject):
+        case .sos:
             if let session {
-                StudentReportScreen(session: session, subject: subject) { path.removeLast() }
+                StudentSOSScreen(session: session) { path.removeLast() }
             }
         case .myFeedback:
             if let session, let records = StudentRecordsViewModel(session: session, repositories: environment.repositories,
@@ -204,12 +213,20 @@ struct StudentHomeView: View {
         }
     }
 
+    /// Dish feedback kept while offline is sent once the app is back online. Nothing is sent while offline.
+    private func sendKeptFeedback() async {
+        let student = model.context.student.id
+        guard !(await environment.repositories.dishFeedback.kept(by: student)).isEmpty,
+              let sent = try? await environment.repositories.dishFeedback.sendKept(by: student), !sent.isEmpty else { return }
+        environment.dataDidChange()
+    }
+
     static func ratingKey(_ day: Date, _ slot: MealSlot) -> String {
         "\(Int(day.timeIntervalSince1970 / 86_400))-\(slot.rawValue)"
     }
 
-    /// The How was … card: Good records and hides the card, Not good records nothing and opens the report form with
-    /// the meal selected, Skip for now hides the card and records nothing.
+    /// The How was … card: Good records, hides the card and shows Thanks; Not good records nothing and opens Which
+    /// dish; Skip for now hides the card and records nothing. Not good never opens the Report form.
     private func rating(_ meal: Meal, _ action: StudentHomeRatingAction) {
         let key = Self.ratingKey(meal.startsAt, meal.slot)
         switch action {
@@ -221,12 +238,10 @@ struct StudentHomeView: View {
             guard let session, let rating = StudentRatingViewModel(session: session, repositories: environment.repositories,
                                                                    day: meal.startsAt, slot: meal.slot) else { return }
             Task {
-                guard await rating.rate(action == .good ? .good : .notGood) else { return }
-                if action == .good {
-                    skippedRatings.insert(key)
-                } else {
-                    path.append(.reportAbout(rating.reportSubject))
-                }
+                let answer: StudentRatingAnswer = action == .good ? .good : .notGood
+                guard await rating.rate(answer) else { return }
+                if action == .good { skippedRatings.insert(key) }
+                feedback = rating.feedbackRequest(after: answer)
             }
         }
     }

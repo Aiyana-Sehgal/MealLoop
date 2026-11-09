@@ -80,10 +80,12 @@ struct StudentSearchView: View {
             if let rating = StudentRatingViewModel(session: session, repositories: environment.repositories, day: day,
                                                    slot: slot, dish: dish) {
                 StudentRateDishView(model: rating, loadDish: { try await meals.dishDetail(dish, day: day, slot: slot) },
-                                    onNotGood: { path.append(.report($0)) }) { path.removeLast() }
+                                    onSOS: { path.append(.sos) }) { path.removeLast() }
             }
         case .report(let subject):
             StudentReportScreen(session: session, subject: subject) { path.removeLast() }
+        case .sos:
+            StudentSOSScreen(session: session) { path.removeLast() }
         case .pass:
             StudentPassScreen(session: session) { path.removeLast() }
         case .comingSoon(let title):

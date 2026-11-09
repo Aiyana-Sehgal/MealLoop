@@ -9,6 +9,8 @@ enum StudentMealsRoute: Hashable {
     case report(StudentReportSubject?)
     /// Rate a dish (image student_feedback_02_rate_a_dish).
     case rateDish(DishID, day: Date, slot: MealSlot)
+    /// SOS, from "Unsafe or unwell? Use SOS" on the dish feedback sheets.
+    case sos
     case comingSoon(String)
 
     /// Pages built on `MLScreen`: the system bar, its back button and the swipe-back gesture.
@@ -89,11 +91,13 @@ struct StudentMealsView: View {
             StudentPassScreen(session: session) { path.removeLast() }
         case .report(let subject):
             StudentReportScreen(session: session, subject: subject) { path.removeLast() }
+        case .sos:
+            StudentSOSScreen(session: session) { path.removeLast() }
         case .rateDish(let dish, let day, let slot):
             if let rating = StudentRatingViewModel(session: session, repositories: environment.repositories, day: day,
                                                    slot: slot, dish: dish) {
                 StudentRateDishView(model: rating, loadDish: { try await model.dishDetail(dish, day: day, slot: slot) },
-                                    onNotGood: { path.append(.report($0)) }) { path.removeLast() }
+                                    onSOS: { path.append(.sos) }) { path.removeLast() }
             }
         case .comingSoon(let title):
             StudentComingSoonView(title: title) { path.removeLast() }

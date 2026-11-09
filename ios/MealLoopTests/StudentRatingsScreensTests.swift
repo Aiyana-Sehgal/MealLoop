@@ -36,18 +36,15 @@ final class StudentRatingsScreensTests: XCTestCase {
         XCTAssertTrue(model.isGood)
     }
 
-    func testNotGoodRecordsNothingAndHandsTheDishToTheReportForm() async throws {
+    /// Owner, 9 November: Not good on a dish opens that dish's What's wrong (2159:149347), never the Report form.
+    func testNotGoodRecordsNothingAndOpensThatDishsWhatsWrong() async throws {
         let model = try make(dish: rice)
         model.dishName = "Steamed Rice"
         await model.load()
         _ = await model.rate(.notGood)
         XCTAssertFalse(model.isGood)
-        XCTAssertEqual(model.reportSubject, StudentReportSubject(slot: .lunch, day: model.target.day, dishName: "Steamed Rice"))
-        let report = try XCTUnwrap(StudentReportViewModel(session: try session,
-                                                          repositories: DemoDataProvider(scenario: .afterMeal).makeRepositories(),
-                                                          clock: DemoDataProvider(scenario: .afterMeal).clock))
-        _ = StudentReportView(model: report, subject: model.reportSubject, onShowIssue: nil) {}
-        XCTAssertEqual(report.subject?.dishName, "Steamed Rice", "The report form opens with the dish selected.")
+        XCTAssertEqual(model.feedbackRequest(after: .notGood).kind, .dish("Steamed Rice"))
+        XCTAssertEqual(model.feedbackRequest(after: .good).kind, .thanks)
     }
 
     func testARatingBeforeTheMealEndsIsRefusedOnScreen() async throws {

@@ -59,5 +59,6 @@ struct StudentRootView: View {
                 // and the forms keep the whole space above the keyboard.
                 .ignoresSafeArea(.keyboard, edges: .bottom)
         }
+        .environment(\.studentSelectTab, { tab = $0 })
     }
 }
