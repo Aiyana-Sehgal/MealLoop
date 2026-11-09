@@ -473,19 +473,16 @@ struct GuardianSheetView: View {
             case .language?:
                 SheetHeader(title: GuardianCopy.languageTitle, onClose: onClose)
                 VStack(spacing: 0) {
-                    ForEach(Array(GuardianCopy.languages.enumerated()), id: \.offset) { index, language in
+                    ForEach(GuardianCopy.languages, id: \.self) { language in
                         HStack {
-                            Text(language).font(MLType.staffBody).foregroundStyle(index == 0 ? MLColor.ink : MLColor.inkSecondary)
+                            Text(language).font(MLType.staffBody).foregroundStyle(MLColor.ink)
                             Spacer()
-                            if index == 0 {
-                                Image(systemName: "checkmark").foregroundStyle(MLColor.ink)
-                            } else {
-                                Text(GuardianCopy.languageNotReady).font(MLType.secondary).foregroundStyle(MLColor.inkSecondary)
-                            }
+                            Image(systemName: "checkmark").foregroundStyle(MLColor.ink)
                         }
                         .frame(minHeight: 64)
                         .overlay(alignment: .bottom) { Rectangle().fill(MLColor.border).frame(height: 1) }
                         .accessibilityElement(children: .combine)
+                        .accessibilityAddTraits(.isSelected)
                     }
                 }
                 Text(GuardianCopy.languageNote).font(MLType.body).foregroundStyle(MLColor.inkSecondary)

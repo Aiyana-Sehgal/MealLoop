@@ -6,12 +6,12 @@ import Foundation
 /// Nothing here says the video proves who the guardian is, or that it is the warden's approval.
 enum GuardianCopy {
     // MARK: Header and language (GV-01 Language sheet)
-    static let languagePill = "தமிழ்"
+    /// The frame's pill offers தமிழ். Owner ruling (9 November): only English is shown until translations exist, so the
+    /// pill names the language in use and the sheet lists English alone.
+    static let languagePill = "English"
     static let languageTitle = "Language"
-    static let languages = ["English", "தமிழ்", "हिन्दी"]
+    static let languages = ["English"]
     static let languageNote = "Messages and this page use this language."
-    /// Not drawn: the translations need a fluent writer (spec), so only English can be chosen.
-    static let languageNotReady = "Not translated yet"
 
     // MARK: Consent (GV-00)
     static let consentTitle = "Before you\nrecord."
