@@ -341,6 +341,44 @@ final class StudentFinalScreenshotTests: XCTestCase {
         try await shot("g2_lunch_reminder_set", morning, tab: .home, pushed: false) {
             StudentHomeScreen(session: morning.session).studentReminders(set)
         }
+        // G3: the restyled SOS flow, during lunch.
+        let noon = World(.duringMeal)
+        func sos(_ w: World, camera: StudentSOSViewModel.Camera = .available,
+                 location: StudentSOSViewModel.Location = .atMess) async -> StudentSOSViewModel {
+            let model = StudentSOSViewModel(context: context, repositories: w.environment.repositories, clock: w.clock,
+                                            camera: camera, location: location)
+            await model.load()
+            model.choose(.foundInFood)
+            if let dish = model.dishes.first { model.toggle(dish: dish) }
+            return model
+        }
+        let picked = await sos(noon)
+        try await shot("g3_sos", noon, tab: .home) { StudentSOSView(model: picked) {} }
+        let unwell = await sos(noon)
+        unwell.choose(.unwell)
+        unwell.toggle(dish: unwell.dish ?? "")
+        try await shot("g3_sos_unwell", noon, tab: .home) { StudentSOSView(model: unwell) {} }
+        let noGPS = await sos(noon, location: .unavailable)
+        try await shot("g3_camera_no_gps", noon, tab: .home, pushed: false) { StudentSOSCameraView(model: noGPS) {} }
+        let denied = await sos(noon, camera: .denied)
+        try await shot("g3_camera_denied", noon, tab: .home, pushed: false) { StudentSOSCameraView(model: denied) {} }
+        let review = await sos(noon)
+        review.takePhoto()
+        try await shot("g3_review", noon, tab: .home) { StudentSOSReviewPage(model: review, onRetake: {}, onClose: {}) }
+        noGPS.takePhoto()
+        try await shot("g3_review_no_gps", noon, tab: .home) { StudentSOSReviewPage(model: noGPS, onRetake: {}, onClose: {}) }
+        denied.choose(.unwell)
+        denied.toggle(dish: denied.dish ?? "")
+        denied.continueWithoutPhoto()
+        try await shot("g3_review_no_photo", noon, tab: .home) {
+            StudentSOSReviewPage(model: denied, onRetake: {}, onClose: {})
+        }
+        let offWorld = World(.offline)
+        let off = await sos(offWorld)
+        off.takePhoto()
+        try await shot("g3_review_offline", offWorld, tab: .home) { StudentSOSReviewPage(model: off, onRetake: {}, onClose: {}) }
+        _ = await review.send()
+        try await shot("g3_sent", noon, tab: .home) { StudentSOSSentView(model: review) {} }
         let eight = World(.storyStart, at: DemoSeed.time(8, 0))
         try await shot("g2_lunch_reminder_fired", eight, tab: .home, pushed: false) {
             StudentHomeScreen(session: eight.session).studentReminders(set)
