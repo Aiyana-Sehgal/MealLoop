@@ -95,6 +95,7 @@ struct VendorMeView: View {
                     .padding(.bottom, MLSpacing.s12)
                     VStack(spacing: 0) {
                         Rectangle().fill(MLColor.border).frame(height: 1)
+                        DemoEntryRow()
                         Button {
                             router.reset()
                             sessionStore.signOut()

@@ -63,3 +63,15 @@ Resumable checkpoints for the review-prototype pass. Newest last.
   the count, meal and mess; a failure stays in the sheet for retry; both view models drop a second tap. Verified:
   North → Cancel → Send → tile shows Waiting; Main → Approve → Send 860 → Sent to vendor 7:01 AM, vendor Pending.
 - Verification aid (Debug and Review only): launch argument `-demoRole <role>` opens that role's Home, as Switch role.
+- Food Head Needs you was always empty (the scoped overview refuses single-mess accounts). A scoped `toReview` now
+  returns only their own mess's meals. Verified: "Rice ran out · Main · Tue dinner · Review".
+
+### Vendor
+
+- The four `feat/ios-vendor` commits are cherry-picked with their authorship (three small conflicts in the provider,
+  seed and repositories resolved by keeping `main` and adding the vendor source). Their subjects pass the CI rules.
+- Demo states row added to Vendor Me. The headcount card wraps its content, as vendor_03 draws it (no fixed height).
+- Verified on one data source: Food Head Approve live forecast · 860 → Send → Vendor Home "Sent 7:00 AM · 860 ·
+  Approved headcount" → Acknowledge receipt → "Acknowledged 7:00 AM". Recipient-side receipt is verified in the app
+  (shared seeded source), not against a real vendor. Only Main Mess lunch has a vendor account; sends for North,
+  South and Annexe update their tiles but reach no vendor screen.

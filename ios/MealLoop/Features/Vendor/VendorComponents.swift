@@ -5,7 +5,6 @@ import SwiftUI
 
 enum VendorLayout {
     /// The black headcount card in 2259:160041 is about 250 pt tall at 393 pt wide.
-    static let cardMinHeight: CGFloat = 236
     static let tabBarClearance: CGFloat = 120
     static let meAvatar: CGFloat = 92
     static let chipHeight: CGFloat = 36
@@ -69,10 +68,12 @@ struct VendorHeadcountCard<Action: View>: View {
                     .foregroundStyle(MLColor.onHero)
                     .padding(.top, MLSpacing.s16)
             }
-            Spacer(minLength: MLSpacing.s16)
-            action
+            // The card wraps its content (vendor_03): no fixed height, so a card without an action has no empty band.
+            if Action.self != EmptyView.self {
+                action
+                    .padding(.top, MLSpacing.s16)
+            }
         }
-        .frame(minHeight: VendorLayout.cardMinHeight)
         .accessibilityElement(children: .contain)
     }
 }
