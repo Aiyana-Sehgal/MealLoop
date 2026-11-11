@@ -107,7 +107,12 @@ struct StudentCommunityView: View {
         NavigationStack(path: $path) {
             // The tab root: a large title that collapses into the bar, the info button in the bar.
             MLScreen(CommunityCopy.title, subtitle: CommunityCopy.subtitle, bottomClearance: .tabBar) {
-                StudentGlassButton(symbol: "info.circle", label: CommunityCopy.about) { showsInfo = true }
+                // A plain bar button: the bar draws its own glass circle, so a second drawn circle overlapped it.
+                Button { showsInfo = true } label: {
+                    Image(systemName: "info.circle")
+                        .foregroundStyle(MLColor.ink)
+                }
+                .accessibilityLabel(CommunityCopy.about)
             } content: {
                 VStack(alignment: .leading, spacing: MLSpacing.s16) {
                     CommunitySegments(showsFixed: $showsFixed)

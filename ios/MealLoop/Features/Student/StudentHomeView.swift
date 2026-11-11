@@ -86,7 +86,7 @@ struct StudentHomeView: View {
                     VStack(alignment: .leading, spacing: MLSpacing.s16) {
                         StudentHomeHeader(credits: credits,
                                           onRewards: { path.append(.credits) },
-                                          onReport: { path.append(.report) },
+                                          onReport: { path.append(.sos) },
                                           onNotifications: { path.append(.notifications) })
                         greeting
                         content
@@ -344,7 +344,7 @@ struct StudentHomeHeader: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(StudentCopy.pointsLabel(credits))
-            StudentGlassButton(symbol: "exclamationmark.bubble", label: StudentCopy.reportIssue, action: onReport)
+            StudentGlassButton(symbol: "exclamationmark.bubble", label: StudentCopy.sos, action: onReport)
             StudentGlassButton(symbol: "bell", label: StudentCopy.notifications, action: onNotifications)
         }
         // A bar, like the navigation bar: it keeps its size so the brand and the credits are never cut. The credits

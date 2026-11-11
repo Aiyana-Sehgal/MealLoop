@@ -55,6 +55,8 @@ enum StudentCopy {
 
     // Home header and top card (Home frames, page 07).
     static let reportIssue = "Report an issue"
+    /// The header button on Home opens SOS (2162:6).
+    static let sos = "SOS"
     static let notifications = "Notifications"
     static let rewards = "Rewards"
     static func points(_ credits: Int?) -> String { credits.map { "\($0) pts" } ?? "— pts" }
