@@ -100,3 +100,16 @@ Resumable checkpoints for the review-prototype pass. Newest last.
 - Dark appearance: placeholders and the native glass back button turned light-on-light on the designed light surfaces
   (dark_new_outing_before.png). The app has no dark theme, so it runs in Light (`preferredColorScheme(.light)`);
   readable after (dark_new_outing_after.png). Gate and the Guardian video page keep their own dark sections.
+
+### 6. Door Scanner, Guardian, Warden, Gate
+
+- Door Scanner sees the Supervisor's meal; "Camera is off. Use Type ID". Typing 0412 shows Meera ••0412 as a match and
+  records nothing until Record entry; then Recorded in 1 and the recorded confirmation. Lookup, offline and unverified
+  attempts never count (DoorScannerTests, SpecialPassOperationTests, PassDeskViewModelTests: all passing).
+- Outing from the demo: Student New outing Home · Family · Wed 14 Aug 6–9 PM → Sent, waiting for the guardian →
+  Guardian (simulated SMS sign-in, any 6 digits) shows exactly that request with I accept / I reject; Reject sheet
+  checked and backed out. Warden queue empty while the guardian has not accepted.
+- Not verifiable on the simulator: I accept needs the live camera video (hardware). Accept → Warden approve → Gate exit
+  and return run in `OutingCaseRepositoryTests.testFullJourneyRunsInOrder`. Guardian production sign-in is undecided
+  (P71); SMS is simulated.
+- Fix: the Demo chip now sits over the whole Guardian flow, so a reviewer is never stranded on its sign-in pages.

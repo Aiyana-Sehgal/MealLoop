@@ -14,13 +14,15 @@ struct GuardianRootView: View {
 
     var body: some View {
         if Self.allows(session) {
-            if let entered {
-                GuardianPageView(account: session.account.id, preparedModel: entered)
-                    // The Guardian page has no Me page; the Demo entry sits at the top, as on Welcome.
-                    .overlay(alignment: .top) { DemoEntryButton() }
-            } else {
-                GuardianEntryFlow(account: session.account.id) { entered = $0 }
+            Group {
+                if let entered {
+                    GuardianPageView(account: session.account.id, preparedModel: entered)
+                } else {
+                    GuardianEntryFlow(account: session.account.id) { entered = $0 }
+                }
             }
+            // The Guardian has no Me page; the Demo entry sits at the top of every guardian screen, as on Welcome.
+            .overlay(alignment: .top) { DemoEntryButton() }
         } else {
             NotImplementedView(title: MLFormat.roleName(session.account.role))
         }
