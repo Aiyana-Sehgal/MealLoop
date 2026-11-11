@@ -113,3 +113,13 @@ Resumable checkpoints for the review-prototype pass. Newest last.
   and return run in `OutingCaseRepositoryTests.testFullJourneyRunsInOrder`. Guardian production sign-in is undecided
   (P71); SMS is simulated.
 - Fix: the Demo chip now sits over the whole Guardian flow, so a reviewer is never stranded on its sign-in pages.
+
+### 7. Deletion and full checks
+
+- Deleted `Features/Staff/StaffShellViews.swift` (StaffTabsView, StaffRootView, StaffMePlaceholderView: no callers since
+  each staff role got its own root) with `StaffRoute` and `AppRouter.staffHomePath`. Kept `PlaceholderRootView` (Admin
+  fallback). The six `student-problem-*` assets look unused but are loaded by an interpolated name, so they stay.
+- The role password and SRM failure seed values were Debug-only, which broke the Review build; they are shared now.
+- Debug tests: 821 passed, 0 failed, 46 skipped. Review tests: 821 passed, 0 failed, 45 skipped. Release build
+  (generic iOS Simulator): succeeds, arm64 + x86_64; `strings` finds none of "Demo states", "Switch role (keeps data)",
+  "Getting started", "demoRole" or "DemoSheet" in the Release binary.

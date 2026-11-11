@@ -71,10 +71,8 @@ final class RoleRoutingTests: XCTestCase {
         let router = AppRouter()
         router.entryPath = [.chooseRole, .rolePassword(.kitchenStaff)]
         router.selectedStaffTab = .me
-        router.staffHomePath = [.notImplemented(title: "Past meals")]
         router.reset()
         XCTAssertTrue(router.entryPath.isEmpty)
         XCTAssertEqual(router.selectedStaffTab, .home)
-        XCTAssertTrue(router.staffHomePath.isEmpty)
     }
 }

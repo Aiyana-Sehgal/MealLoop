@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The Door Scanner root. The role needs its own Alerts and Me, which `StaffRootView` does not take, so it keeps the
+/// The Door Scanner root. The role needs its own Alerts and Me, which the retired shared staff shell does not take, so it keeps the
 /// shared tab bar and router tab and supplies all three tabs here.
 struct DoorScannerRootView: View {
     @Environment(AppEnvironment.self) private var environment

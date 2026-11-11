@@ -11,7 +11,8 @@ final class AppEnvironmentTests: XCTestCase {
         #elseif REVIEW_DATA
         let environment = AppEnvironment.make()
         XCTAssertEqual(environment.kind, .review)
-        XCTAssertNil(environment.demoControls, "The Review build has no simulated moment controls")
+        // The Review build carries the Demo sheet (Getting started, Switch role); it moves no time and replaces no data.
+        XCTAssertNotNil(environment.demoControls)
         #else
         XCTFail("Unit tests are expected to run in Debug or Review, where seeded data is compiled in.")
         #endif

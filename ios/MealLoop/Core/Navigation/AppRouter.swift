@@ -23,22 +23,15 @@ enum StaffTab: String, CaseIterable, Identifiable, Hashable, Sendable {
     var id: String { rawValue }
 }
 
-/// Pushed screens inside a staff tab. Add cases here as screens are built; keep one enum for all staff roles.
-enum StaffRoute: Hashable, Sendable {
-    case notImplemented(title: String)
-}
-
 /// Navigation state only. Who is signed in lives in `SessionStore`.
 @Observable
 final class AppRouter {
     var entryPath: [EntryRoute] = []
     var selectedStaffTab: StaffTab = .home
-    var staffHomePath: [StaffRoute] = []
 
     /// Clears every path, so the next account never inherits the previous account's position.
     func reset() {
         entryPath = []
         selectedStaffTab = .home
-        staffHomePath = []
     }
 }

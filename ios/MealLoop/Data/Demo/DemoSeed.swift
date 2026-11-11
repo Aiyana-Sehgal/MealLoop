@@ -199,13 +199,11 @@ enum DemoSeed {
     // Before the story starts, so the sample answers already exist at 7:00 AM.
     static let sampleLunchAnswersAt = time(6, 30)
 
-    #if DEMO_DATA
     /// NOT FROM THE DESIGN. The design documents no password value; this placeholder exists only so the
     /// simulated password page can be tried. Recorded in docs/OPEN_DECISIONS.md.
     static let simulatedRolePassword = "1234"
     /// Couldn't sign in (135:15825): "SRM didn't answer in time. Nothing was saved."
     static let srmNoAnswer = "SRM didn't answer in time. Nothing was saved."
-    #endif
 
     /// SAMPLE, NOT MEASURED. Figma DS-8 Me (2512:173663) and PD-8 Me (2545:7144) draw "On shift · since 11:40 AM".
     static let deskShiftStartedAt = time(11, 40)
