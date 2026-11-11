@@ -16,9 +16,24 @@ enum StaffEntryCopy {
         case .passDesk: return "Check special passes"
         case .kitchenStaff: return "Cooking and waste"
         case .supervisor: return "Start and end the meal"
+        case .admin: return "Your mess: headcount, menu and results"
+        case .superAdmin: return "All messes, people and access"
         default: return ""
         }
     }
+
+    /// The row titles. Food Head and Admin sign in with their own account, not a shared role password.
+    static func roleTitle(_ role: Role) -> String {
+        switch role {
+        case .admin: return "Food Head"
+        case .superAdmin: return "Admin"
+        default: return MLFormat.roleName(role)
+        }
+    }
+
+    /// The accounts that sign in with email from Choose your role.
+    static let accountRoles: [Role] = [.admin, .superAdmin]
+    static let managersHeader = "Food Head and Admin"
 
     static func roleSymbol(_ role: Role) -> String {
         switch role {
@@ -26,6 +41,8 @@ enum StaffEntryCopy {
         case .passDesk: return "ticket"
         case .kitchenStaff: return "frying.pan"
         case .supervisor: return "checkmark.shield"
+        case .admin: return "fork.knife"
+        case .superAdmin: return "building.2"
         default: return "person"
         }
     }

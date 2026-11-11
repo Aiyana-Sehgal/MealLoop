@@ -126,3 +126,18 @@ Resumable checkpoints for the review-prototype pass. Newest last.
 - iPhone SE (3rd gen, 375 pt): Student Home at 7:00 keeps I'm in, Skip and Entry QR in view; the lunch row wraps to two
   lines. Largest accessibility text: Student screens do not scale — their 420 `StudentType` uses are fixed sizes, as
   on `main` before this pass (staff and entry screens scale through `mlFont`). Open gap, not a regression.
+
+### 8. Follow-up: Student text size and Food Head and Admin sign-in
+
+- Student text now grows with Dynamic Type: every `StudentType` token is Inter (or JetBrains Mono) relative to a system
+  text style, capped at the first accessibility size on the Student root. The Home header stays bar-sized; the hero
+  eyebrow and chip, the three answer buttons, the lunch row and the Special pass row stack at accessibility sizes; 20
+  fixed heights on text controls became minimum heights. Verified on the iPhone SE at the largest setting
+  (capture se_student_home_ax_text.png): nothing cut, the page scrolls.
+- Scroll from the hero card: the swipe-to-remind DragGesture held the scroll view, so a vertical drag that started on
+  the card did nothing. On iOS 18+ it is now a UIKit pan that only begins for a rightward horizontal drag; iOS 17 keeps
+  the SwiftUI drag. Verified on the simulator: vertical scroll from the card works.
+- Owner request: Choose your role lists "Food Head and Admin" after the four mess staff roles. Food Head and Admin
+  (the Super Admin account) open the email sign-in titled with the role; seeded builds fill in the sample email.
+  Verified: Food Head → password → Today.
+- Debug tests 823 passed, Review tests 823 passed, Release build succeeds with no demo strings.

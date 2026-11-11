@@ -19,6 +19,17 @@ struct RoleSelectionView: View {
                         choose(role)
                     }
                 }
+                Text(StaffEntryCopy.managersHeader)
+                    .mlFont(.bodyEmphasis)
+                    .foregroundStyle(MLColor.inkSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, MLSpacing.s8)
+                    .accessibilityAddTraits(.isHeader)
+                ForEach(StaffEntryCopy.accountRoles, id: \.self) { role in
+                    RoleRow(role: role) {
+                        router.entryPath.append(.accountSignIn(role))
+                    }
+                }
                 TextLinkButton(title: StaffEntryCopy.signInWithEmail) {
                     router.entryPath.append(.emailSignIn)
                 }
@@ -73,7 +84,7 @@ struct RoleRow: View {
                         if isFirst { Circle().stroke(MLColor.limeOutline, lineWidth: 1) }
                     }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(MLFormat.roleName(role))
+                    Text(StaffEntryCopy.roleTitle(role))
                         .mlFont(.title2)
                         .foregroundStyle(MLColor.ink)
                     Text(StaffEntryCopy.roleHint(role))

@@ -16,6 +16,8 @@ struct EntryFlowView: View {
                         RoleSelectionView()
                     case .emailSignIn:
                         StaffSignInView(model: StaffSignInViewModel(auth: environment.repositories.auth))
+                    case .accountSignIn(let role):
+                        StaffSignInView(model: StaffSignInViewModel(auth: environment.repositories.auth), role: role)
                     case .srmSignIn:
                         SRMSignInView(model: SRMSignInViewModel(auth: environment.repositories.auth))
                             .toolbar(.hidden, for: .navigationBar)
@@ -142,12 +144,23 @@ struct StaffSignInView: View {
         case email, password
     }
 
-    init(model: StaffSignInViewModel) {
+    /// Food Head or Admin when chosen on Choose your role; nil for the general email sign-in.
+    private let role: Role?
+
+    init(model: StaffSignInViewModel, role: Role? = nil) {
+        #if DEMO_DATA || REVIEW_DATA
+        // Seeded builds fill in the role's sample account; the password is still typed.
+        if let role, model.email.isEmpty, let account = DemoSeed.accounts.first(where: { $0.role == role }) {
+            model.email = account.email
+        }
+        #endif
         _model = State(initialValue: model)
+        self.role = role
     }
 
     var body: some View {
-        MLScreen(EntryCopy.staffSignIn, subtitle: EntryCopy.staffSubtitle, placement: .upperMiddle) {
+        MLScreen(role.map(StaffEntryCopy.roleTitle) ?? EntryCopy.staffSignIn, subtitle: EntryCopy.staffSubtitle,
+                 placement: .upperMiddle) {
             brandRow
         } trailing: {
             EmptyView()

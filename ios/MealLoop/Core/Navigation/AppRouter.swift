@@ -10,6 +10,8 @@ import Observation
 enum EntryRoute: Hashable, Sendable {
     case chooseRole
     case emailSignIn
+    /// The email sign-in for Food Head or Admin, chosen on Choose your role.
+    case accountSignIn(Role)
     case srmSignIn
     case rolePassword(Role)
 }

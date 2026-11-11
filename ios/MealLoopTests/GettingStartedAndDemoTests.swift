@@ -1,4 +1,5 @@
 #if DEMO_DATA || REVIEW_DATA
+import SwiftUI
 import XCTest
 @testable import MealLoop
 
@@ -115,6 +116,29 @@ final class GettingStartedAndDemoTests: XCTestCase {
             let session = await demo.demoSession(for: role)
             XCTAssertEqual(session?.account.role, role)
         }
+    }
+}
+#endif
+
+#if DEMO_DATA || REVIEW_DATA
+/// Choose your role lists Food Head and Admin after the four mess staff roles; they sign in with their own account.
+final class ChooseRoleAccountsTests: XCTestCase {
+    func testFoodHeadAndAdminAreOfferedWithTheirOwnSignIn() async throws {
+        XCTAssertEqual(StaffEntryCopy.accountRoles, [.admin, .superAdmin])
+        XCTAssertEqual(StaffEntryCopy.roleTitle(.admin), "Food Head")
+        XCTAssertEqual(StaffEntryCopy.roleTitle(.superAdmin), "Admin")
+        XCTAssertFalse(StaffEntryCopy.accountRoles.contains { $0.isMessStaff }, "No shared role password for them")
+        let demo = DemoDataProvider(scenario: .storyStart)
+        for role in StaffEntryCopy.accountRoles {
+            let email = try XCTUnwrap(DemoSeed.accounts.first { $0.role == role }).email
+            let session = try await demo.signInStaff(email: email, password: DemoSeed.prototypePassword)
+            XCTAssertEqual(session.account.role, role)
+        }
+    }
+
+    func testStudentTextScalesAndIsCappedForTheDesignedRows() {
+        XCTAssertEqual(StudentType.largestSize, .accessibility1)
+        XCTAssertEqual(StudentType.body, Font.custom("Inter-Regular", size: 17, relativeTo: .body))
     }
 }
 #endif
