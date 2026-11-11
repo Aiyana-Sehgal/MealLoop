@@ -123,3 +123,6 @@ Resumable checkpoints for the review-prototype pass. Newest last.
 - Debug tests: 821 passed, 0 failed, 46 skipped. Review tests: 821 passed, 0 failed, 45 skipped. Release build
   (generic iOS Simulator): succeeds, arm64 + x86_64; `strings` finds none of "Demo states", "Switch role (keeps data)",
   "Getting started", "demoRole" or "DemoSheet" in the Release binary.
+- iPhone SE (3rd gen, 375 pt): Student Home at 7:00 keeps I'm in, Skip and Entry QR in view; the lunch row wraps to two
+  lines. Largest accessibility text: Student screens do not scale — their 420 `StudentType` uses are fixed sizes, as
+  on `main` before this pass (staff and entry screens scale through `mlFont`). Open gap, not a regression.
