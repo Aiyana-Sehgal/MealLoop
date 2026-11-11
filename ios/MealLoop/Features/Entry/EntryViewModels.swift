@@ -42,30 +42,28 @@ final class StaffSignInViewModel {
 }
 
 /// Sign in with SRM. UNVERIFIED AND SIMULATED: see `AuthRepository.signInWithSRM`.
-/// The two pauses only pace the simulated steps; a real integration would replace them.
+/// "Getting your details" (135:15587), then the student's session or Couldn't sign in (135:15825).
+/// The pause only paces the simulated step; a real integration would replace it.
 @MainActor
 @Observable
 final class SRMSignInViewModel {
     enum Phase: Equatable {
-        case connecting
         case gettingDetails
         case failed(String)
     }
 
-    private(set) var phase: Phase = .connecting
+    private(set) var phase: Phase = .gettingDetails
     private let auth: any AuthRepository
     private let pause: @Sendable () async -> Void
 
     init(auth: any AuthRepository,
-         pause: @escaping @Sendable () async -> Void = { try? await Task.sleep(for: .seconds(1)) }) {
+         pause: @escaping @Sendable () async -> Void = { try? await Task.sleep(for: .seconds(1.5)) }) {
         self.auth = auth
         self.pause = pause
     }
 
-    /// Runs the steps and returns the session. A failure stays on screen and is never shown as signed in.
+    /// Runs the step and returns the session. A failure stays on screen and is never shown as signed in.
     func start() async -> Session? {
-        phase = .connecting
-        await pause()
         phase = .gettingDetails
         await pause()
         do {

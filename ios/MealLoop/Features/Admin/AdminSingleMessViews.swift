@@ -146,6 +146,7 @@ struct AdminSingleMessStudentsScreen: View {
 
 /// More for the Food Head: who and which mess, then planning and the account, as grouped cards.
 struct AdminSingleMessMoreScreen: View {
+    @Environment(DemoMenu.self) private var demoMenu: DemoMenu?
     @Environment(AppRouter.self) private var router
     @Environment(SessionStore.self) private var sessionStore
     let nav: AdminNav
@@ -178,6 +179,9 @@ struct AdminSingleMessMoreScreen: View {
             }
             AdminLabel(text: AdminSingleMessCopy.account)
             AdminGroupCard {
+                #if DEMO_DATA || REVIEW_DATA
+                AdminHubRow(title: DemoCopy.rowTitle) { demoMenu?.isPresented = true }
+                #endif
                 AdminHubRow(title: AdminScreenCopy.signOut, isLast: true) {
                     router.reset()
                     sessionStore.signOut()

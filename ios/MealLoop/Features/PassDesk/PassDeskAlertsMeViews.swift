@@ -185,6 +185,7 @@ struct PassDeskMeView: View {
                         Rectangle().fill(MLColor.border).frame(height: 1)
                         StaffMeRow(title: PassDeskCopy.language, value: PassDeskCopy.english) { page = .language }
                         StaffMeRow(title: PassDeskCopy.help) { page = .help }
+                        DemoEntryRow()
                         signOutRow
                     }
                 }

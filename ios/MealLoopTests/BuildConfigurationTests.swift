@@ -4,13 +4,12 @@ import XCTest
 /// Keeps the three configurations apart: Debug has the demo tools, Review has seeded data only, Release has neither.
 final class BuildConfigurationTests: XCTestCase {
     /// The probe is proved valid by Debug, where the same lookup must find the type.
-    func testDemoBadgeIsCompiledInDebugAndNotInReview() {
-        let badge = _typeByName("8MealLoop13DemoDataBadgeV")
-        #if DEMO_DATA
-        XCTAssertNotNil(badge)
-        #else
-        XCTAssertNil(badge)
-        #endif
+    /// The Demo sheet (Getting started, Switch role) is compiled into Debug and Review. Release has neither flag, so the
+    /// `#if DEMO_DATA || REVIEW_DATA` around it leaves it out; `testReleaseHasNoDataFlags` checks the flags, and the
+    /// Release binary is checked for its strings in docs/verification/review/PROGRESS.md.
+    func testTheDemoSheetIsCompiledInTheSeededBuilds() {
+        XCTAssertNotNil(_typeByName("8MealLoop9DemoSheetV"))
+        XCTAssertNil(_typeByName("8MealLoop13DemoDataBadgeV"), "The old floating badge is gone")
     }
 
     func testTheFlagsAreNeverCombined() {

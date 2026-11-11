@@ -58,7 +58,7 @@ final class SupervisorViewModelTests: XCTestCase {
         XCTAssertTrue(content.followUps.activeShortages.isEmpty)
     }
 
-    func testStartMovesTheClockToTheSeedStartAndOpensScanningForOtherRoles() async throws {
+    func testStartKeepsTheClockAndOpensScanningForOtherRoles() async throws {
         let world = world()
         let model = home(world)
         _ = try await loadedHome(model)
@@ -66,7 +66,7 @@ final class SupervisorViewModelTests: XCTestCase {
 
         let started = await model.startMeal()
         XCTAssertTrue(started)
-        XCTAssertEqual(world.clock.now(), DemoSeed.lunch.startsAt, "The backend moves the story clock to 12:00 PM")
+        XCTAssertEqual(world.clock.now(), DemoSeed.storyStartNow, "Starting the meal never moves the clock")
         guard case .loaded(let content) = model.state,
               case .inService(let entered, let minutes) = content.phase else { return XCTFail("\(model.state)") }
         XCTAssertEqual(minutes, 0)
@@ -90,14 +90,17 @@ final class SupervisorViewModelTests: XCTestCase {
         XCTAssertEqual(live.value, 1)
     }
 
-    func testCloseMovesTheClockToTheSeedEndAndShowsTheFinalEntries() async throws {
+    func testCloseShowsTheFinalEntriesAtTheTimeItClosed() async throws {
         let world = world()
         let model = home(world)
         _ = try await loadedHome(model)
+        world.clock.set(DemoSeed.lunch.startsAt)  // The clock no longer jumps; move it as the story does.
+
         await model.startMeal()
+        world.clock.set(DemoSeed.lunch.endsAt)  // The clock no longer jumps; move it as the story does.
         let closed = await model.closeMeal()
         XCTAssertTrue(closed)
-        XCTAssertEqual(world.clock.now(), DemoSeed.lunch.endsAt, "The backend moves the story clock to 2:00 PM")
+        XCTAssertEqual(world.clock.now(), DemoSeed.lunch.endsAt, "Closing never moves the clock")
         guard case .loaded(let content) = model.state else { return XCTFail("\(model.state)") }
         XCTAssertEqual(content.phase, .closed(finalEntries: .available(0, asOf: DemoSeed.closedAt), closedAt: DemoSeed.closedAt))
 
@@ -219,11 +222,16 @@ final class SupervisorViewModelTests: XCTestCase {
 
         let supervisor = home(world)
         _ = try await loadedHome(supervisor)
+        world.clock.set(DemoSeed.lunch.startsAt)  // The clock no longer jumps; move it as the story does.
+
         await supervisor.startMeal()
         await kitchen.load()
         guard case .loaded(let during) = kitchen.state,
               case .duringMeal(let entered, _, _) = during.phase else { return XCTFail("\(kitchen.state)") }
         XCTAssertEqual(entered.value, 0)
+
+        world.clock.set(DemoSeed.lunch.endsAt)  // The clock no longer jumps; move it as the story does.
+
 
         await supervisor.closeMeal()
         await kitchen.load()

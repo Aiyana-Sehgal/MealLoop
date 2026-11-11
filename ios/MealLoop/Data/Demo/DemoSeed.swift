@@ -40,8 +40,6 @@ enum DemoSeed {
 
     // 03_home is drawn at 7:00 AM. The Review build starts here, with the lunch answer window open.
     static let storyStartNow = time(7, 0)
-    // Owner decision: approving the headcount moves the story to just after the lunch cutoff.
-    static let approvalAfterCutoff: TimeInterval = 5 * 60
 
     // kitchen_spec.md: "Forecasted attendance 860. Entries 714 at 1:40 PM; final 774."
     static let forecastDiners = 860
@@ -198,8 +196,6 @@ enum DemoSeed {
                 request("0377", .done, time(11, 52)), request("0190", .rejected, nil)].compactMap { $0 }
     }
 
-    // Before the breakfast cutoff (5:30 AM), so 03_home's "You're in for breakfast" is true. Owner decision.
-    static let sampleBreakfastAnswer = IntentionResponse.answered(.attending, at: time(5, 0))
     // Before the story starts, so the sample answers already exist at 7:00 AM.
     static let sampleLunchAnswersAt = time(6, 30)
 
@@ -207,6 +203,8 @@ enum DemoSeed {
     /// NOT FROM THE DESIGN. The design documents no password value; this placeholder exists only so the
     /// simulated password page can be tried. Recorded in docs/OPEN_DECISIONS.md.
     static let simulatedRolePassword = "1234"
+    /// Couldn't sign in (135:15825): "SRM didn't answer in time. Nothing was saved."
+    static let srmNoAnswer = "SRM didn't answer in time. Nothing was saved."
     #endif
 
     /// SAMPLE, NOT MEASURED. Figma DS-8 Me (2512:173663) and PD-8 Me (2545:7144) draw "On shift · since 11:40 AM".

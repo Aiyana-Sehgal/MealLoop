@@ -1,10 +1,10 @@
 #if DEMO_DATA || REVIEW_DATA
 import Foundation
 
-/// The moments the demo can show. Changing the scenario replaces all demo state (SIMULATED time skip,
-/// like the hidden time-skip hotspots in the Figma prototype).
+/// The seeded starting states. The app always starts at `storyStart`; the other states seed unit tests and screenshot
+/// captures only. Nothing in the app switches between them.
 enum DemoScenario: String, CaseIterable, Identifiable, Sendable {
-    /// The start of the core story: 7:00 AM, nothing approved, lunch not started. Time then follows the story.
+    /// A clean launch: Wed 14 Aug, 7:00 AM, nothing approved, lunch not started.
     case storyStart
     case beforeMeal
     case duringMeal
@@ -15,24 +15,9 @@ enum DemoScenario: String, CaseIterable, Identifiable, Sendable {
     case offline
 
     var id: String { rawValue }
-
-    #if DEMO_DATA
-    var title: String {
-        switch self {
-        case .storyStart: return "Story start"
-        case .beforeMeal: return "Before the meal (K01)"
-        case .duringMeal: return "During the meal (K02)"
-        case .duringMealShortageReported: return "Shortage reported (K03)"
-        case .duringMealEntriesStale: return "Entries stale (K02b)"
-        case .afterMeal: return "After the meal (K05)"
-        case .afterMealWasteRecorded: return "Waste recorded (K15)"
-        case .offline: return "Offline (K02c)"
-        }
-    }
-    #endif
 }
 
-/// A clock the demo can move. Thread-safe so it can be read synchronously from any context.
+/// A fixed clock that tests and captures set. Thread-safe so it can be read synchronously from any context.
 final class DemoClock: StoryClock, @unchecked Sendable {
     private let lock = NSLock()
     private var current: Date
@@ -54,7 +39,33 @@ final class DemoClock: StoryClock, @unchecked Sendable {
     }
 }
 
-/// All mutable demo state, rebuilt from DemoSeed for each scenario.
+/// The app's demo clock: it starts at the seeded moment and then runs in real time, so reminders, cutoffs and
+/// timestamps move on as they would on a phone. Nothing jumps it; `set` exists for tests only.
+final class RunningDemoClock: StoryClock, @unchecked Sendable {
+    private let lock = NSLock()
+    private var anchor: Date
+    private var anchoredAt: Date
+
+    init(startingAt start: Date) {
+        anchor = start
+        anchoredAt = Date()
+    }
+
+    func now() -> Date {
+        lock.lock()
+        defer { lock.unlock() }
+        return anchor.addingTimeInterval(Date().timeIntervalSince(anchoredAt))
+    }
+
+    func set(_ date: Date) {
+        lock.lock()
+        anchor = date
+        anchoredAt = Date()
+        lock.unlock()
+    }
+}
+
+/// All mutable demo state, seeded from DemoSeed.
 struct DemoState: Sendable {
     struct EntryKey: Hashable, Sendable {
         let student: StudentID
@@ -129,7 +140,6 @@ struct DemoState: Sendable {
         liveAsOf = scenario == .duringMealEntriesStale ? DemoSeed.staleEntriesAt : DemoSeed.liveEntriesAt
         isOffline = scenario == .offline
 
-        intentions[IntentionKey(student: DemoSeed.sampleStudent.id, meal: DemoSeed.breakfast.id)] = DemoSeed.sampleBreakfastAnswer
         for sample in DemoSeed.sampleStudents {
             guard let answer = sample.lunchAnswer else { continue }
             intentions[IntentionKey(student: sample.ref.id, meal: meal.id)] = .answered(answer, at: DemoSeed.sampleLunchAnswersAt)
@@ -167,6 +177,8 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
     nonisolated let clock: any StoryClock
     private(set) var scenario: DemoScenario
     private var state: DemoState
+    /// Demo control: the next Sign in with SRM fails once, so "Couldn't sign in" (135:15825) can be shown. Not data.
+    private var failsNextSRMSignIn = false
     private nonisolated let adminStore = DemoAdminStore()
     private nonisolated let adminMessStore = DemoAdminMessStore()
     private nonisolated let studentYouStore = DemoStudentYouStore()
@@ -192,6 +204,7 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
         self.clock.set(initial.now)
     }
 
+    /// Tests only: replaces all demo state with another seeded state. The app never calls it.
     func setScenario(_ scenario: DemoScenario) {
         self.scenario = scenario
         state = DemoState(scenario: scenario)
@@ -280,7 +293,6 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
         try requireKnownMeal(meal)
         guard role == .supervisor else { throw RepositoryError.notAllowed(reason: "Only the Supervisor starts a meal.") }
         guard state.mealStatus.state == .notStarted else { throw RepositoryError.notAllowed(reason: "The meal has already started.") }
-        clock.advance(to: state.mealStatus.meal.startsAt)
         state.mealStatus.state = .inService
         state.mealStatus.startedAt = clock.now()
         return state.mealStatus
@@ -291,7 +303,6 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
         try requireKnownMeal(meal)
         guard role == .supervisor else { throw RepositoryError.notAllowed(reason: "Only the Supervisor closes a meal.") }
         guard state.mealStatus.state == .inService else { throw RepositoryError.notAllowed(reason: "The meal is not in service.") }
-        clock.advance(to: state.mealStatus.meal.endsAt)
         state.mealStatus.state = .closed
         state.mealStatus.closedAt = clock.now()
         return state.mealStatus
@@ -396,8 +407,6 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
         if count != from && trimmedReason.isEmpty {
             throw RepositoryError.validationFailed(["Give a reason for changing the headcount."])
         }
-        // The story moves on here: the Food Head works after the answers have closed.
-        clock.advance(to: IntentionPolicy.cutoff(for: state.mealStatus.meal).addingTimeInterval(DemoSeed.approvalAfterCutoff))
         var adjustments: [HeadcountAdjustment] = []
         if case .approved(let earlier) = state.headcountApproval { adjustments = earlier.adjustments }
         if count != from {
@@ -713,6 +722,10 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
     /// SRM, so until a real identity exists the prototype lets that account in through `signInStaff`.
     func signInWithSRM() async throws -> Session {
         try failIfOffline()
+        if failsNextSRMSignIn {
+            failsNextSRMSignIn = false
+            throw RepositoryError.unavailable(reason: DemoSeed.srmNoAnswer)
+        }
         guard let account = DemoSeed.accounts.first(where: { $0.role == .student }) else {
             throw RepositoryError.notFound
         }
@@ -730,8 +743,9 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
         return Session(account: account, staff: staff, student: student)
     }
 
-    #if DEMO_DATA
+    /// SIMULATED shared role password. The seeded account of the role is the one signed in.
     func verifyRolePassword(_ password: String, for role: Role) async throws -> RolePasswordResult {
+        try failIfOffline()
         guard role.isMessStaff else { throw RepositoryError.notAllowed(reason: "Not a mess staff role.") }
         let wrongSoFar = state.wrongPasswordCount[role] ?? 0
         if wrongSoFar >= RolePasswordPolicy.maximumTries {
@@ -739,9 +753,8 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
         }
         if password == DemoSeed.simulatedRolePassword {
             state.wrongPasswordCount[role] = 0
-            return .granted(StaffSession(role: role, mess: DemoSeed.mess,
-                                         staffInitials: DemoSeed.staffInitials(for: role),
-                                         supervisorName: DemoSeed.supervisorName))
+            guard let account = DemoSeed.accounts.first(where: { $0.role == role }) else { throw RepositoryError.notFound }
+            return .granted(session(for: account))
         }
         let wrong = wrongSoFar + 1
         state.wrongPasswordCount[role] = wrong
@@ -750,7 +763,6 @@ actor DemoDataProvider: MealRepository, MealStateRepository, HeadcountRepository
         }
         return .wrong(triesLeft: RolePasswordPolicy.maximumTries - wrong)
     }
-    #endif
 }
 
 // SIMULATED pass service. The design has no verification algorithm, so the sample codes simply take turns.
@@ -866,20 +878,16 @@ extension DemoDataProvider: SpecialPassRepository {
     }
 }
 
-#if DEMO_DATA
-// Debug-only controls (SIMULATED time skip). Not compiled into the Review build.
+// The Debug and Review demo shortcuts. None of them moves the clock or replaces data.
 extension DemoDataProvider: DemoControlling {
-    nonisolated var scenarioOptions: [DemoScenarioOption] {
-        // The menu keeps its seven moments; the story start is the Review build's own.
-        DemoScenario.allCases.filter { $0 != .storyStart }.map { DemoScenarioOption(id: $0.rawValue, title: $0.title) }
+    func demoSession(for role: Role) async -> Session? {
+        DemoSeed.accounts.first { $0.role == role }.map(session(for:))
     }
 
-    func selectScenario(id: String) async {
-        guard let scenario = DemoScenario(rawValue: id) else { return }
-        setScenario(scenario)
+    func failNextSRMSignIn() async {
+        failsNextSRMSignIn = true
     }
 }
-#endif
 
 // MARK: - StudentExtrasRepository
 

@@ -1,9 +1,8 @@
-#if DEMO_DATA
 import Foundation
 import Observation
 
-/// The shared role password (4 digits, 3 tries, then locked). The check goes through AuthRepository;
-/// in Debug it is SIMULATED by the demo provider.
+/// The shared role password (4 digits, 3 tries, then locked), DS-0 Password frames 2469:2102 to 2469:2734.
+/// The check goes through AuthRepository; the seeded builds SIMULATE it in the demo provider.
 @MainActor
 @Observable
 final class RolePasswordViewModel {
@@ -33,7 +32,7 @@ final class RolePasswordViewModel {
     }
 
     /// Adds a digit; on the 4th digit checks the password and returns the session when it is accepted.
-    func append(_ digit: Int) async -> StaffSession? {
+    func append(_ digit: Int) async -> Session? {
         guard isKeypadEnabled, digits.count < RolePasswordPolicy.digits, (0...9).contains(digit) else { return nil }
         if case .wrong = phase { phase = .entering }
         digits.append(String(digit))
@@ -64,4 +63,3 @@ final class RolePasswordViewModel {
         digits.removeLast()
     }
 }
-#endif

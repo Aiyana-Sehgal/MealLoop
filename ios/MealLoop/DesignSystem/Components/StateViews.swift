@@ -126,36 +126,3 @@ struct NotImplementedView: View {
         }
     }
 }
-
-#if DEMO_DATA
-/// Visible "Demo data" badge, shown only when the app runs on the seeded demo provider.
-/// Its menu switches the simulated moment (a time skip), like the hidden hotspots in the Figma prototype.
-struct DemoDataBadge: View {
-    @Environment(AppEnvironment.self) private var environment
-
-    var body: some View {
-        if environment.kind == .demo, let controls = environment.demoControls {
-            Menu {
-                Section("Simulated moment") {
-                    ForEach(controls.scenarioOptions) { option in
-                        Button(option.title) {
-                            Task {
-                                await controls.selectScenario(id: option.id)
-                                environment.dataDidChange()
-                            }
-                        }
-                    }
-                }
-            } label: {
-                Text("Demo data")
-                    .font(MLType.meta)
-                    .foregroundStyle(MLColor.onHero)
-                    .padding(.horizontal, MLSpacing.s12)
-                    .frame(minHeight: MLSize.hit)
-                    .background(Capsule().fill(MLColor.ink))
-            }
-            .accessibilityHint("Sample data, not real. Opens the simulated moments.")
-        }
-    }
-}
-#endif

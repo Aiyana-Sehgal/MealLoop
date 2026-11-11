@@ -29,11 +29,12 @@ final class StudentHomeViewModelTests: XCTestCase {
 
     // MARK: What Home shows
 
-    func testAtSevenTheHeroIsBreakfastWithTheSeededAnswer() async throws {
+    func testAtSevenTheHeroIsBreakfastStillUnanswered() async throws {
         let (model, _) = try await make()
         let content = try XCTUnwrap(model.state.value)
         XCTAssertEqual(content.hero.meal.slot, .breakfast)
-        XCTAssertEqual(content.hero.answer, .attending)
+        XCTAssertNil(content.hero.answer)
+        XCTAssertTrue(content.hero.isAnswerOpen)
     }
 
     func testTheNextMealRowIsLunchWithNoResponse() async throws {
@@ -56,7 +57,11 @@ final class StudentHomeViewModelTests: XCTestCase {
 
     func testOnceEveryMealIsOverTheLastOneStays() async throws {
         let (model, demo) = try await make()
+        demo.clock.set(DemoSeed.lunch.startsAt)  // The clock no longer jumps; move it as the story does.
+
         _ = try await demo.startMeal(lunch.id, by: .supervisor)
+        demo.clock.set(DemoSeed.lunch.endsAt)  // The clock no longer jumps; move it as the story does.
+
         _ = try await demo.closeMeal(lunch.id, by: .supervisor)
         await model.load()
         XCTAssertEqual(model.state.value?.hero.meal.slot, .lunch)
@@ -213,7 +218,8 @@ final class StudentHomeViewModelTests: XCTestCase {
     func testCutoffsShowFromTheBackendNotTheSampleText() {
         let timeZone = DemoSeed.mess.timeZone
         XCTAssertEqual(StudentFormat.shortTime(IntentionPolicy.cutoff(for: lunch), in: timeZone), "10 AM")
-        XCTAssertEqual(StudentFormat.shortTime(IntentionPolicy.cutoff(for: breakfast), in: timeZone), "5:30 AM")
+        XCTAssertEqual(StudentFormat.shortTime(IntentionPolicy.cutoff(for: breakfast), in: timeZone), "9:30 AM",
+                       "Breakfast stays open until its service ends (pending the owner's per-meal cutoffs)")
         XCTAssertEqual(StudentFormat.day(DemoSeed.storyStartNow, in: timeZone), "Wednesday 14 Aug")
     }
 }

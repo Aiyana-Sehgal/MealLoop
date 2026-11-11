@@ -48,9 +48,13 @@ final class StudentFigmaHomeTests: XCTestCase {
 
     // MARK: The top card
 
-    func testAtSevenTheCardSaysYoureIn() async throws {
+    /// Home · Not answered (221:62529): "Breakfast today?" with I'm in, Skip and Entry QR.
+    func testAtSevenTheCardAsksAboutBreakfast() async throws {
         let (model, _) = try await make()
-        XCTAssertEqual(try content(model).heroCase, .answered)
+        let home = try content(model)
+        XCTAssertEqual(home.heroCase, .question)
+        XCTAssertEqual(home.hero.meal.slot, .breakfast)
+        XCTAssertEqual(home.hero.answerState, .unanswered)
     }
 
     func testAnOpenBreakfastQuestionComesBeforeTheClosedMess() async throws {
@@ -66,8 +70,12 @@ final class StudentFigmaHomeTests: XCTestCase {
         XCTAssertEqual(try content(model).heroCase, .question)
     }
 
-    func testBeforeTheDoorsOpenTheCardSaysTheMessIsClosed() async throws {
-        let (model, _) = try await make(at: DemoSeed.time(6, 30))
+    /// Before the doors open an open question comes first; once answered, the card says the mess is closed.
+    func testBeforeTheDoorsOpenTheCardSaysTheMessIsClosedOnceAnswered() async throws {
+        let (model, demo) = try await make(at: DemoSeed.time(6, 30))
+        XCTAssertEqual(try content(model).heroCase, .question)
+        _ = try await demo.setIntention(.attending, of: DemoSeed.sampleStudent.id, for: DemoSeed.breakfast.id)
+        await model.load()
         XCTAssertEqual(try content(model).heroCase, .messClosed)
     }
 
@@ -93,6 +101,8 @@ final class StudentFigmaHomeTests: XCTestCase {
 
     func testDuringLunchTheCardIsOpenAndTheRowAsksAboutDinner() async throws {
         let (model, demo) = try await make()
+        demo.clock.set(DemoSeed.lunch.startsAt)  // The clock no longer jumps; move it as the story does.
+
         _ = try await demo.startMeal(lunch.id, by: .supervisor)
         await model.load()
         let home = try content(model)
@@ -103,7 +113,11 @@ final class StudentFigmaHomeTests: XCTestCase {
 
     func testOnceLunchClosesTheCardMovesToDinnerAndHeroStaysLunch() async throws {
         let (model, demo) = try await make()
+        demo.clock.set(DemoSeed.lunch.startsAt)  // The clock no longer jumps; move it as the story does.
+
         _ = try await demo.startMeal(lunch.id, by: .supervisor)
+        demo.clock.set(DemoSeed.lunch.endsAt)  // The clock no longer jumps; move it as the story does.
+
         _ = try await demo.closeMeal(lunch.id, by: .supervisor)
         await model.load()
         let home = try content(model)
@@ -288,6 +302,8 @@ final class StudentFigmaHomeTests: XCTestCase {
 
     func testAScanShowsOnTheQRPage() async throws {
         let (model, demo) = try await make()
+        demo.clock.set(DemoSeed.lunch.startsAt)  // The clock no longer jumps; move it as the story does.
+
         _ = try await demo.startMeal(lunch.id, by: .supervisor)
         await model.load()
         _ = try await demo.recordEntry(EntryRequest(mealID: lunch.id, student: DemoSeed.sampleStudent, method: .typedLastFour,

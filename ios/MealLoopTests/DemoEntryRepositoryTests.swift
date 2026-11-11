@@ -98,7 +98,6 @@ final class DemoEntryRepositoryTests: XCTestCase {
         }
     }
 
-    #if DEMO_DATA
     func testRolePasswordLocksAfterThreeWrongTries() async throws {
         let demo = DemoDataProvider(scenario: .duringMeal)
         let first = try await demo.verifyRolePassword("0000", for: .kitchenStaff)
@@ -109,6 +108,5 @@ final class DemoEntryRepositoryTests: XCTestCase {
         let afterLock = try await demo.verifyRolePassword(DemoSeed.simulatedRolePassword, for: .kitchenStaff)
         XCTAssertEqual(afterLock, .locked(resetBy: DemoSeed.supervisorName))
     }
-    #endif
 }
 #endif

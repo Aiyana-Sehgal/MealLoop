@@ -60,8 +60,12 @@ final class CoreStoryTests: XCTestCase {
     }
 
     func testTheCutoffIsThatOfTheMealAnswered() async throws {
-        // At 7:00 AM the lunch window is open and the breakfast one has closed.
-        await assertRefused { _ = try await self.story().setIntention(.skipping, of: self.aarav, for: DemoSeed.breakfast.id) }
+        // Breakfast stays open until its service ends at 9:30 AM; after that it refuses.
+        let clock = TestClock()
+        let demo = story(clock: clock)
+        _ = try await demo.setIntention(.skipping, of: aarav, for: DemoSeed.breakfast.id)
+        clock.set(DemoSeed.breakfast.endsAt)
+        await assertRefused { _ = try await demo.setIntention(.attending, of: self.aarav, for: DemoSeed.breakfast.id) }
     }
 
     func testTheStudentStartsWithNoLunchResponse() async throws {
@@ -69,11 +73,13 @@ final class CoreStoryTests: XCTestCase {
         XCTAssertEqual(stored, .noResponse)
     }
 
-    func testTheStudentHasTheSeededBreakfastAnswer() async throws {
+    /// Home · Not answered (221:62529): at 7:00 AM breakfast is unanswered and still open to answers.
+    func testTheStudentStartsWithBreakfastUnansweredAndOpen() async throws {
         let stored = try await story().response(of: aarav, for: DemoSeed.breakfast.id)
-        XCTAssertEqual(stored, DemoSeed.sampleBreakfastAnswer)
-        guard case .answered(.attending, let at) = stored else { return XCTFail("\(stored)") }
-        XCTAssertLessThan(at, IntentionPolicy.cutoff(for: DemoSeed.breakfast))
+        XCTAssertEqual(stored, .noResponse)
+        XCTAssertTrue(IntentionPolicy.canAnswer(DemoSeed.breakfast, at: DemoSeed.storyStartNow))
+        // The swipe-to-remind needs the cutoff more than an hour away.
+        XCTAssertGreaterThan(IntentionPolicy.cutoff(for: DemoSeed.breakfast), DemoSeed.storyStartNow.addingTimeInterval(60 * 60))
     }
 
     func testARepeatTapKeepsTheFirstAnswer() async throws {
@@ -125,44 +131,32 @@ final class CoreStoryTests: XCTestCase {
 
     // MARK: Clock
 
-    func testApprovingMovesTimeJustPastTheCutoff() async throws {
-        let demo = story()
+    // Nothing in the backend moves the clock: time runs on its own (the running demo clock), and the gates follow it.
+
+    func testApprovingKeepsTheTimeAndTheCutoffStillLocksAnswers() async throws {
+        let clock = TestClock()
+        let demo = story(clock: clock)
         _ = try await demo.approveHeadcount(DemoSeed.forecastDiners, reason: nil, for: lunch.id, by: .admin)
-        XCTAssertEqual(demo.clock.now(), cutoff.addingTimeInterval(DemoSeed.approvalAfterCutoff))
+        XCTAssertEqual(clock.now(), DemoSeed.storyStartNow)
+        clock.set(cutoff)
         await assertRefused { _ = try await demo.setIntention(.attending, of: self.aarav, for: self.lunch.id) }
     }
 
-    func testStartingMovesTimeToTheSeedStart() async throws {
+    func testStartingRecordsTheTimeItHappened() async throws {
         let demo = story()
         let status = try await demo.startMeal(lunch.id, by: .supervisor)
-        XCTAssertEqual(demo.clock.now(), lunch.startsAt)
-        XCTAssertEqual(status.startedAt, lunch.startsAt)
+        XCTAssertEqual(demo.clock.now(), DemoSeed.storyStartNow)
+        XCTAssertEqual(status.startedAt, DemoSeed.storyStartNow)
     }
 
-    func testClosingMovesTimeToTheSeedEnd() async throws {
-        let demo = story()
+    func testClosingRecordsTheTimeItHappened() async throws {
+        let clock = TestClock()
+        let demo = story(clock: clock)
         _ = try await demo.startMeal(lunch.id, by: .supervisor)
+        clock.set(DemoSeed.storyStartNow.addingTimeInterval(90 * 60))
         let status = try await demo.closeMeal(lunch.id, by: .supervisor)
-        XCTAssertEqual(demo.clock.now(), lunch.endsAt)
-        XCTAssertEqual(status.closedAt, lunch.endsAt)
-    }
-
-    func testTimeNeverRunsBackwards() async throws {
-        let clock = TestClock()
-        let demo = story(clock: clock)
-        clock.set(lunch.endsAt)
-        _ = try await demo.approveHeadcount(DemoSeed.forecastDiners, reason: nil, for: lunch.id, by: .admin)
-        XCTAssertEqual(clock.now(), lunch.endsAt)
-    }
-
-    func testARepeatApprovalDoesNotMoveTime() async throws {
-        let clock = TestClock()
-        let demo = story(clock: clock)
-        _ = try await demo.approveHeadcount(DemoSeed.forecastDiners, reason: nil, for: lunch.id, by: .admin)
-        let moved = clock.now()
-        clock.set(moved.addingTimeInterval(60))
-        _ = try await demo.approveHeadcount(DemoSeed.forecastDiners, reason: nil, for: lunch.id, by: .admin)
-        XCTAssertEqual(clock.now(), moved.addingTimeInterval(60))
+        XCTAssertEqual(status.closedAt, DemoSeed.storyStartNow.addingTimeInterval(90 * 60))
+        XCTAssertEqual(clock.now(), DemoSeed.storyStartNow.addingTimeInterval(90 * 60))
     }
 
     func testARelaunchResetsToSeven() async throws {
@@ -175,21 +169,14 @@ final class CoreStoryTests: XCTestCase {
         XCTAssertEqual(status?.state, .notStarted)
     }
 
-    #if REVIEW_DATA
-    func testTheReviewBuildBootsIntoTheStory() {
+    /// Debug and Review both launch clean at Wed 14 Aug, 7:00 AM, with the Demo sheet's controls.
+    func testTheSeededBuildsBootAtSevenWithTheDemoControls() {
         let environment = AppEnvironment.make()
-        XCTAssertEqual(environment.clock.now(), DemoSeed.storyStartNow)
-        XCTAssertNil(environment.demoControls)
+        let now = environment.clock.now()
+        XCTAssertGreaterThanOrEqual(now, DemoSeed.storyStartNow)
+        XCTAssertLessThan(now, DemoSeed.storyStartNow.addingTimeInterval(60))
+        XCTAssertNotNil(environment.demoControls)
     }
-    #endif
-
-    #if DEMO_DATA
-    func testTheDebugMenuKeepsItsSevenMoments() {
-        let options = DemoDataProvider().scenarioOptions
-        XCTAssertEqual(options.count, 7)
-        XCTAssertFalse(options.contains { $0.id == DemoScenario.storyStart.rawValue })
-    }
-    #endif
 
     // MARK: Cross-role read
 
@@ -317,7 +304,7 @@ final class CoreStoryTests: XCTestCase {
         let vendor = try XCTUnwrap(DemoSeed.accounts.first { $0.role == .vendor }).email
 
         // Sign-in, and the student answers and has the entry QR.
-        let student = try await data.auth.signInWithSRM()
+        let student = try await data.auth.srmStudentSession()
         let aaravRef = try XCTUnwrap(student.student?.student)
         _ = try await data.intentions.setIntention(.attending, of: aaravRef.id, for: lunch.id)
         let code = try await data.entries.entryCode(for: aaravRef.id)
@@ -330,6 +317,8 @@ final class CoreStoryTests: XCTestCase {
         guard case .acknowledged = acknowledged.vendorAcknowledgmentStatus else { return XCTFail("Expected acknowledged") }
 
         // The Supervisor starts the meal; the Door Scanner verifies and records the entry.
+        demo.clock.set(DemoSeed.lunch.startsAt)  // The clock no longer jumps; move it as the story does.
+
         _ = try await data.mealState.startMeal(lunch.id, by: .supervisor)
         guard case .student(let scanned) = try await data.entries.resolveEntry(.qrPayload(code.payload), for: lunch.id) else {
             return XCTFail("Expected the student")
@@ -345,6 +334,8 @@ final class CoreStoryTests: XCTestCase {
         XCTAssertEqual(shortages.map(\.dishName), [DemoSeed.shortageDish])
 
         // The Supervisor closes the meal; the Kitchen records waste.
+        demo.clock.set(DemoSeed.lunch.endsAt)  // The clock no longer jumps; move it as the story does.
+
         _ = try await data.mealState.closeMeal(lunch.id, by: .supervisor)
         var report = try await data.wasteReports.report(for: lunch.id)
         report.leftovers = report.leftovers.map { var row = $0; row.measurement = .noneLeft; return row }
@@ -407,7 +398,7 @@ final class CoreStoryTests: XCTestCase {
     // MARK: Session
 
     func testAStudentSessionHasIdentityAndAMess() async throws {
-        let session = try await story().signInWithSRM()
+        let session = try await story().srmStudentSession()
         XCTAssertEqual(session.student?.student, DemoSeed.sampleStudent)
         XCTAssertEqual(session.student?.mess, DemoSeed.mess)
         XCTAssertNil(session.staff)

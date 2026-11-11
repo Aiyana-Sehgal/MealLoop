@@ -12,4 +12,6 @@ enum RepositoryError: Error, Equatable, Sendable {
     /// The action is not allowed in the current state or for this role.
     case notAllowed(reason: String)
     case validationFailed([String])
+    /// A service the app depends on did not answer (for example SRM). Nothing was saved.
+    case unavailable(reason: String)
 }

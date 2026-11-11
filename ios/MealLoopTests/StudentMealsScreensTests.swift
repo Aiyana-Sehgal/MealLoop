@@ -239,7 +239,11 @@ final class StudentMealsScreensTests: XCTestCase {
 
     func testAnExpiredPassShowsTheNextMealAndTheCrowd() async throws {
         let (demo, _, repositories, clock) = try make()
+        demo.clock.set(DemoSeed.lunch.startsAt)  // The clock no longer jumps; move it as the story does.
+
         _ = try await demo.startMeal(DemoSeed.lunch.id, by: .supervisor)
+        demo.clock.set(DemoSeed.lunch.endsAt)  // The clock no longer jumps; move it as the story does.
+
         _ = try await demo.closeMeal(DemoSeed.lunch.id, by: .supervisor)
         let model = try XCTUnwrap(StudentPassViewModel(session: try session, repositories: repositories, clock: clock))
         await model.load()

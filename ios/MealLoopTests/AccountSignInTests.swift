@@ -54,7 +54,7 @@ final class AccountSignInTests: XCTestCase {
     }
 
     func testSRMReturnsTheStudent() async throws {
-        let session = try await DemoDataProvider().signInWithSRM()
+        let session = try await DemoDataProvider().srmStudentSession()
         XCTAssertEqual(session.account.role, .student)
         XCTAssertNil(session.staff)
     }

@@ -15,7 +15,7 @@ struct LoadFailure: Error, Equatable, Sendable {
         switch error {
         case RepositoryError.notImplemented(let feature):
             self.init(message: "\(feature) isn't available yet", isNotImplemented: true)
-        case RepositoryError.notAllowed(let reason):
+        case RepositoryError.notAllowed(let reason), RepositoryError.unavailable(let reason):
             self.init(message: reason)
         case RepositoryError.notFound:
             self.init(message: "We couldn't find this.")

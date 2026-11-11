@@ -112,12 +112,17 @@ final class DoorScannerTests: XCTestCase {
     func testHomeFollowsTheSupervisorThroughTheMeal() async throws {
         let demo = DemoDataProvider(scenario: .storyStart, clock: TestClock())
         let model = DoorHomeViewModel(session: session, repositories: demo.makeRepositories(), clock: demo.clock)
+        demo.clock.set(DemoSeed.lunch.startsAt)  // The clock no longer jumps; move it as the story does.
+
         _ = try await demo.startMeal(lunch.id, by: .supervisor)
         await model.load()
         guard case .duringMeal(let recorded, let minutes)? = model.state.value?.phase else { return XCTFail("\(model.state)") }
         XCTAssertEqual(recorded.value, 0, "The story's count starts at zero and counts real entries only")
         XCTAssertEqual(minutes, 0)
         XCTAssertEqual(model.state.value?.canEnterStudents, true)
+
+        demo.clock.set(DemoSeed.lunch.endsAt)  // The clock no longer jumps; move it as the story does.
+
 
         _ = try await demo.closeMeal(lunch.id, by: .supervisor)
         await model.load()
@@ -244,6 +249,8 @@ final class DoorScannerTests: XCTestCase {
         let demo = try await storyInService()
         let flow = flow(demo.makeRepositories())
         await type(meera, into: flow)
+        demo.clock.set(DemoSeed.lunch.endsAt)  // The clock no longer jumps; move it as the story does.
+
         _ = try await demo.closeMeal(lunch.id, by: .supervisor)
         await flow.recordMatch()
         guard case .mealEnded(let closedAt, let finalEntries)? = flow.outcome else { return XCTFail("\(String(describing: flow.outcome))") }
@@ -454,9 +461,15 @@ final class DoorScannerTests: XCTestCase {
         await model.load()
         XCTAssertTrue(DoorAlert.alerts(for: model.state.value, supervisorName: "Ravi").isEmpty, "Nothing to say before the meal")
 
+        demo.clock.set(DemoSeed.lunch.startsAt)  // The clock no longer jumps; move it as the story does.
+
+
         _ = try await demo.startMeal(lunch.id, by: .supervisor)
         await model.load()
         XCTAssertEqual(DoorAlert.alerts(for: model.state.value, supervisorName: "Ravi").map(\.kind), [.mealStarted])
+
+        demo.clock.set(DemoSeed.lunch.endsAt)  // The clock no longer jumps; move it as the story does.
+
 
         _ = try await demo.closeMeal(lunch.id, by: .supervisor)
         await model.load()

@@ -1,10 +1,12 @@
-#if DEMO_DATA
 import Foundation
 
 /// Interface copy for the shared staff entry flow, transcribed from the Figma exports
 /// D01_role_selection, D02 / K00 / P01 / S00 What you do sheets and D03 password (design/audit/export_*).
 /// This is wording, not data.
 enum StaffEntryCopy {
+    /// Under the roles, for accounts that are not mess staff. No frame draws it.
+    static let signInWithEmail = "Sign in with email"
+
     static let chooseRoleTitle = "Choose your role"
     static let chooseRoleSubtitle = "Select the role for this device."
 
@@ -91,4 +93,3 @@ enum StaffEntryCopy {
         return "3 wrong tries. This phone cannot try again until \(who) resets the shared \(MLFormat.roleName(role)) password."
     }
 }
-#endif

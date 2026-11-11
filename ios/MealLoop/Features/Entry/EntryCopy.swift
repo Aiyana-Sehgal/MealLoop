@@ -23,8 +23,8 @@ enum EntryCopy {
     static let accountsNote = "Accounts are created by your administrator."
     static let wrongCredentials = "The email or password is incorrect."
 
-    static let connecting = "Connecting to SRM"
     static let gettingDetails = "Getting your details"
     static let fewSeconds = "This takes a few seconds."
     static let tryAgain = "Try again"
+    static let couldntSignIn = "Couldn't sign in. Try again"
 }

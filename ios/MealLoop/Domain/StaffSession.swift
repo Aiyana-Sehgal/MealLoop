@@ -16,8 +16,10 @@ enum RolePasswordPolicy {
 }
 
 enum RolePasswordResult: Sendable, Hashable {
-    case granted(StaffSession)
+    /// The device is signed in as this role.
+    case granted(Session)
     case wrong(triesLeft: Int)
     /// "Ask your supervisor to reset it." Who resets it is named when known.
     case locked(resetBy: String?)
 }
+

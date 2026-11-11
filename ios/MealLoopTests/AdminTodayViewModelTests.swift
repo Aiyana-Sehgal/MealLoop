@@ -36,7 +36,7 @@ final class AdminTodayViewModelTests: XCTestCase {
 
     // MARK: Approve
 
-    func testApprovingMovesTheClockPastTheCutoffAndLocksAnswers() async throws {
+    func testApprovingKeepsTheClockAndTheCutoffLocksAnswersLater() async throws {
         let (demo, model) = try await loaded()
         XCTAssertEqual(demo.clock.now(), DemoSeed.storyStartNow)
         XCTAssertEqual(model.state.value?.answersAreOpen, true)
@@ -44,11 +44,10 @@ final class AdminTodayViewModelTests: XCTestCase {
         let didApprove = await model.approve()
 
         XCTAssertTrue(didApprove)
-        let expected = IntentionPolicy.cutoff(for: lunch).addingTimeInterval(DemoSeed.approvalAfterCutoff)
-        XCTAssertEqual(demo.clock.now(), expected)
-        XCTAssertEqual(model.state.value?.now, expected, "The screen shows the moved clock")
-        XCTAssertEqual(model.state.value?.answersAreOpen, false)
+        XCTAssertEqual(demo.clock.now(), DemoSeed.storyStartNow, "Approving never moves the clock")
+        XCTAssertEqual(model.state.value?.answersAreOpen, true, "Answers stay open until the cutoff")
         XCTAssertEqual(try meal(model).headcount.approved.count, DemoSeed.forecastDiners)
+        demo.clock.set(IntentionPolicy.cutoff(for: lunch))
         do {
             _ = try await demo.setIntention(.attending, of: student, for: lunch.id)
             XCTFail("Answers must be locked after the cutoff")
@@ -399,11 +398,12 @@ final class AdminTodayViewModelTests: XCTestCase {
         XCTAssertEqual(record.acknowledgedBy, vendor)
     }
 
-    func testTheDayLineFollowsTheMovedClock() async throws {
-        let (_, model) = try await loaded()
+    func testTheDayLineFollowsTheClock() async throws {
+        let (demo, model) = try await loaded()
         XCTAssertEqual(model.state.value?.nodes.map(\.slot), MealSlot.allCases)
         XCTAssertEqual(model.state.value?.nodes.first?.progress, .upcoming, "Breakfast starts at 7:30 AM")
-        await model.approve()
+        demo.clock.set(DemoSeed.time(10, 5))
+        await model.load()
         XCTAssertEqual(model.state.value?.nodes.first?.progress, .done, "10:05 AM is after breakfast")
         XCTAssertEqual(model.state.value?.nodes[1].progress, .current)
     }

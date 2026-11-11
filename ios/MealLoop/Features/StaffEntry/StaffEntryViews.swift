@@ -1,76 +1,42 @@
-#if DEMO_DATA
 import SwiftUI
 
-/// RETIRED FROM THE APP FLOW: Staff sign in replaced this role selection and shared password path.
-/// Kept in Debug only, with nothing opening it, until the owner decides whether D01 to D03 return.
-/// Staff entry: Choose your role → What you do (sheet, can be skipped next time) → shared password → role Home.
-struct StaffEntryFlowView: View {
-    @Environment(AppRouter.self) private var router
-    let onGranted: (StaffSession) -> Void
+// Mess staff entry, from the 09 Mess Staff page: Staff sign in opens MS-1 Choose your role (1508:235) → What you do
+// (sheet, DS-0 2469:1927, PD-0 2529:4180, KS-0 2571:157, SV-0 2620:10628) → the role's shared password (2469:2102,
+// Wrong 2469:2229, Locked 2469:2355) → Home. The MS-0 SRM pages (1508:45, 1508:111, 1508:147) are left out by owner
+// ruling (11 Nov). Every step is pushed on the entry stack (`EntryRoute`).
 
-    var body: some View {
-        @Bindable var router = router
-        NavigationStack(path: $router.staffEntryPath) {
-            RoleSelectionView()
-                .navigationDestination(for: StaffEntryRoute.self) { route in
-                    switch route {
-                    case .password(let role):
-                        RolePasswordScreen(role: role, onGranted: onGranted)
-                    }
-                }
-        }
-    }
-}
-
+/// MS-1 · Choose your role (1508:235). A pushed page, so the system back button and swipe-back work.
+/// "Sign in with email" under the roles is for accounts that are not mess staff; no frame draws it.
 struct RoleSelectionView: View {
     @Environment(AppRouter.self) private var router
     @State private var sheetRole: Role?
 
     var body: some View {
-        ZStack {
-            OrbitBackground()
-            ScrollView {
-                VStack(alignment: .leading, spacing: MLSpacing.s16) {
-                    VStack(alignment: .leading, spacing: MLSpacing.s4) {
-                        Text(StaffEntryCopy.chooseRoleTitle)
-                            .font(MLType.largeTitle)
-                            .foregroundStyle(MLColor.ink)
-                        Text(StaffEntryCopy.chooseRoleSubtitle)
-                            .font(MLType.body)
-                            .foregroundStyle(MLColor.inkSecondary)
-                    }
-                    ForEach(Role.staffRoles, id: \.self) { role in
-                        RoleRow(role: role, isFirst: role == Role.staffRoles.first) {
-                            choose(role)
-                        }
+        MLScreen(StaffEntryCopy.chooseRoleTitle, subtitle: StaffEntryCopy.chooseRoleSubtitle) {
+            VStack(spacing: MLSpacing.s16) {
+                ForEach(Role.staffRoles, id: \.self) { role in
+                    RoleRow(role: role, isFirst: role == Role.staffRoles.first) {
+                        choose(role)
                     }
                 }
-                .padding(.horizontal, MLSpacing.margin)
+                TextLinkButton(title: StaffEntryCopy.signInWithEmail) {
+                    router.entryPath.append(.emailSignIn)
+                }
+                .frame(maxWidth: .infinity)
                 .padding(.top, MLSpacing.s8)
             }
         }
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button {
-                    router.reset()
-                } label: {
-                    Image(systemName: "chevron.left")
-                }
-                .accessibilityLabel("Back")
-            }
-        }
-        .sheet(item: $sheetRole) { role in
-            WhatYouDoSheet(role: role) {
+        .mlSheet(item: $sheetRole) { role in
+            WhatYouDoSheet(role: role, onClose: { sheetRole = nil }) {
                 sheetRole = nil
-                router.staffEntryPath.append(.password(role))
+                router.entryPath.append(.rolePassword(role))
             }
-            .presentationDetents([.medium])
         }
     }
 
     private func choose(_ role: Role) {
         if WhatYouDoPreference.isHidden(for: role) {
-            router.staffEntryPath.append(.password(role))
+            router.entryPath.append(.rolePassword(role))
         } else {
             sheetRole = role
         }
@@ -108,10 +74,10 @@ struct RoleRow: View {
                     }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(MLFormat.roleName(role))
-                        .font(MLType.title2)
+                        .mlFont(.title2)
                         .foregroundStyle(MLColor.ink)
                     Text(StaffEntryCopy.roleHint(role))
-                        .font(MLType.body)
+                        .mlFont(.body)
                         .foregroundStyle(MLColor.inkSecondary)
                 }
                 Spacer(minLength: 0)
@@ -120,103 +86,94 @@ struct RoleRow: View {
             }
             .padding(MLSpacing.s20)
             .background(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).fill(MLColor.surface))
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
 }
 
+/// What you do (sheet), one per role (DS-0, PD-0, KS-0, SV-0). Shown in `mlSheet`, as tall as its content.
 struct WhatYouDoSheet: View {
     let role: Role
+    let onClose: () -> Void
     let onContinue: () -> Void
-    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         VStack(alignment: .leading, spacing: MLSpacing.s16) {
-            HStack {
-                Text(StaffEntryCopy.whatYouDoTitle)
-                    .font(MLType.title2)
-                    .foregroundStyle(MLColor.ink)
-                Spacer()
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "xmark")
-                        .foregroundStyle(MLColor.ink)
-                        .frame(width: MLSize.hit, height: MLSize.hit)
-                        .background(Circle().fill(MLColor.surface))
-                }
-                .accessibilityLabel("Close")
-            }
+            SheetHeader(title: StaffEntryCopy.whatYouDoTitle, onClose: onClose)
             ForEach(Array(StaffEntryCopy.whatYouDo(role).enumerated()), id: \.offset) { index, item in
                 HStack(alignment: .top, spacing: MLSpacing.s16) {
                     Image(systemName: item.symbol)
                         .foregroundStyle(MLColor.ink)
                         .frame(width: 52, height: 52)
                         .background(Circle().fill(index == 0 ? MLColor.lime : MLColor.fillQuiet))
+                        .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(item.title)
-                            .font(MLType.staffPrimary)
+                            .mlFont(.staffPrimary)
                             .foregroundStyle(MLColor.ink)
                         Text(item.detail)
-                            .font(MLType.body)
+                            .mlFont(.body)
                             .foregroundStyle(MLColor.inkSecondary)
                     }
+                    .fixedSize(horizontal: false, vertical: true)
                 }
+                .accessibilityElement(children: .combine)
             }
             InkActionButton(title: StaffEntryCopy.continueTitle, action: onContinue)
+                .padding(.top, MLSpacing.s8)
             Button {
                 WhatYouDoPreference.hide(for: role)
                 onContinue()
             } label: {
                 Text(StaffEntryCopy.dontShowAgain)
-                    .font(MLType.body)
+                    .mlFont(.body)
                     .underline()
                     .foregroundStyle(MLColor.ink)
                     .frame(maxWidth: .infinity, minHeight: MLSize.hit)
             }
             .buttonStyle(.plain)
         }
-        .padding(MLSpacing.margin)
-        .presentationBackground(MLColor.fillQuiet)
     }
 }
 
 /// Builds the view model from the environment, then shows the password page.
 struct RolePasswordScreen: View {
     @Environment(AppEnvironment.self) private var environment
+    @Environment(AppRouter.self) private var router
+    @Environment(SessionStore.self) private var sessionStore
     let role: Role
-    let onGranted: (StaffSession) -> Void
 
     var body: some View {
-        RolePasswordView(model: RolePasswordViewModel(role: role, auth: environment.repositories.auth), onGranted: onGranted)
+        RolePasswordView(model: RolePasswordViewModel(role: role, auth: environment.repositories.auth)) { session in
+            router.reset()
+            sessionStore.signIn(session)
+        }
     }
 }
 
+/// DS-0 · Password (2469:2102), Wrong (2469:2229) and Locked (2469:2355). The same page for each role.
 struct RolePasswordView: View {
     @State private var model: RolePasswordViewModel
-    private let onGranted: (StaffSession) -> Void
+    private let onGranted: (Session) -> Void
 
-    init(model: RolePasswordViewModel, onGranted: @escaping (StaffSession) -> Void) {
+    init(model: RolePasswordViewModel, onGranted: @escaping (Session) -> Void) {
         _model = State(initialValue: model)
         self.onGranted = onGranted
     }
 
     var body: some View {
-        ZStack {
-            OrbitBackground()
-            VStack(alignment: .leading, spacing: MLSpacing.s16) {
-                Label(MLFormat.roleName(model.role), systemImage: StaffEntryCopy.roleSymbol(model.role))
-                    .font(MLType.bodyEmphasis)
-                    .foregroundStyle(MLColor.ink)
-                    .padding(.horizontal, MLSpacing.s16)
-                    .frame(minHeight: MLSize.hit)
-                    .overlay(Capsule().stroke(MLColor.ink, lineWidth: 1.5))
-                Text(StaffEntryCopy.enterPasswordTitle)
-                    .font(MLType.largeTitle)
-                    .foregroundStyle(MLColor.ink)
-                Text(StaffEntryCopy.passwordSubtitle(model.role))
-                    .font(MLType.body)
-                    .foregroundStyle(MLColor.inkSecondary)
+        MLScreen(StaffEntryCopy.enterPasswordTitle, subtitle: StaffEntryCopy.passwordSubtitle(model.role)) {
+            Label(MLFormat.roleName(model.role), systemImage: StaffEntryCopy.roleSymbol(model.role))
+                .mlFont(.bodyEmphasis)
+                .foregroundStyle(MLColor.ink)
+                .padding(.horizontal, MLSpacing.s16)
+                .frame(minHeight: MLSize.hit)
+                .overlay(Capsule().stroke(MLColor.ink, lineWidth: 1.5))
+        } trailing: {
+            EmptyView()
+        } content: {
+            VStack(spacing: MLSpacing.s16) {
                 passwordBoxes
                 statusLine
                 KeyPad(isEnabled: model.isKeypadEnabled) { digit in
@@ -229,11 +186,12 @@ struct RolePasswordView: View {
                     model.deleteLast()
                 }
                 Text(StaffEntryCopy.passwordFooter)
-                    .font(MLType.body)
+                    .mlFont(.body)
                     .foregroundStyle(MLColor.inkSecondary)
                     .frame(maxWidth: .infinity)
             }
-            .padding(.horizontal, MLSpacing.margin)
+        } bottom: {
+            EmptyView()
         }
     }
 
@@ -266,24 +224,25 @@ struct RolePasswordView: View {
         switch model.phase {
         case .wrong(let triesLeft):
             Text(StaffEntryCopy.wrongPassword(triesLeft: triesLeft))
-                .font(MLType.staffPrimary)
+                .mlFont(.staffPrimary)
                 .foregroundStyle(MLColor.danger)
                 .frame(maxWidth: .infinity)
         case .locked(let resetBy):
             VStack(alignment: .leading, spacing: MLSpacing.s8) {
                 Label(StaffEntryCopy.lockedTitle, systemImage: "lock")
-                    .font(MLType.staffPrimary)
+                    .mlFont(.staffPrimary)
                     .foregroundStyle(MLColor.ink)
                 Text(StaffEntryCopy.lockedDetail(role: model.role, resetBy: resetBy))
-                    .font(MLType.body)
+                    .mlFont(.body)
                     .foregroundStyle(MLColor.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(MLSpacing.s16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: MLRadius.compact, style: .continuous).fill(MLColor.surface))
         case .failed(let failure):
             Text(failure.message)
-                .font(MLType.body)
+                .mlFont(.body)
                 .foregroundStyle(MLColor.danger)
         case .checking:
             ProgressView().frame(maxWidth: .infinity)
@@ -292,4 +251,3 @@ struct RolePasswordView: View {
         }
     }
 }
-#endif

@@ -185,6 +185,8 @@ final class StudentMealsRepositoryTests: XCTestCase {
     func testThePassIsUsedOnceTheDeskRecordsIt() async throws {
         let (demo, _) = make()
         _ = try await demo.startPass(of: aarav, key: IdempotencyKey("hold"))
+        demo.clock.set(DemoSeed.lunch.startsAt)  // The clock no longer jumps; move it as the story does.
+
         _ = try await demo.startMeal(DemoSeed.lunch.id, by: .supervisor)
         guard case .valid(_, let live) = try await demo.lookUpPass(lastFour: "0238", for: DemoSeed.lunch.id) else {
             return XCTFail("The desk sees a valid pass")
@@ -203,12 +205,18 @@ final class StudentMealsRepositoryTests: XCTestCase {
 
     func testAPassUsedWithoutTheAppSaysSoAndAnUnusedOneExpiresWithTheMeal() async throws {
         let (demo, _) = make()
+        demo.clock.set(DemoSeed.lunch.startsAt)  // The clock no longer jumps; move it as the story does.
+
         _ = try await demo.startMeal(DemoSeed.lunch.id, by: .supervisor)
+        demo.clock.set(DemoSeed.lunch.endsAt)  // The clock no longer jumps; move it as the story does.
+
         _ = try await demo.closeMeal(DemoSeed.lunch.id, by: .supervisor)
         guard case .expired(_, let endedAt) = try await demo.passStanding(of: aarav, at: mess) else { return XCTFail("Expired") }
         XCTAssertEqual(endedAt, DemoSeed.lunch.endsAt)
 
         let (desk, _) = make()
+        desk.clock.set(DemoSeed.lunch.startsAt)  // The clock no longer jumps; move it as the story does.
+
         _ = try await desk.startMeal(DemoSeed.lunch.id, by: .supervisor)
         guard case .valid(_, let live) = try await desk.lookUpPass(lastFour: "0238", for: DemoSeed.lunch.id) else { return XCTFail("Valid") }
         _ = try await desk.recordPassEntry(SpecialPassEntryRequest(mealID: DemoSeed.lunch.id, student: DemoSeed.sampleStudent,

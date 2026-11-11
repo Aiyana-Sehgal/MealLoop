@@ -199,6 +199,7 @@ struct GateHomeScreen: View {
                     }
                     GateTile(count: model.overview?.overdue, title: GateCopy.overdueReturns,
                              detail: GateCopy.overdueDetail) { onOpen(.overdue) }
+                    DemoEntryRow()
                     Button(action: onEndShift) {
                         HStack(spacing: MLSpacing.s12) {
                             Image(systemName: "clock").font(.system(size: 20))

@@ -62,11 +62,9 @@ struct RemoteAPI: MealRepository, MealStateRepository, HeadcountRepository, Entr
     func signInStaff(email: String, password: String) async throws -> Session { throw RepositoryError.notImplemented(feature: "Remote sign in") }
     func signInWithSRM() async throws -> Session { throw RepositoryError.notImplemented(feature: "Remote sign in") }
 
-    #if DEMO_DATA
     func verifyRolePassword(_ password: String, for role: Role) async throws -> RolePasswordResult {
         throw notImplemented("role password")
     }
-    #endif
 
     func makeRepositories() -> Repositories {
         Repositories(meals: self, mealState: self, headcount: self, entries: self, intentions: self,

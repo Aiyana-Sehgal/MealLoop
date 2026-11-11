@@ -202,6 +202,7 @@ struct KitchenMeView: View {
                         QuietRow(title: KitchenCopy.historyTitle) { open(.history) }
                         QuietRow(title: KitchenCopy.language, value: KitchenCopy.english) { page = .language }
                         QuietRow(title: KitchenCopy.help) { page = .help }
+                        DemoEntryRow()
                         signOutRow
                     }
                 }

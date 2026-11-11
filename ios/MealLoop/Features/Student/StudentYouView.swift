@@ -48,6 +48,7 @@ struct StudentYouScreen: View {
 
 /// You (221:64576) and its states: Loading (221:66100), Offline (221:66111), Error (221:66138).
 struct StudentYouView: View {
+    @Environment(DemoMenu.self) private var demoMenu: DemoMenu?
     @Environment(AppEnvironment.self) private var environment
     @State private var model: StudentYouViewModel
     @State private var path: [StudentYouRoute] = []
@@ -217,6 +218,10 @@ struct StudentYouView: View {
             YouDivider()
             YouRow(symbol: "lock.shield", title: YouCopy.terms) { path.append(.privacy) }
             YouDivider()
+            #if DEMO_DATA || REVIEW_DATA
+            YouRow(symbol: "square.stack", title: DemoCopy.rowTitle) { demoMenu?.isPresented = true }
+            YouDivider()
+            #endif
             YouRow(symbol: "rectangle.portrait.and.arrow.right", title: YouCopy.signOut, showsChevron: false, action: onSignOut)
         }
     }

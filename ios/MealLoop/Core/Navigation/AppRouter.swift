@@ -1,18 +1,18 @@
 import Foundation
 import Observation
 
-/// Pushed screens before sign-in: Welcome → Staff sign in, or Welcome → Sign in with SRM.
+/// Pushed screens before sign-in.
+/// Students: Welcome (221:62499) → Getting your details (135:15587) → Home; a failure is Couldn't sign in (135:15825)
+/// with Try again.
+/// Mess staff: Welcome → Staff sign in, which is Choose your role (1508:235) → What you do (sheet) → Password
+/// (2469:2102) → role Home. Accounts that are not mess staff (Food Head, Super Admin, Vendor, Guardian, Warden, Gate)
+/// use "Sign in with email" on Choose your role.
 enum EntryRoute: Hashable, Sendable {
-    case staffSignIn
+    case chooseRole
+    case emailSignIn
     case srmSignIn
+    case rolePassword(Role)
 }
-
-#if DEMO_DATA
-/// Routes inside the retired role selection flow. Debug only; nothing opens it (see StaffEntryViews.swift).
-enum StaffEntryRoute: Hashable, Sendable {
-    case password(Role)
-}
-#endif
 
 /// The shared staff tab pattern: Home, Alerts, Me. There is no fourth tab.
 enum StaffTab: String, CaseIterable, Identifiable, Hashable, Sendable {
@@ -34,17 +34,11 @@ final class AppRouter {
     var entryPath: [EntryRoute] = []
     var selectedStaffTab: StaffTab = .home
     var staffHomePath: [StaffRoute] = []
-    #if DEMO_DATA
-    var staffEntryPath: [StaffEntryRoute] = []
-    #endif
 
     /// Clears every path, so the next account never inherits the previous account's position.
     func reset() {
         entryPath = []
         selectedStaffTab = .home
         staffHomePath = []
-        #if DEMO_DATA
-        staffEntryPath = []
-        #endif
     }
 }

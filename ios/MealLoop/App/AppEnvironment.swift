@@ -14,24 +14,21 @@ import Observation
 #endif
 
 enum DataSourceKind: String, Sendable {
-    /// Seeded sample data (Debug only). Shown with a visible "Demo data" badge.
+    /// Seeded sample data (Debug only).
     case demo
-    /// The same seeded data for the external review (Review only). It has no badge and no moment controls.
+    /// The same seeded data for the external review (Review only).
     case review
     /// The real backend. Not implemented yet: every call throws `notImplemented`.
     case api
 }
 
-/// One moment the demo can switch to (a simulated time skip).
-struct DemoScenarioOption: Identifiable, Sendable, Hashable {
-    let id: String
-    let title: String
-}
-
-/// Hook for the Debug-only demo controls. Only the demo provider conforms, and it exists only in Debug builds.
+/// The Debug and Review demo shortcuts (the Demo sheet). Only the seeded provider conforms, and neither it nor the sheet
+/// is compiled into Release. Nothing here moves the clock or replaces data.
 protocol DemoControlling: Sendable {
-    var scenarioOptions: [DemoScenarioOption] { get }
-    func selectScenario(id: String) async
+    /// A session for the seeded account of a role, for Switch role (keeps data). Nil when the role has no account.
+    func demoSession(for role: Role) async -> Session?
+    /// The next Sign in with SRM fails once, so Couldn't sign in (135:15825) can be shown. Try again then succeeds.
+    func failNextSRMSignIn() async
 }
 
 /// Selects exactly one data source for the running app. Demo and real data are never mixed.
@@ -42,9 +39,9 @@ final class AppEnvironment {
     let clock: any AppClock
     /// Optional; nothing implements it yet. Core dining features never depend on it.
     let intelligence: (any IntelligenceService)?
-    /// Non-nil only in the demo environment.
+    /// Non-nil only in the Debug and Review environments.
     let demoControls: (any DemoControlling)?
-    /// Bumped when data changes outside a screen (for example a demo time skip),
+    /// Bumped when data changes outside a screen,
     /// so screens can reload with `.task(id: environment.dataRevision)`.
     private(set) var dataRevision = 0
 
@@ -72,18 +69,21 @@ final class AppEnvironment {
     }
 
     #if DEMO_DATA
-    static func makeDemo(scenario: DemoScenario = .duringMeal) -> AppEnvironment {
-        let provider = DemoDataProvider(scenario: scenario)
+    /// A clean Debug launch: Wed 14 Aug, 7:00 AM, breakfast not answered, lunch not started. The clock then runs in
+    /// real time from there; nothing jumps it.
+    static func makeDemo() -> AppEnvironment {
+        let provider = DemoDataProvider(scenario: .storyStart, clock: RunningDemoClock(startingAt: DemoSeed.storyStartNow))
         return AppEnvironment(kind: .demo, repositories: provider.makeRepositories(), clock: provider.clock,
                               demoControls: provider)
     }
     #endif
 
     #if REVIEW_DATA
-    static func makeReview(scenario: DemoScenario = .storyStart) -> AppEnvironment {
-        let provider = DemoDataProvider(scenario: scenario)
+    /// A clean Review launch, the same start as Debug.
+    static func makeReview() -> AppEnvironment {
+        let provider = DemoDataProvider(scenario: .storyStart, clock: RunningDemoClock(startingAt: DemoSeed.storyStartNow))
         return AppEnvironment(kind: .review, repositories: provider.makeRepositories(), clock: provider.clock,
-                              demoControls: nil)
+                              demoControls: provider)
     }
     #endif
 

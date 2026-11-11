@@ -1,8 +1,7 @@
 import SwiftUI
 
-/// Everything before sign-in: Welcome, with Staff sign in and Sign in with SRM pushed on top.
-/// Welcome and Staff sign in are `MLScreen`s: Staff sign in keeps the navigation bar, so the system back button and
-/// the swipe-back gesture work on it. Sign in with SRM still hides the bar (not migrated in this change).
+/// Everything before sign-in (see `EntryRoute` for both paths). Every screen is pushed on one stack, so the system
+/// back button and swipe-back work, and a demo shortcut can open any step by setting the path.
 struct EntryFlowView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(AppRouter.self) private var router
@@ -13,22 +12,44 @@ struct EntryFlowView: View {
             WelcomeView()
                 .navigationDestination(for: EntryRoute.self) { route in
                     switch route {
-                    case .staffSignIn:
+                    case .chooseRole:
+                        RoleSelectionView()
+                    case .emailSignIn:
                         StaffSignInView(model: StaffSignInViewModel(auth: environment.repositories.auth))
                     case .srmSignIn:
                         SRMSignInView(model: SRMSignInViewModel(auth: environment.repositories.auth))
                             .toolbar(.hidden, for: .navigationBar)
                             .navigationBarBackButtonHidden(true)
+                    case .rolePassword(let role):
+                        RolePasswordScreen(role: role)
                     }
                 }
         }
     }
 }
 
-/// Onboarding · Sign in (221:62499), plus the Staff sign in action. The brand sits in the middle of the space above
-/// the actions, and the actions and the terms are pinned to the bottom safe area. It scrolls at large text sizes.
+/// Onboarding · Sign in (221:62499), plus the Staff sign in action that opens Choose your role. The brand sits in the middle
+/// of the space above the actions, and the actions and the terms are pinned to the bottom safe area.
+/// It scrolls at large text sizes.
 struct WelcomeView: View {
     @Environment(AppRouter.self) private var router
+
+    var body: some View {
+        WelcomeLayout {
+            InkActionButton(title: EntryCopy.signInWithSRM) {
+                router.entryPath.append(.srmSignIn)
+            }
+            OutlineActionButton(title: EntryCopy.staffSignIn) {
+                router.entryPath.append(.chooseRole)
+            }
+        }
+    }
+}
+
+/// The Welcome layout: the brand in the middle, then the actions and the terms. Onboarding · Sign in failed
+/// (135:15825) is the same page with the error card above Try again.
+struct WelcomeLayout<Actions: View>: View {
+    @ViewBuilder let actions: () -> Actions
 
     var body: some View {
         MLScreen(nil, showsNavigationBar: false, fillsViewport: true) {
@@ -36,8 +57,10 @@ struct WelcomeView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(.vertical, MLSpacing.s32)
         } bottom: {
-            actions
+            actions()
+            EntryTermsText()
         }
+        .overlay(alignment: .top) { DemoEntryButton().padding(.top, MLSpacing.s4) }
     }
 
     private var brand: some View {
@@ -59,15 +82,11 @@ struct WelcomeView: View {
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
     }
+}
 
-    @ViewBuilder
-    private var actions: some View {
-        InkActionButton(title: EntryCopy.signInWithSRM) {
-            router.entryPath.append(.srmSignIn)
-        }
-        OutlineActionButton(title: EntryCopy.staffSignIn) {
-            router.entryPath.append(.staffSignIn)
-        }
+/// "By continuing, you agree to the / Terms and Privacy Policy", drawn on two lines, the second underlined.
+struct EntryTermsText: View {
+    var body: some View {
         VStack(spacing: MLSpacing.s4) {
             Text(EntryCopy.termsLead)
             Text(EntryCopy.termsLink).underline()
@@ -80,10 +99,38 @@ struct WelcomeView: View {
     }
 }
 
+/// "Couldn't sign in. Try again" (135:15825): a tinted card with an icon, so it does not rely on colour alone.
+struct SignInFailureCard: View {
+    let message: String
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: MLSpacing.s12) {
+            Image(systemName: "exclamationmark.triangle")
+                .foregroundStyle(MLColor.danger)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: MLSpacing.s4) {
+                Text(EntryCopy.couldntSignIn)
+                    .mlFont(.bodyEmphasis)
+                    .foregroundStyle(MLColor.ink)
+                Text(message)
+                    .mlFont(.secondary)
+                    .foregroundStyle(MLColor.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(MLSpacing.s16)
+        .background(RoundedRectangle(cornerRadius: MLRadius.compact, style: .continuous).fill(MLColor.danger.opacity(0.09)))
+        .overlay(RoundedRectangle(cornerRadius: MLRadius.compact, style: .continuous).stroke(MLColor.danger, lineWidth: 1))
+        .accessibilityElement(children: .combine)
+    }
+}
+
 /// Staff sign in, laid out as a standard iOS sign-in on the proportions of MS-0 (1508:45): the brand row at the top,
 /// the title and the form in the upper middle with "Forgot password?" beside the password, and the Sign in button
 /// with its helper line pinned to the bottom safe area, above the keyboard.
-/// It keeps the email and password form; whether staff use SRM sign-in is open question P-FINAL-2.
+/// The email and password form for accounts that are not mess staff (Food Head, Super Admin, Vendor, Guardian,
+/// Warden, Gate). It opens from "Sign in with email" on Choose your role; no frame draws it.
 struct StaffSignInView: View {
     @Environment(AppRouter.self) private var router
     @Environment(SessionStore.self) private var sessionStore
@@ -283,7 +330,7 @@ private struct InlineErrorText: View {
     }
 }
 
-/// Sign in with SRM: a brief connecting step, then 02_getting_details, then the Student root.
+/// Sign in with SRM: "Getting your details" (135:15587), then Home, or Couldn't sign in with Try again (135:15825).
 struct SRMSignInView: View {
     @Environment(AppRouter.self) private var router
     @Environment(SessionStore.self) private var sessionStore
@@ -294,15 +341,15 @@ struct SRMSignInView: View {
     }
 
     var body: some View {
-        ZStack {
-            OrbitBackground()
+        Group {
             switch model.phase {
-            case .connecting:
-                progress(title: EntryCopy.connecting, detail: nil)
             case .gettingDetails:
-                progress(title: EntryCopy.gettingDetails, detail: EntryCopy.fewSeconds)
+                gettingDetails
             case .failed(let message):
-                failure(message)
+                WelcomeLayout {
+                    SignInFailureCard(message: message)
+                    InkActionButton(title: EntryCopy.tryAgain) { Task { await run() } }
+                }
             }
         }
         .task { await run() }
@@ -315,33 +362,22 @@ struct SRMSignInView: View {
         }
     }
 
-    private func progress(title: String, detail: String?) -> some View {
-        VStack(spacing: MLSpacing.s8) {
-            ProgressRing()
-                .padding(.bottom, MLSpacing.s16)
-            Text(title)
-                .font(MLType.largeTitle)
-                .foregroundStyle(MLColor.ink)
-                .multilineTextAlignment(.center)
-            if let detail {
-                Text(detail)
-                    .font(MLType.body)
+    private var gettingDetails: some View {
+        ZStack {
+            OrbitBackground()
+            VStack(spacing: MLSpacing.s8) {
+                ProgressRing()
+                    .padding(.bottom, MLSpacing.s16)
+                Text(EntryCopy.gettingDetails)
+                    .mlFont(.heroTitle)
+                    .foregroundStyle(MLColor.ink)
+                    .multilineTextAlignment(.center)
+                Text(EntryCopy.fewSeconds)
+                    .mlFont(.body)
                     .foregroundStyle(MLColor.inkSecondary)
             }
+            .padding(.horizontal, MLSpacing.margin)
         }
-        .padding(.horizontal, MLSpacing.margin)
-    }
-
-    private func failure(_ message: String) -> some View {
-        VStack(alignment: .leading, spacing: MLSpacing.s16) {
-            BackButton { router.entryPath.removeLast() }
-            Spacer()
-            InlineErrorText(message: message)
-            InkActionButton(title: EntryCopy.tryAgain) {
-                Task { await run() }
-            }
-        }
-        .padding(MLSpacing.margin)
     }
 }
 

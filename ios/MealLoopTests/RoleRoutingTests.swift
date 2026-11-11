@@ -69,7 +69,7 @@ final class RoleRoutingTests: XCTestCase {
 
     func testRouterResetClearsPositionForTheNextAccount() {
         let router = AppRouter()
-        router.entryPath = [.staffSignIn]
+        router.entryPath = [.chooseRole, .rolePassword(.kitchenStaff)]
         router.selectedStaffTab = .me
         router.staffHomePath = [.notImplemented(title: "Past meals")]
         router.reset()

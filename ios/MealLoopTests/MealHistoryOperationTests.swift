@@ -56,12 +56,17 @@ final class MealHistoryOperationTests: XCTestCase {
     func testTheStoryMealJoinsOnlyOnceClosedWithItsLiveShortagesAndWaste() async throws {
         let demo = DemoDataProvider(scenario: .storyStart)
         let lunch = DemoSeed.lunch.id
+        demo.clock.set(DemoSeed.lunch.startsAt)  // The clock no longer jumps; move it as the story does.
+
         _ = try await demo.startMeal(lunch, by: .supervisor)
         _ = try await demo.reportShortage(ShortageReport(mealID: lunch, dishName: DemoSeed.shortageDish,
                                                          level: .almostOut, note: nil, reportedBy: .kitchenStaff,
                                                          idempotencyKey: IdempotencyKey("rice")))
         var history = try await demo.mealHistory(for: mess)
         XCTAssertFalse(history.contains { $0.mealID == lunch }, "An open meal is not history")
+
+        demo.clock.set(DemoSeed.lunch.endsAt)  // The clock no longer jumps; move it as the story does.
+
 
         _ = try await demo.closeMeal(lunch, by: .supervisor)
         history = try await demo.mealHistory(for: mess)

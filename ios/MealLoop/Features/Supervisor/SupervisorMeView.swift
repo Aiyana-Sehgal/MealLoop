@@ -57,6 +57,7 @@ struct SupervisorMeView: View {
             }
             VStack(spacing: 0) {
                 Rectangle().fill(MLColor.border).frame(height: 1)
+                DemoEntryRow()
                 signOutRow
             }
             .padding(.top, MLSpacing.s16)

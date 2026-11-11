@@ -2,6 +2,7 @@ import SwiftUI
 
 /// The More hub (A11).
 struct AdminMoreScreen: View {
+    @Environment(DemoMenu.self) private var demoMenu: DemoMenu?
     @Environment(AppEnvironment.self) private var environment
     @Environment(AppRouter.self) private var router
     @Environment(SessionStore.self) private var sessionStore
@@ -26,6 +27,9 @@ struct AdminMoreScreen: View {
                         }
                         AdminHubRow(title: AdminScreenCopy.announceToStudents) { nav.push(.announce) }
                         AdminHubRow(title: AdminScreenCopy.history) { nav.push(.history) }
+                        #if DEMO_DATA || REVIEW_DATA
+                        AdminHubRow(title: DemoCopy.rowTitle) { demoMenu?.isPresented = true }
+                        #endif
                         AdminHubRow(title: AdminScreenCopy.signOut, isLast: true) {
                             router.reset()
                             sessionStore.signOut()

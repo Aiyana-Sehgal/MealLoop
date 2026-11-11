@@ -500,6 +500,7 @@ struct WardenMeScreen: View {
             VStack(spacing: 0) {
                 QuietRow(title: WardenCopy.alerts, action: onAlerts)
                 QuietRow(title: WardenCopy.help) { page = .help }
+                DemoEntryRow()
                 Button {
                     isSigningOut = true
                 } label: {

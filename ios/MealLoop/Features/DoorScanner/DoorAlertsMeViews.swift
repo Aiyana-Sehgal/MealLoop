@@ -141,6 +141,7 @@ struct DoorMeView: View {
                         Rectangle().fill(MLColor.border).frame(height: 1)
                         StaffMeRow(title: DoorScannerCopy.language, value: DoorScannerCopy.english) { page = .language }
                         StaffMeRow(title: DoorScannerCopy.help) { page = .help }
+                        DemoEntryRow()
                         signOutRow
                     }
                 }

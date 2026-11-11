@@ -158,6 +158,8 @@ final class KitchenRoleTests: XCTestCase {
 
     func testAReportAfterTheMealEndedIsNotSent() async throws {
         let (demo, model) = try await during()
+        demo.clock.set(DemoSeed.lunch.endsAt)  // The clock no longer jumps; move it as the story does.
+
         _ = try await demo.closeMeal(lunch.id, by: .supervisor)
         let outcome = await model.reportShortage(dish: "Steamed Rice", level: .out, note: nil)
         XCTAssertEqual(outcome, .mealEnded(at: lunch.endsAt))
@@ -387,7 +389,7 @@ final class KitchenRoleTests: XCTestCase {
             let signedIn = try await demo.signInStaff(email: account.email, password: DemoSeed.prototypePassword)
             XCTAssertEqual(KitchenRootView.allows(signedIn), account.role == .kitchenStaff, "\(account.role)")
         }
-        let student = try await demo.signInWithSRM()
+        let student = try await demo.srmStudentSession()
         XCTAssertFalse(KitchenRootView.allows(student))
     }
 
