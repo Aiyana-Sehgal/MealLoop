@@ -43,7 +43,6 @@ Only one person edits these at a time. Everyone else asks that person for the ch
 - `ios/MealLoop/App/AppEnvironment.swift` and `ios/MealLoop/App/AppClock.swift`
 - `ios/MealLoop/Core/Session/**` and `ios/MealLoop/Core/LoadState/**`
 - `ios/MealLoop/Features/Shell/RoleRootView.swift`
-- `ios/MealLoop/Features/Staff/StaffShellViews.swift`
 - `ios/MealLoop/Data/Demo/DemoSeed.swift` and `ios/MealLoop/Data/Demo/DemoDataProvider.swift`
 - `ios/MealLoop/DesignSystem/Components/**`, listed in [`COMPONENT_CATALOG.md`](COMPONENT_CATALOG.md)
 - `ios/MealLoop/DesignSystem/Gallery/**`

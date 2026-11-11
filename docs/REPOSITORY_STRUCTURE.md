@@ -53,7 +53,7 @@ ios/
 
 1. **Features import Domain and never redefine models.** If a screen needs a new field, add it to `Domain/` once. No feature-local copy of `Meal`, `Shortage` and so on.
 2. **Views never hold demo data.** A view gets every value from its view model, and the view model gets it from a repository. Interface wording lives in a `<Feature>Copy` enum; sample values live only in `Data/Demo/DemoSeed.swift`.
-3. **Seeded data never reaches Release.** Everything in `Data/Demo/` is compiled only with `DEMO_DATA` (Debug) or `REVIEW_DATA` (Review). Review has no badge and no moment menu. Release has neither flag, and `App/AppEnvironment.swift` stops any build that breaks these rules.
+3. **Seeded data never reaches Release.** Everything in `Data/Demo/` is compiled only with `DEMO_DATA` (Debug) or `REVIEW_DATA` (Review). Debug and Review carry the Demo states sheet (Getting started, Switch role); it moves no time and replaces no data. Release has neither flag, and `App/AppEnvironment.swift` stops any build that breaks these rules.
 4. **Missing is not zero.** Use `CountReading`, `Forecast`, `LeftoverMeasurement` and `PlateWasteMeasurement`. Never use a bare `Int` or `Double` for something that can be missing, and never default it to 0.
 5. **Nothing fakes success.** Unbuilt actions open a "Not implemented" page; unimplemented repositories throw `RepositoryError.notImplemented`; an offline write is an error, never a result.
 6. **Every screen loads through `LoadState` and renders through `AsyncContentView`**, so loading, empty, error, stale and offline look the same everywhere.
