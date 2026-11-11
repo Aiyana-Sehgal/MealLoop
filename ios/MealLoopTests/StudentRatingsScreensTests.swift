@@ -14,9 +14,10 @@ final class StudentRatingsScreensTests: XCTestCase {
         }
     }
 
-    private func make(_ scenario: DemoScenario = .afterMeal, dish: DishID? = nil) throws -> StudentRatingViewModel {
-        let demo = DemoDataProvider(scenario: scenario)
-        return try XCTUnwrap(StudentRatingViewModel(session: try session, repositories: demo.makeRepositories(),
+    private func make(_ scenario: DemoScenario = .afterMeal, dish: DishID? = nil,
+                      repositories: Repositories? = nil) throws -> StudentRatingViewModel {
+        let repositories = repositories ?? DemoDataProvider(scenario: scenario).makeRepositories()
+        return try XCTUnwrap(StudentRatingViewModel(session: try session, repositories: repositories,
                                                     day: DemoSeed.lunch.startsAt, slot: .lunch, dish: dish))
     }
 
@@ -47,14 +48,18 @@ final class StudentRatingsScreensTests: XCTestCase {
         XCTAssertEqual(model.feedbackRequest(after: .good).kind, .thanks)
     }
 
-    func testARatingBeforeTheMealEndsIsRefusedOnScreen() async throws {
-        let model = try make(.storyStart)
+    /// No gate on screen: at 7:00 AM, before lunch, Good saves and shows again when the page is reopened.
+    func testARatingBeforeTheMealSavesAndShowsOnReopen() async throws {
+        let repositories = DemoDataProvider(scenario: .storyStart).makeRepositories()
+        let model = try make(repositories: repositories)
         await model.load()
-        XCTAssertEqual(model.window, .notYet)
-        XCTAssertFalse(model.canRate)
+        XCTAssertTrue(model.canRate)
         let saved = await model.rate(.good)
-        XCTAssertFalse(saved)
-        XCTAssertEqual(model.write, .failed)
+        XCTAssertTrue(saved)
+        XCTAssertTrue(model.isGood)
+        let reopened = try make(repositories: repositories)
+        await reopened.load()
+        XCTAssertTrue(reopened.isGood)
     }
 }
 #endif

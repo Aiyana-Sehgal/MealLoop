@@ -189,14 +189,14 @@ private struct StudentSOSCameraLive: View {
 
     var body: some View {
         VStack(spacing: MLSpacing.s16) {
-            Text(ReportCopy.takePhoto)
+            Text(StudentSOSCopy.takePhoto)
                 .font(StudentType.section)
                 .foregroundStyle(MLColor.onHero)
                 .frame(maxWidth: .infinity, alignment: .leading)
             StudentSOSPreview(time: MLFormat.time(model.now, in: model.timeZone), model: model)
                 .frame(maxHeight: 420)
-            Text(ReportCopy.keepInFrame).font(StudentType.body).foregroundStyle(MLColor.onHero)
-            Text(ReportCopy.liveOnly)
+            Text(StudentSOSCopy.keepInFrame).font(StudentType.body).foregroundStyle(MLColor.onHero)
+            Text(StudentSOSCopy.liveOnly)
                 .font(StudentType.footnote)
                 .foregroundStyle(MLColor.onHeroSecondary)
                 .multilineTextAlignment(.center)
@@ -209,7 +209,7 @@ private struct StudentSOSCameraLive: View {
                     .frame(width: 80, height: 80)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(ReportCopy.takePhoto)
+            .accessibilityLabel(StudentSOSCopy.takePhoto)
             .accessibilityHint(ReportCopy.cameraSimulated)
         }
     }
@@ -485,11 +485,11 @@ struct StudentSOSSentView: View {
     let onClose: () -> Void
 
     var body: some View {
-        MLScreen(ReportCopy.sosSent, subtitle: model.subject) {
+        MLScreen(StudentSOSCopy.sosSent, subtitle: model.subject) {
             VStack(alignment: .leading, spacing: MLSpacing.s16) {
                 if let sos = model.sos {
                     StudentSOSSentCard(sos: sos, hasPhoto: model.hasPhoto, timeZone: model.timeZone)
-                    Text(ReportCopy.feelingUnwell)
+                    Text(StudentSOSCopy.feelingUnwell)
                         .font(StudentType.secondaryMedium)
                         .foregroundStyle(MLColor.ink)
                         .frame(maxWidth: .infinity)
@@ -516,7 +516,7 @@ private struct StudentSOSSentCard: View {
                 Text(ReportCopy.sent(MLFormat.time(sos.raisedAt, in: timeZone))).font(StudentType.secondaryMedium)
             }
             .foregroundStyle(MLColor.onHeroSecondary)
-            Text(ReportCopy.toldKitchen)
+            Text(StudentSOSCopy.toldKitchen)
                 .font(StudentType.heroTitle)
                 .foregroundStyle(MLColor.onHero)
                 .fixedSize(horizontal: false, vertical: true)
@@ -539,7 +539,7 @@ private struct StudentSOSSentCard: View {
                 }
                 .accessibilityElement(children: .combine)
             }
-            Text(ReportCopy.messageWhenChecked).font(StudentType.secondary).foregroundStyle(MLColor.onHeroSecondary)
+            Text(StudentSOSCopy.messageWhenChecked).font(StudentType.secondary).foregroundStyle(MLColor.onHeroSecondary)
         }
         .padding(MLSpacing.s20)
         .background(RoundedRectangle(cornerRadius: StudentMetric.heroRadius, style: .continuous).fill(MLColor.heroBackground))
@@ -548,7 +548,7 @@ private struct StudentSOSSentCard: View {
     /// Reported, Team told, Food held, Checked: a time only where the case has one; Food held has none recorded.
     private var steps: [(title: String, at: Date?)] {
         let times: [Date?] = [sos.raisedAt, sos.claim?.at, nil, sos.checks.first?.at]
-        return zip(ReportCopy.sosSteps, times).map { ($0, $1) }
+        return zip(StudentSOSCopy.sosSteps, times).map { ($0, $1) }
     }
 }
 

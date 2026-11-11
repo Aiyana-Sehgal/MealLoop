@@ -61,12 +61,14 @@ enum CommunityCopy {
 enum StudentCommunityRoute: Hashable {
     case issue(CommunityIssueID)
     case report
+    /// SOS · new (2162:6), from "Unsafe or unwell? Use SOS" on What's wrong.
+    case sos
     case comingSoon(String)
 
     /// Pages built on `MLScreen`: the system bar, its back button and the swipe-back gesture.
     var usesSystemBar: Bool {
         switch self {
-        case .issue, .report: true
+        case .issue, .report, .sos: true
         case .comingSoon: false
         }
     }
@@ -135,7 +137,11 @@ struct StudentCommunityView: View {
                                                               clock: environment.clock)) { path.removeLast() }
         case .report:
             // View report leaves the finished report for the issue, so Back from the issue returns to Community.
-            StudentReportScreen(session: session, onShowIssue: { path = [.issue($0)] }) { path.removeLast() }
+            StudentReportScreen(session: session, onShowIssue: { path = [.issue($0)] }, onSOS: { path.append(.sos) }) {
+                path.removeLast()
+            }
+        case .sos:
+            StudentSOSScreen(session: session) { path.removeLast() }
         case .comingSoon(let title):
             StudentComingSoonView(title: title) { path.removeLast() }
         }

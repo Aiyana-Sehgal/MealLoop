@@ -87,20 +87,10 @@ final class StudentCommunityScreensTests: XCTestCase {
         XCTAssertEqual(model.issue(longWait)?.backers, 65, "It is counted once the connection is back.")
     }
 
-    func testAnUrgentReportRaisesAnSOSTheDoorScannerSees() async throws {
-        let (demo, _, repositories, clock) = try make()
-        let model = try XCTUnwrap(StudentReportViewModel(session: try session, repositories: repositories, clock: clock))
-        await model.load()
-        model.begin()
-        let raised = await model.raiseSOS(.foundInFood)
-        XCTAssertTrue(raised)
-        let again = await model.raiseSOS(.foundInFood)
-        XCTAssertTrue(again)
-        let cases = try await demo.activeCases(for: DemoSeed.mess.id)
-        XCTAssertEqual(cases.count, 1, "A retry never opens a second case.")
-        XCTAssertEqual(cases.first?.title, "Found something in my food")
-        let issues = try await demo.issues(at: DemoSeed.mess.id, for: DemoSeed.sampleStudent.id)
-        XCTAssertEqual(issues.count, 2, "Urgent reports never reach Community.")
+    /// Something unsafe in the food is an SOS (2162:6), not a report: What's wrong no longer lists the urgent rows.
+    func testWhatsWrongListsNoUrgentCategory() {
+        XCTAssertFalse(StudentReportCategory.reportable.contains { $0.isUrgent })
+        XCTAssertEqual(StudentReportCategory.reportable, [.notClean, .ranOut, .staffOrService, .somethingElse])
     }
 
     func testAFailedReportKeepsItsTextAndSendsOnceOnRetry() async throws {
@@ -122,19 +112,18 @@ final class StudentCommunityScreensTests: XCTestCase {
         XCTAssertEqual(count, 3)
     }
 
-    /// Report and SOS are pushed pages (S2): the category decides the next page, and Back to What's wrong keeps the
-    /// draft when the same category is picked again.
+    /// Report pages are pushed (S2): Back to What's wrong keeps the draft when the same category is picked again.
     func testChoosingACategoryPicksThePageAndBackKeepsTheDraft() async throws {
         let (_, _, repositories, clock) = try make()
         let model = try XCTUnwrap(StudentReportViewModel(session: try session, repositories: repositories, clock: clock))
         await model.load()
-        XCTAssertEqual(model.choose(.notClean), .details(.notClean))
+        XCTAssertEqual(model.choose(.notClean), .notClean)
         model.note = "Plates at counter 2 were wet."
-        XCTAssertEqual(model.choose(.notClean), .details(.notClean), "Back, then the same category: same draft.")
+        XCTAssertEqual(model.choose(.notClean), .notClean, "Back, then the same category: same draft.")
         XCTAssertEqual(model.note, "Plates at counter 2 were wet.")
-        XCTAssertEqual(model.choose(.foundInFood), .camera(.foundInFood), "Urgent ones open the SOS camera.")
+        XCTAssertEqual(model.choose(.ranOut), .ranOut)
         XCTAssertEqual(model.note, "", "A different category is a new report.")
-        XCTAssertEqual(model.category, .foundInFood)
+        XCTAssertEqual(model.category, .ranOut)
     }
 
     func testAReportSentStartsANewDraftNextTime() async throws {

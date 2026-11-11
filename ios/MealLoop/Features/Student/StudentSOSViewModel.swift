@@ -165,6 +165,15 @@ final class StudentSOSViewModel {
 
 /// Words of the SOS frames. Wording only.
 enum StudentSOSCopy {
+    // Camera and Sent wording, shared with SOS · Camera (221:63493) and SOS · Sent (221:63509).
+    static let takePhoto = "Take a photo of the problem"
+    static let keepInFrame = "Keep the problem in the frame."
+    static let liveOnly = "Live camera only. Gallery photos aren't accepted."
+    static let sosSent = "SOS sent"
+    static let toldKitchen = "We've told the kitchen team."
+    static let sosSteps = ["Reported", "Team told", "Food held", "Checked"]
+    static let messageWhenChecked = "You'll get a message when it's checked."
+    static let feelingUnwell = "Feeling unwell? Tell a warden or call for help now."
     static let title = "SOS"
     static let pickOne = "What's wrong? Pick one."
     static let whichDish = "Which dish? (optional)"

@@ -50,6 +50,7 @@ final class OutingCaseRepositoryTests: XCTestCase {
         XCTAssertEqual(sent.evidence?.passedChecks, EvidenceCheck.allCases)
         XCTAssertEqual(sent.evidence?.transcript, "I accept Aarav's outing, code 7 7 7")
 
+        clock.set(OutingSeed.wardenMoment)  // Opening a role no longer moves the clock; the story's time does.
         try await repository.begin(as: .warden)
         let queue = try await repository.wardenQueue(for: warden)
         XCTAssertTrue(queue.contains { $0.id == aarav })
@@ -57,6 +58,7 @@ final class OutingCaseRepositoryTests: XCTestCase {
         XCTAssertEqual(approved.stage, .passSigned)
         XCTAssertEqual(approved.pass?.code, "7F3K")
 
+        clock.set(OutingSeed.gateMoment)
         try await repository.begin(as: .gate)
         guard case .exitReady = try await repository.checkPassCode("7f3k", by: .gate) else {
             return XCTFail("Expected the pass to be ready for exit")

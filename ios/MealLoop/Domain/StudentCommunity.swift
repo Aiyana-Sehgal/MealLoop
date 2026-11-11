@@ -38,8 +38,12 @@ enum StudentReportCategory: String, Codable, Sendable, CaseIterable, Hashable {
     case staffOrService
     case somethingElse
 
-    /// Hygiene, contamination and illness. These never wait for Community.
+    /// Hygiene, contamination and illness. These never wait for Community: on the phone they are an SOS (2162:6), so
+    /// What's wrong no longer lists them. Kept for reports already made under them.
     var isUrgent: Bool { self == .foundInFood || self == .smellsOrTastesOff }
+
+    /// The categories What's wrong lists.
+    static var reportable: [StudentReportCategory] { allCases.filter { !$0.isUrgent } }
 }
 
 /// A non-urgent report from a student.

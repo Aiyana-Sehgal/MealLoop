@@ -49,6 +49,8 @@ actor InMemoryOutingCaseRepository: OutingCaseRepository {
     private var order: [OutingRequestID] = []
     private var seededHistory: [WardenHistoryItem]
     private var seededPastAnswers: [GuardianPastAnswer]
+    /// The student's Earlier list (You · Outings). Empty in the app, which starts with no outings at all.
+    private let studentEarlier: [StudentPastOuting]
     private var links: [AccountID: GuardianLink]
     private var wardens: [AccountID: WardenProfile]
     private var consented: Set<AccountID> = []
@@ -69,6 +71,7 @@ actor InMemoryOutingCaseRepository: OutingCaseRepository {
          pastAnswers: [GuardianPastAnswer] = OutingSeed.guardianPastAnswers,
          links: [GuardianLink] = [OutingSeed.guardianLink],
          wardens: [AccountID: WardenProfile] = [OutingSeed.wardenAccount: OutingSeed.wardenProfile],
+         studentEarlier: [StudentPastOuting] = StudentOutingSeed.earlier,
          simulation: any OutingCaptureSimulation = MatchingCaptureSimulation(),
          makeDigits: @escaping @Sendable (Int) -> String = { InMemoryOutingCaseRepository.randomDigits($0) },
          makePassCode: @escaping @Sendable () -> String = { InMemoryOutingCaseRepository.randomPassCode() }) {
@@ -78,6 +81,7 @@ actor InMemoryOutingCaseRepository: OutingCaseRepository {
         self.makePassCode = makePassCode
         self.seededHistory = history
         self.seededPastAnswers = pastAnswers
+        self.studentEarlier = studentEarlier
         self.links = Dictionary(uniqueKeysWithValues: links.map { ($0.guardian, $0) })
         self.wardens = wardens
         for item in cases {
@@ -104,13 +108,22 @@ actor InMemoryOutingCaseRepository: OutingCaseRepository {
 
     func now() async -> Date { clock.now() }
 
+    /// Opening a role's outing page never moves the clock: the time is the shared one.
     func begin(as role: Role) async throws {
         switch role {
-        case .guardian: clock.advance(to: OutingSeed.guardianMoment)
-        case .warden: clock.advance(to: OutingSeed.wardenMoment)
-        case .gate: clock.advance(to: OutingSeed.gateMoment)
+        case .guardian, .warden, .gate: return
         default: throw RepositoryError.notAllowed(reason: "Outings are for the guardian, the warden and the gate.")
         }
+    }
+
+    /// The app's outing source: the shared clock, no requests yet and no earlier outings, so a request the student
+    /// makes is the one the guardian, the warden and the gate see. History is kept only where it is already past.
+    static func app(clock: any StoryClock) -> InMemoryOutingCaseRepository {
+        let now = clock.now()
+        return InMemoryOutingCaseRepository(clock: clock, cases: [],
+                                            history: OutingSeed.wardenHistory.filter { $0.decidedOn < now },
+                                            pastAnswers: OutingSeed.guardianPastAnswers.filter { $0.day < now },
+                                            studentEarlier: [])
     }
 
     // MARK: Guards
@@ -656,7 +669,7 @@ extension InMemoryOutingCaseRepository: StudentOutingRepository {
         guard hasGuardian(linked) else { return StudentOutings(eligibility: .noGuardian, current: [], earlier: []) }
         let own = order.compactMap { cases[$0] }.filter { $0.student.id == linked.id }
         return StudentOutings(eligibility: .enabled, current: own.filter { !$0.stage.isFinished }.reversed(),
-                              earlier: StudentOutingSeed.earlier)
+                              earlier: studentEarlier)
     }
 
     func outing(_ id: OutingRequestID, for student: StudentID) async throws -> OutingCase {

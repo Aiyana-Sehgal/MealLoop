@@ -98,7 +98,7 @@ final class StudentCommunityViewModel {
     }
 }
 
-/// Report · What's wrong, Details, Sending, Failed, Receipt, and the SOS camera and Sent pages.
+/// Report · What's wrong, Details, Sending, Failed and Receipt. SOS has its own view model (`StudentSOSViewModel`).
 @MainActor
 @Observable
 final class StudentReportViewModel {
@@ -115,24 +115,19 @@ final class StudentReportViewModel {
     private(set) var isDeskStaffed = true
     private(set) var send: SendState = .idle
     private(set) var receipt: StudentReportReceipt?
-    private(set) var sos: SOSCase?
-    private(set) var sosFailed = false
     private(set) var meal: Meal?
     var note = ""
 
     let context: StudentContext
     private let community: any StudentCommunityRepository
-    private let sosRepository: any SOSRepository
     private let mealState: any MealStateRepository
     private let clock: any AppClock
     private var reportKey = IdempotencyKey(UUID().uuidString)
-    private var sosKey = IdempotencyKey(UUID().uuidString)
 
     init?(session: Session, repositories: Repositories, clock: any AppClock) {
         guard session.account.role == .student, let context = session.student else { return nil }
         self.context = context
         self.community = repositories.studentCommunity
-        self.sosRepository = repositories.sos
         self.mealState = repositories.mealState
         self.clock = clock
     }
@@ -153,30 +148,21 @@ final class StudentReportViewModel {
     /// The category of the report being written. Kept here, with the note, so the pushed pages share one draft.
     private(set) var category: StudentReportCategory?
 
-    /// The page a category opens: urgent ones the SOS camera, the others the details form (Report · Details).
-    enum NextPage: Equatable {
-        case details(StudentReportCategory)
-        case camera(StudentReportCategory)
-    }
-
-    /// Picking a category on What's wrong. Picking the same one again after Back keeps the draft (the typed note);
-    /// a different category, or one after a report was sent, starts a new report.
-    func choose(_ category: StudentReportCategory) -> NextPage {
-        if category != self.category || receipt != nil || sos != nil {
+    /// Picking a category on What's wrong opens its details form. Picking the same one again after Back keeps the
+    /// draft (the typed note); a different category, or one after a report was sent, starts a new report.
+    func choose(_ category: StudentReportCategory) -> StudentReportCategory {
+        if category != self.category || receipt != nil {
             begin()
             self.category = category
         }
-        return category.isUrgent ? .camera(category) : .details(category)
+        return category
     }
 
     /// A new category is a new report.
     func begin() {
         reportKey = IdempotencyKey(UUID().uuidString)
-        sosKey = IdempotencyKey(UUID().uuidString)
         send = .idle
         receipt = nil
-        sos = nil
-        sosFailed = false
         note = ""
     }
 
@@ -195,19 +181,6 @@ final class StudentReportViewModel {
             send = .idle
         } catch {
             send = .failed
-        }
-    }
-
-    /// Urgent: an SOS for every staff role of the mess. It never waits for Community. True when the case is open.
-    func raiseSOS(_ category: StudentReportCategory) async -> Bool {
-        sosFailed = false
-        do {
-            sos = try await sosRepository.raise(SOSReport(messID: context.mess.id, title: StudentReportCategoryTitle.title(category),
-                                                          place: context.mess.name, idempotencyKey: sosKey))
-            return true
-        } catch {
-            sosFailed = true
-            return false
         }
     }
 }

@@ -19,10 +19,6 @@ enum RatingCopy {
     static let skipForNow = "Skip for now"
     static let done = "Done"
     static let rated = "You said Good. Thanks."
-    static func notYet(_ slot: MealSlot) -> String { "You can rate \(MLFormat.mealSlot(slot).lowercased()) after it ends." }
-    static func closed(_ slot: MealSlot) -> String {
-        "Ratings for \(MLFormat.mealSlot(slot).lowercased()) closed 2 days after it ended."
-    }
     static let didNotSave = "Didn't save. Try again."
     static func dayAndMess(_ day: String, _ mess: String) -> String { "\(day) · \(mess)" }
     static func slotAndDay(_ slot: MealSlot, _ day: String) -> String { "\(MLFormat.mealSlot(slot)) · \(day)" }
@@ -56,7 +52,8 @@ final class StudentRatingViewModel {
 
     var timeZone: TimeZone { context.mess.timeZone }
     var isGood: Bool { rating != nil }
-    var canRate: Bool { window?.isOpen == true && write != .saving }
+    /// No time, attendance or meal-state gate: a rating can be given or changed whenever the student opens it.
+    var canRate: Bool { write != .saving }
 
     /// What Good (Thanks) or Not good (Which dish, or this dish's What's wrong) opens next.
     func feedbackRequest(after answer: StudentRatingAnswer) -> StudentDishFeedbackRequest {
@@ -249,7 +246,7 @@ private struct RatingChoiceRow: View {
     }
 }
 
-/// The helper line, or why the meal can't be rated now, or the failure.
+/// The helper line, or the failure.
 private struct RatingStatusLine: View {
     let model: StudentRatingViewModel
     let helper: String
@@ -259,11 +256,7 @@ private struct RatingStatusLine: View {
             if model.write == .failed {
                 FieldErrorText(text: RatingCopy.didNotSave)
             } else {
-                switch model.window {
-                case .notYet: Text(RatingCopy.notYet(model.target.slot))
-                case .closed: Text(RatingCopy.closed(model.target.slot))
-                default: Text(helper)
-                }
+                Text(helper)
             }
         }
         .font(StudentType.secondary)

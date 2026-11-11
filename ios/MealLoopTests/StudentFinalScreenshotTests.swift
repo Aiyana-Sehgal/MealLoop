@@ -192,7 +192,8 @@ final class StudentFinalScreenshotTests: XCTestCase {
         }
         try await shot("report_from_not_good", world, tab: .meals) {
             StudentReportScreen(session: world.session,
-                                subject: StudentReportSubject(slot: .lunch, day: DemoSeed.lunch.startsAt, dishName: rice.name)) {}
+                                subject: StudentReportSubject(slot: .lunch, day: DemoSeed.lunch.startsAt, dishName: rice.name),
+                                onSOS: {}) {}
         }
         let early = World()
         try await shot("rate_meal_not_yet", early, tab: .home) {
@@ -415,7 +416,7 @@ final class StudentFinalScreenshotTests: XCTestCase {
         }
         try await shot("student_pass", world, tab: .home) { StudentPassScreen(session: world.session) {} }
         try await shot("student_crowd", world, tab: .home) { StudentCrowdScreen(session: world.session) {} }
-        try await shot("student_report", world, tab: .home) { StudentReportScreen(session: world.session) {} }
+        try await shot("student_report", world, tab: .home) { StudentReportScreen(session: world.session, onSOS: {}) {} }
         try await auditStandardsRoutes(world, records: records, outings: outings)
         let after = World(.afterMeal)
         try await shot("student_pass_request", after, tab: .home) { StudentPassScreen(session: after.session) {} }
@@ -477,11 +478,6 @@ final class StudentFinalScreenshotTests: XCTestCase {
         await report.sendReport(.notClean)
         try await shot("student_report_receipt", world, tab: .home) {
             StudentReportReceiptPage(model: report, onShowIssue: nil) {}
-        }
-        _ = report.choose(.foundInFood)
-        _ = await report.raiseSOS(.foundInFood)
-        try await shot("student_sos_sent", world, tab: .home) {
-            StudentSOSSentPage(model: report, category: .foundInFood) {}
         }
         // S3: Attendance's missed day opens Entry · Discrepancy; after sending, the page says it was recorded only.
         let you = world.you

@@ -227,7 +227,7 @@ enum OutingCaseRepositories {
     static func source(for environment: AppEnvironment) -> any OutingCaseRepository {
         let key = ObjectIdentifier(environment)
         if let existing = sources[key] { return existing }
-        let made = makeSource(for: environment.kind)
+        let made = makeSource(for: environment)
         sources[key] = made
         return made
     }
@@ -237,10 +237,12 @@ enum OutingCaseRepositories {
         sources[ObjectIdentifier(environment)] = source
     }
 
-    private static func makeSource(for kind: DataSourceKind) -> any OutingCaseRepository {
+    private static func makeSource(for environment: AppEnvironment) -> any OutingCaseRepository {
         #if DEMO_DATA || REVIEW_DATA
-        switch kind {
-        case .demo, .review: return InMemoryOutingCaseRepository()
+        switch environment.kind {
+        case .demo, .review:
+            guard let clock = environment.clock as? any StoryClock else { return InMemoryOutingCaseRepository() }
+            return InMemoryOutingCaseRepository.app(clock: clock)
         case .api: return RemoteOutingCaseRepository()
         }
         #else

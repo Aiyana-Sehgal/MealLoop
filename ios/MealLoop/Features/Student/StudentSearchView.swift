@@ -83,7 +83,7 @@ struct StudentSearchView: View {
                                     onSOS: { path.append(.sos) }) { path.removeLast() }
             }
         case .report(let subject):
-            StudentReportScreen(session: session, subject: subject) { path.removeLast() }
+            StudentReportScreen(session: session, subject: subject, onSOS: { path.append(.sos) }) { path.removeLast() }
         case .sos:
             StudentSOSScreen(session: session) { path.removeLast() }
         case .pass:

@@ -96,7 +96,7 @@ struct StudentMealsView: View {
         case .pass:
             StudentPassScreen(session: session) { path.removeLast() }
         case .report(let subject):
-            StudentReportScreen(session: session, subject: subject) { path.removeLast() }
+            StudentReportScreen(session: session, subject: subject, onSOS: { path.append(.sos) }) { path.removeLast() }
         case .sos:
             StudentSOSScreen(session: session) { path.removeLast() }
         case .rateDish(let dish, let day, let slot):

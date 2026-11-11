@@ -37,3 +37,15 @@ Resumable checkpoints for the review-prototype pass. Newest last.
   so Home · Not answered (221:62529) is true at 7:00. Lunch and dinner keep the owner's two-hour rule.
 - Student Home at 7:00: "Breakfast today?" with I'm in, Skip, Entry QR. Swipe right → Remind me in 1 hr → Reminder set
   (8:00 AM) → Undo. Verified.
+
+### 2. Student
+
+- SOS: What's wrong (Report) no longer lists the red Urgent rows; their legacy camera and SOS Sent pages are deleted.
+  "Unsafe or unwell? Use SOS" on What's wrong (Home, Meals, Community, Search) and on the dish feedback sheets opens
+  SOS · new (2162:6) → camera → review → sent. Not good still opens the dish feedback sheet with its SOS link.
+- Ratings: no time, attendance or meal-state gate in the repository or the UI; Good saves, Not good takes it back, and
+  the saved rating is there on reopen (tests). The "rate after it ends" and "closed after 2 days" copy is removed.
+- Outings: the app's outing source shares the running clock and starts with no requests and no earlier outings; only
+  already-past warden history and guardian answers remain. Opening the Guardian, Warden or Gate page no longer jumps
+  the clock. Verified: You · Outings is empty, New outing → Express Avenue Mall, Wed 14 Aug 6–9 PM → Sent, waiting for
+  the guardian.

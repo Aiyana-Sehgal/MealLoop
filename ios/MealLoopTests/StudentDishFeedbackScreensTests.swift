@@ -108,7 +108,8 @@ final class StudentDishFeedbackScreensTests: XCTestCase {
         XCTAssertEqual(rating.feedbackRequest(after: .notGood).kind, .meal, "The meal card goes through Which dish.")
     }
 
-    func testTheTwoDayWindowStillHolds() async throws {
+    /// Owner (11 November): no window in the demo. Days later, the meal can still be rated.
+    func testAMealCanStillBeRatedDaysLater() async throws {
         let demo = DemoDataProvider(scenario: .afterMeal)
         demo.clock.set(DemoSeed.date(16, 14, 1))
         let session = Session(account: try XCTUnwrap(DemoSeed.accounts.first { $0.role == .student }), staff: nil,
@@ -116,8 +117,7 @@ final class StudentDishFeedbackScreensTests: XCTestCase {
         let rating = try XCTUnwrap(StudentRatingViewModel(session: session, repositories: demo.makeRepositories(),
                                                           day: day, slot: .lunch))
         await rating.load()
-        XCTAssertEqual(rating.window, .closed)
-        XCTAssertFalse(rating.canRate, "No Good, no Not good, so no feedback sheet after 2 days.")
+        XCTAssertTrue(rating.canRate)
     }
 
     /// The SOS link is the only route from the sheets to SOS; nothing here opens the Report form.

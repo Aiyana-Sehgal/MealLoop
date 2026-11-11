@@ -148,7 +148,7 @@ struct StudentHomeView: View {
             }
         case .report:
             if let session {
-                StudentReportScreen(session: session) { path.removeLast() }
+                StudentReportScreen(session: session, onSOS: { path.append(.sos) }) { path.removeLast() }
             } else {
                 StudentComingSoonView(title: StudentCopy.reportIssue) { path.removeLast() }
             }
@@ -207,13 +207,13 @@ struct StudentHomeView: View {
         }
     }
 
-    /// The How was … card shows only while the 2-day window is open and the meal is unrated.
+    /// The How was … card shows only while the meal is unrated.
     private func hideRatingCardIfDone() async {
         guard let session, let meal = model.state.value?.lastClosedMeal,
               let rating = StudentRatingViewModel(session: session, repositories: environment.repositories,
                                                   day: meal.startsAt, slot: meal.slot) else { return }
         await rating.load()
-        if rating.window?.isOpen != true || rating.isGood {
+        if rating.isGood {
             skippedRatings.insert(Self.ratingKey(meal.startsAt, meal.slot))
         }
     }
