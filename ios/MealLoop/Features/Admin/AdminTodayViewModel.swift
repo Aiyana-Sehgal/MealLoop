@@ -65,7 +65,7 @@ final class AdminTodayViewModel {
             // Neither may stop Today: a source without them still shows the Food Head's own mess.
             let others = context.allMesses ? try? await messes.messDay(for: selected) : nil
             // A meal still to come has nothing to review.
-            let reviews = ((try? await results.overview())?.toReview ?? []).filter(\.meal.isClosed)
+            let reviews = ((try? await results.toReview()) ?? []).filter(\.meal.isClosed)
             guard thisLoad == latestLoad else { return }
             let now = clock.now()
             let content = AdminTodayContent(mess: context.mess, now: now,

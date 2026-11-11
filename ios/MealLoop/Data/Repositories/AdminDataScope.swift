@@ -43,6 +43,13 @@ struct ScopedAdminResultsRepository: AdminResultsRepository {
         guard scope.allMesses else { throw RepositoryError.notImplemented(feature: "Single-mess summary; use the scoped meal records") }
         return try await base.overview()
     }
+    /// The Food Head sees their own mess's meals only; nothing else of the all-mess overview is returned.
+    func toReview() async throws -> [ReviewMeal] {
+        try scope.require()
+        return try await base.overview().toReview.filter {
+            scope.allMesses || $0.meal.mess.replacingOccurrences(of: " Mess", with: "") == scope.name
+        }
+    }
     func reason(_ kind: ReasonKind) async throws -> AdminReasonDetail {
         try scope.require()
         guard scope.allMesses else { throw RepositoryError.notImplemented(feature: "Single-mess summary; use the scoped meal records") }

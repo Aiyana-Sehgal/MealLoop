@@ -5,6 +5,8 @@ import Foundation
 
 protocol AdminResultsRepository: Sendable {
     func overview() async throws -> AdminResultsOverview
+    /// Meals waiting for a review, for Needs you. Scoped sources return only the account's own mess.
+    func toReview() async throws -> [ReviewMeal]
     func reason(_ kind: ReasonKind) async throws -> AdminReasonDetail
     func meal(_ id: MealID) async throws -> AdminMealFacts
     /// Meals of the period. A nil mess means every mess.
@@ -97,4 +99,8 @@ struct AdminDataNotBuilt: AdminResultsRepository, AdminStudentsRepository, Admin
     func spareFood() async throws -> SpareFoodPage { throw missing }
     func history() async throws -> HistoryPage { throw missing }
     func outings() async throws -> OutingsPage { throw missing }
+}
+
+extension AdminResultsRepository {
+    func toReview() async throws -> [ReviewMeal] { try await overview().toReview }
 }
