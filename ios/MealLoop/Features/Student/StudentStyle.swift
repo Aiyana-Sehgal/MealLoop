@@ -1,20 +1,25 @@
 import SwiftUI
 
-/// Figma text styles the shared `MLType` has no match for. Values from the ML text styles in file
-/// nzzTAm9YnJRSdKEeYUWUEb. Inter stands in for the system font there, so these use the system font.
+/// Figma text styles the shared `MLType` has no match for, from the ML text styles in file nzzTAm9YnJRSdKEeYUWUEb.
+/// Each is the Figma size at the default text size and grows with Dynamic Type through the matching system style.
+/// The Student root caps the growth at the first accessibility size, where the designed rows still hold.
 enum StudentType {
-    static let brand = Font.ml(size: 18, weight: .semibold)
-    static let heroTitle = Font.ml(size: 28, weight: .semibold)
-    static let section = Font.ml(size: 22, weight: .semibold)
-    static let bodySemibold = Font.ml(size: 17, weight: .semibold)
-    static let body = Font.ml(size: 17, weight: .regular)
-    static let secondary = Font.ml(size: 15, weight: .regular)
-    static let secondaryMedium = Font.ml(size: 15, weight: .medium)
-    static let dishName = Font.ml(size: 15, weight: .semibold)
-    static let tag = Font.ml(size: 13, weight: .semibold)
-    static let footnote = Font.ml(size: 13, weight: .medium)
-    static let eyebrow = Font.ml(size: 12, weight: .semibold)
-    static let mono = Font.ml(size: 15, weight: .medium, design: .monospaced)
+    static let brand = Font.mlScaled(size: 18, weight: .semibold, relativeTo: .headline)
+    static let heroTitle = Font.mlScaled(size: 28, weight: .semibold, relativeTo: .title)
+    static let section = Font.mlScaled(size: 22, weight: .semibold, relativeTo: .title2)
+    static let bodySemibold = Font.mlScaled(size: 17, weight: .semibold, relativeTo: .body)
+    static let body = Font.mlScaled(size: 17, weight: .regular, relativeTo: .body)
+    static let secondary = Font.mlScaled(size: 15, weight: .regular, relativeTo: .subheadline)
+    static let secondaryMedium = Font.mlScaled(size: 15, weight: .medium, relativeTo: .subheadline)
+    static let dishName = Font.mlScaled(size: 15, weight: .semibold, relativeTo: .subheadline)
+    static let tag = Font.mlScaled(size: 13, weight: .semibold, relativeTo: .footnote)
+    static let footnote = Font.mlScaled(size: 13, weight: .medium, relativeTo: .footnote)
+    static let eyebrow = Font.mlScaled(size: 12, weight: .semibold, relativeTo: .caption)
+    static let mono = Font.mlScaled(size: 15, weight: .medium, design: .monospaced, relativeTo: .subheadline)
+
+    /// The largest text size the Student screens draw at. Beyond it the designed rows and cards (ticket, crowd, dish
+    /// tiles) start to split words on a 375 pt phone.
+    static let largestSize = DynamicTypeSize.accessibility1
 }
 
 /// Sizes from the frames, where the shared tokens differ.
@@ -99,7 +104,7 @@ struct StudentHeroChip: View {
         }
         .foregroundStyle(style == .lime ? MLColor.onLime : MLColor.onHero)
         .padding(.horizontal, 14)
-        .frame(height: StudentMetric.chipHeight)
+        .frame(minHeight: StudentMetric.chipHeight)
         .background {
             switch style {
             case .lime:
@@ -133,7 +138,7 @@ struct StudentHeroButton: View {
                 .foregroundStyle(style == .outline ? MLColor.onHero : MLColor.ink)
                 .padding(.horizontal, MLSpacing.s20)
                 .frame(maxWidth: expands ? .infinity : nil)
-                .frame(height: MLSize.staffButton)
+                .frame(minHeight: MLSize.staffButton)
                 .background {
                     switch style {
                     case .lime: Capsule().fill(MLColor.lime)

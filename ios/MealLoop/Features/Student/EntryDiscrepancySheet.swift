@@ -38,7 +38,7 @@ struct EntryDiscrepancySheet: View {
             TextField("", text: $note)
                 .font(StudentType.body)
                 .padding(.horizontal, MLSpacing.s16)
-                .frame(height: 52)
+                .frame(minHeight: 52)
                 .background(RoundedRectangle(cornerRadius: MLRadius.compact, style: .continuous).fill(MLColor.surface))
                 .overlay(RoundedRectangle(cornerRadius: MLRadius.compact, style: .continuous).strokeBorder(MLColor.border, lineWidth: 1))
                 .accessibilityLabel(StudentCopy.addNote)
@@ -100,7 +100,7 @@ struct EntryDiscrepancySheet: View {
                     .frame(width: 22, height: 22)
             }
             .padding(.horizontal, MLSpacing.s16)
-            .frame(height: 52)
+            .frame(minHeight: 52)
             // The sheet is white here, so the rows take the quiet fill to stay visible.
             .background(RoundedRectangle(cornerRadius: MLRadius.compact, style: .continuous).fill(MLColor.fillQuiet))
             .overlay {

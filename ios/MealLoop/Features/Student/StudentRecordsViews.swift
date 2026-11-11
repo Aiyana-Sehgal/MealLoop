@@ -398,21 +398,21 @@ struct StudentFiledReportView: View {
                     Button { answer(.better, report) } label: {
                         Text(RecordsCopy.yesBetter)
                             .font(StudentType.bodySemibold).foregroundStyle(MLColor.onHero)
-                            .padding(.horizontal, MLSpacing.s24).frame(height: 56)
+                            .padding(.horizontal, MLSpacing.s24).frame(minHeight: 56)
                             .background(Capsule().fill(MLColor.ink))
                     }
                     .accessibilityIdentifier("student.report.better")
                     Button { answer(.stillBad, report) } label: {
                         Text(RecordsCopy.stillBad)
                             .font(StudentType.bodySemibold).foregroundStyle(MLColor.ink)
-                            .padding(.horizontal, MLSpacing.s24).frame(height: 48)
+                            .padding(.horizontal, MLSpacing.s24).frame(minHeight: 48)
                             .overlay(Capsule().strokeBorder(MLColor.ink, lineWidth: 1.5))
                     }
                 }
                 Button { answer(.didntTry, report) } label: {
                     Text(RecordsCopy.didntTry)
                         .font(StudentType.bodySemibold).foregroundStyle(MLColor.ink)
-                        .frame(maxWidth: .infinity).frame(height: 44)
+                        .frame(maxWidth: .infinity).frame(minHeight: 44)
                 }
                 if case .failed(let message) = model.fixSend {
                     Text(message).font(StudentType.footnote).foregroundStyle(MLColor.danger)

@@ -299,7 +299,7 @@ private struct EntryChip: View {
         }
         .foregroundStyle(style == .danger ? MLColor.danger : MLColor.ink)
         .padding(.horizontal, MLSpacing.s16)
-        .frame(height: StudentMetric.chipHeight)
+        .frame(minHeight: StudentMetric.chipHeight)
         .background {
             switch style {
             case .lime:

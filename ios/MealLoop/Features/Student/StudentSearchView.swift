@@ -118,7 +118,7 @@ struct StudentSearchView: View {
             }
         }
         .padding(.leading, MLSpacing.s16)
-        .frame(height: 44)
+        .frame(minHeight: 44)
         .background(Capsule().fill(MLColor.fillQuiet))
     }
 

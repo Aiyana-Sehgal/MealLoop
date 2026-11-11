@@ -31,7 +31,32 @@ struct StudentAnswerRow: View {
         }
     }
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
+        // At the accessibility text sizes the button moves under the text instead of squeezing it.
+        if typeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: MLSpacing.s12) {
+                rowLabel
+                action
+            }
+            .padding(MLSpacing.s16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: StudentMetric.rowRadius, style: .continuous).fill(MLColor.surface))
+        } else {
+            HStack(spacing: 14) {
+                rowLabel
+                Spacer(minLength: 0)
+                action
+            }
+            .padding(.leading, MLSpacing.s16)
+            .padding(.trailing, MLSpacing.s12)
+            .padding(.vertical, 14)
+            .background(RoundedRectangle(cornerRadius: StudentMetric.rowRadius, style: .continuous).fill(MLColor.surface))
+        }
+    }
+
+    private var rowLabel: some View {
         HStack(spacing: 14) {
             Image(systemName: "fork.knife")
                 .font(.system(size: 19))
@@ -49,13 +74,7 @@ struct StudentAnswerRow: View {
                     .foregroundStyle(MLColor.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Spacer(minLength: 0)
-            action
         }
-        .padding(.leading, MLSpacing.s16)
-        .padding(.trailing, MLSpacing.s12)
-        .padding(.vertical, 14)
-        .background(RoundedRectangle(cornerRadius: StudentMetric.rowRadius, style: .continuous).fill(MLColor.surface))
     }
 
     @ViewBuilder
@@ -66,7 +85,7 @@ struct StudentAnswerRow: View {
                     .font(StudentType.secondaryMedium)
                     .foregroundStyle(MLColor.inkSecondary)
                     .padding(.horizontal, MLSpacing.s20)
-                    .frame(height: MLSize.hit)
+                    .frame(minHeight: MLSize.hit)
                     .background(Capsule().strokeBorder(MLColor.inkSecondary, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])))
             }
             .buttonStyle(.plain)
@@ -76,7 +95,7 @@ struct StudentAnswerRow: View {
                     .font(StudentType.secondaryMedium)
                     .foregroundStyle(MLColor.ink)
                     .padding(.horizontal, MLSpacing.s20)
-                    .frame(height: MLSize.hit)
+                    .frame(minHeight: MLSize.hit)
                     .background(Capsule().strokeBorder(MLColor.ink, lineWidth: 1.5))
             }
             .buttonStyle(.plain)
@@ -86,7 +105,7 @@ struct StudentAnswerRow: View {
                     .font(StudentType.secondaryMedium)
                     .foregroundStyle(MLColor.onHero)
                     .padding(.horizontal, MLSpacing.s20)
-                    .frame(height: MLSize.hit)
+                    .frame(minHeight: MLSize.hit)
                     .background(Capsule().fill(MLColor.ink))
             }
             .buttonStyle(.plain)
@@ -136,15 +155,14 @@ struct StudentTicketRow: View {
         }
     }
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
         Button(action: onOpen) {
             HStack(spacing: 14) {
-                Image("student-ticket")
-                    .resizable()
-                    .frame(width: 22, height: 22)
-                    .frame(width: MLSize.hit, height: MLSize.hit)
-                    .background(Circle().fill(MLColor.heroBackground))
-                    .accessibilityHidden(true)
+                if !typeSize.isAccessibilitySize {
+                    ticketIcon
+                }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(StudentCopy.specialPass)
                         .font(StudentType.bodySemibold)
@@ -152,19 +170,17 @@ struct StudentTicketRow: View {
                     Text(when)
                         .font(StudentType.footnote)
                         .foregroundStyle(MLColor.inkSecondary)
+                    // At the accessibility sizes the stub's status moves under the text instead of splitting words.
+                    if typeSize.isAccessibilitySize { statusLabel.padding(.top, MLSpacing.s4) }
                 }
+                .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
-                StudentPerforation()
-                    .stroke(MLColor.border, style: StrokeStyle(lineWidth: 1.5, dash: [3, 3]))
-                    .frame(width: 1.5, height: 40)
-                    .accessibilityHidden(true)
-                HStack(spacing: MLSpacing.s4) {
-                    if pass.status == .open {
-                        Circle().fill(MLColor.ink).frame(width: 12, height: 12)
-                    }
-                    Text(status)
-                        .font(StudentType.bodySemibold)
-                        .foregroundStyle(pass.status == .open ? MLColor.ink : MLColor.inkSecondary)
+                if !typeSize.isAccessibilitySize {
+                    StudentPerforation()
+                        .stroke(MLColor.border, style: StrokeStyle(lineWidth: 1.5, dash: [3, 3]))
+                        .frame(width: 1.5, height: 40)
+                        .accessibilityHidden(true)
+                    statusLabel
                 }
             }
             .padding(.horizontal, MLSpacing.s20)
@@ -175,6 +191,26 @@ struct StudentTicketRow: View {
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(StudentCopy.specialPass), \(when), \(status)")
+    }
+
+    private var ticketIcon: some View {
+        Image("student-ticket")
+            .resizable()
+            .frame(width: 22, height: 22)
+            .frame(width: MLSize.hit, height: MLSize.hit)
+            .background(Circle().fill(MLColor.heroBackground))
+            .accessibilityHidden(true)
+    }
+
+    private var statusLabel: some View {
+        HStack(spacing: MLSpacing.s4) {
+            if pass.status == .open {
+                Circle().fill(MLColor.ink).frame(width: 12, height: 12)
+            }
+            Text(status)
+                .font(StudentType.bodySemibold)
+                .foregroundStyle(pass.status == .open ? MLColor.ink : MLColor.inkSecondary)
+        }
     }
 }
 

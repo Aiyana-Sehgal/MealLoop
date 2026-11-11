@@ -347,6 +347,9 @@ struct StudentHomeHeader: View {
             StudentGlassButton(symbol: "exclamationmark.bubble", label: StudentCopy.reportIssue, action: onReport)
             StudentGlassButton(symbol: "bell", label: StudentCopy.notifications, action: onNotifications)
         }
+        // A bar, like the navigation bar: it keeps its size so the brand and the credits are never cut. The credits
+        // stay readable at any size through their accessibility label and the large content viewer.
+        .dynamicTypeSize(...DynamicTypeSize.large)
     }
 }
 
@@ -464,6 +467,7 @@ extension StudentHomeBody {
 
 /// The top card, in the five cases of HeroCard 2135:2336.
 struct StudentHomeHero: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
     let content: StudentHomeContent
     let mess: String
     let timeZone: TimeZone
@@ -478,13 +482,17 @@ struct StudentHomeHero: View {
 
     var body: some View {
         StudentHeroCard {
-            HStack {
-                Text(eyebrow.uppercased())
-                    .font(StudentType.eyebrow)
-                    .tracking(0.72)
-                    .foregroundStyle(MLColor.onHeroSecondary)
-                Spacer(minLength: MLSpacing.s8)
-                chip
+            // Side by side as drawn; at large text sizes the chip drops under the eyebrow instead of being cut.
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    eyebrowText
+                    Spacer(minLength: MLSpacing.s8)
+                    chip
+                }
+                VStack(alignment: .leading, spacing: MLSpacing.s8) {
+                    eyebrowText
+                    chip
+                }
             }
             .frame(minHeight: StudentMetric.chipHeight)
             Text(title)
@@ -497,6 +505,14 @@ struct StudentHomeHero: View {
                 .fixedSize(horizontal: false, vertical: true)
             actions.padding(.top, MLSpacing.s16)
         }
+    }
+
+    private var eyebrowText: some View {
+        Text(eyebrow.uppercased())
+            .font(StudentType.eyebrow)
+            .tracking(0.72)
+            .foregroundStyle(MLColor.onHeroSecondary)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private var eyebrow: String {
@@ -560,9 +576,12 @@ struct StudentHomeHero: View {
     @ViewBuilder
     private var actions: some View {
         if content.heroCase == .question && card.isAnswerOpen && !isOffline {
-            HStack(spacing: MLSpacing.s8) {
+            // One row as drawn; at the accessibility text sizes the three stack so no label is cut.
+            let layout = typeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(spacing: MLSpacing.s8)) : AnyLayout(HStackLayout(spacing: MLSpacing.s8))
+            layout {
                 StudentHeroButton(title: answerState == .saving(.attending) ? StudentCopy.saving : StudentCopy.imIn, style: .lime) { onAnswer(.attending) }
-                StudentHeroButton(title: StudentCopy.skip, style: .outline, expands: false) { onAnswer(.skipping) }
+                StudentHeroButton(title: StudentCopy.skip, style: .outline, expands: typeSize.isAccessibilitySize) { onAnswer(.skipping) }
                 StudentHeroButton(title: StudentCopy.entryQRShort, style: .cream, action: onShowEntry)
             }
             .disabled(isSaving)

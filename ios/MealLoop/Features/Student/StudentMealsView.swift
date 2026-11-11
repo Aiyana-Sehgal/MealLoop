@@ -590,7 +590,7 @@ struct MealsErrorCard: View {
                     .font(StudentType.bodySemibold)
                     .foregroundStyle(MLColor.ink)
                     .padding(.horizontal, MLSpacing.s24)
-                    .frame(height: 48)
+                    .frame(minHeight: 48)
                     .overlay(Capsule().strokeBorder(MLColor.ink, lineWidth: 1.5))
                     .contentShape(Capsule())
             }

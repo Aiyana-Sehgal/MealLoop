@@ -46,3 +46,15 @@ extension Font {
         return .custom(name, fixedSize: size)
     }
 }
+
+extension Font {
+    /// A type token that grows with Dynamic Type: the app's typeface at `size` for the default text size, scaled with
+    /// `textStyle` as the system styles are. Falls back to the scaled system font if a weight is missing.
+    static func mlScaled(size: CGFloat, weight: Font.Weight = .regular, design: Font.Design = .default,
+                         relativeTo textStyle: Font.TextStyle) -> Font {
+        guard let name = MLFonts.name(weight: weight, monospaced: design == .monospaced), MLFonts.isAvailable(name) else {
+            return .system(textStyle, design: design, weight: weight)
+        }
+        return .custom(name, size: size, relativeTo: textStyle)
+    }
+}

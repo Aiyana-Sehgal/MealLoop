@@ -63,5 +63,6 @@ struct StudentRootView: View {
         }
         .environment(\.studentSelectTab, { tab = $0 })
         .studentReminders(reminders)
+        .dynamicTypeSize(...StudentType.largestSize)
     }
 }

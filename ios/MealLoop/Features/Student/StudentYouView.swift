@@ -450,7 +450,7 @@ struct CreditTicketCard: View {
                         .font(StudentType.mono)
                         .foregroundStyle(MLColor.inkSecondary)
                         .padding(.horizontal, MLSpacing.s16)
-                        .frame(height: 44)
+                        .frame(minHeight: 44)
                         .overlay(Capsule().strokeBorder(MLColor.inkSecondary, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])))
                 } else {
                     Button(action: onGet) {

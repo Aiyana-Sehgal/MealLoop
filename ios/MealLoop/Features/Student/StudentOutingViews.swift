@@ -346,7 +346,7 @@ struct StudentNewOutingView: View {
                     TextField(OutingStudentCopy.destination, text: $model.place)
                         .font(StudentType.body)
                         .padding(.horizontal, MLSpacing.s20)
-                        .frame(height: 52)
+                        .frame(minHeight: 52)
                         .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(MLColor.surface))
                         .accessibilityIdentifier("student.outings.destination")
                     reasonChips
@@ -376,7 +376,7 @@ struct StudentNewOutingView: View {
                         Text(OutingFormat.dayNumber(day)).font(StudentType.bodySemibold)
                     }
                     .foregroundStyle(selected ? MLColor.onHero : (past ? MLColor.inkSecondary : MLColor.ink))
-                    .frame(maxWidth: .infinity).frame(height: 64)
+                    .frame(maxWidth: .infinity).frame(minHeight: 64)
                     .background(Capsule().fill(selected ? MLColor.ink : (past ? MLColor.track : MLColor.surface)))
                 }
                 .buttonStyle(.plain)
@@ -394,7 +394,7 @@ struct StudentNewOutingView: View {
                 Button { model.reason = selected ? nil : reason } label: {
                     Text(reason).font(StudentType.secondaryMedium).foregroundStyle(MLColor.ink)
                         .lineLimit(1).minimumScaleFactor(0.8)
-                        .padding(.horizontal, 12).frame(height: 44).frame(maxWidth: .infinity)
+                        .padding(.horizontal, 12).frame(minHeight: 44).frame(maxWidth: .infinity)
                         .background(Capsule().fill(selected ? MLColor.lime : MLColor.surface))
                         .overlay(Capsule().strokeBorder(MLColor.ink, lineWidth: selected ? 1 : 1.5))
                 }
@@ -424,7 +424,7 @@ struct StudentNewOutingView: View {
 
     private func dashedButton(_ text: String) -> some View {
         Text(text).font(StudentType.bodySemibold).foregroundStyle(MLColor.inkSecondary)
-            .frame(maxWidth: .infinity).frame(height: 56)
+            .frame(maxWidth: .infinity).frame(minHeight: 56)
             .overlay(Capsule().strokeBorder(MLColor.inkSecondary, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])))
             .accessibilityAddTraits(.isStaticText)
     }

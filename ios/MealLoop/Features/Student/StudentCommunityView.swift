@@ -306,7 +306,7 @@ struct MeTooButton: View {
                         .font(StudentType.bodySemibold)
                         .foregroundStyle(onDark ? MLColor.onHero : MLColor.ink)
                         .padding(.horizontal, MLSpacing.s24)
-                        .frame(height: 48)
+                        .frame(minHeight: 48)
                         .overlay(Capsule().strokeBorder(onDark ? MLColor.onHero : MLColor.ink, lineWidth: 1.5))
                 }
                 .buttonStyle(.plain)

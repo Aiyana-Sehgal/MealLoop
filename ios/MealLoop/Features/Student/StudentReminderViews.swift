@@ -1,5 +1,6 @@
 import Observation
 import SwiftUI
+import UIKit
 
 // Swipe-to-remind on Student Home (Figma file nzzTAm9YnJRSdKEeYUWUEb, page 07): Home · Not answered · Swipe revealed
 // (2222:158038), Reminder set (2222:158135), Reminder fired (2222:158236), and the same three for the lunch row: Home ·
@@ -99,7 +100,8 @@ struct StudentRemindSwipe<Content: View>: View {
                 GeometryReader { proxy in Color.clear.onAppear { width = proxy.size.width }
                     .onChange(of: proxy.size.width) { _, new in width = new } }
             }
-            .simultaneousGesture(drag, including: enabled ? .all : .subviews)
+            .modifier(RemindSwipeGesture(enabled: enabled, edge: Self.edge, drag: drag,
+                                         onChanged: { dx in track(dx) }, onEnded: { end() }))
             .sensoryFeedback(.impact(weight: .light), trigger: crossed) { _, new in new }
             .mlAnimation(.crossFade, value: crossed)
             .accessibilityActions {
@@ -137,19 +139,85 @@ struct StudentRemindSwipe<Content: View>: View {
                     tracking = value.startLocation.x > Self.edge && dx > 0 && abs(dx) > abs(dy) * 1.5
                 }
                 guard tracking == true else { return }
-                offset = max(0, value.translation.width)
-                crossed = offset >= threshold
+                track(value.translation.width)
             }
             .onEnded { _ in
                 defer { tracking = nil }
                 guard tracking == true else { return }
-                let set = crossed
-                MLMotion.animate(.snappy, reduceMotion: reduceMotion) {
-                    offset = 0
-                    crossed = false
-                }
-                if set { onRemind() }
+                end()
             }
+    }
+
+    private func track(_ dx: CGFloat) {
+        offset = max(0, dx)
+        crossed = offset >= threshold
+    }
+
+    private func end() {
+        let set = crossed
+        MLMotion.animate(.snappy, reduceMotion: reduceMotion) {
+            offset = 0
+            crossed = false
+        }
+        if set { onRemind() }
+    }
+}
+
+/// The swipe's gesture. On iOS 18 and later it is a UIKit pan that only begins for a rightward, mostly horizontal drag
+/// away from the left edge, so a vertical drag that starts on the card scrolls the page (a SwiftUI DragGesture there
+/// held the scroll view). iOS 17 keeps the SwiftUI drag.
+private struct RemindSwipeGesture<G: Gesture>: ViewModifier {
+    let enabled: Bool
+    let edge: CGFloat
+    let drag: G
+    let onChanged: (CGFloat) -> Void
+    let onEnded: () -> Void
+
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            if enabled {
+                content.gesture(HorizontalSwipe(edge: edge, onChanged: onChanged, onEnded: onEnded))
+            } else {
+                content
+            }
+        } else {
+            content.simultaneousGesture(drag, including: enabled ? .all : .subviews)
+        }
+    }
+}
+
+@available(iOS 18.0, *)
+private struct HorizontalSwipe: UIGestureRecognizerRepresentable {
+    let edge: CGFloat
+    let onChanged: (CGFloat) -> Void
+    let onEnded: () -> Void
+
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator(edge: edge) }
+
+    func makeUIGestureRecognizer(context: Context) -> UIPanGestureRecognizer {
+        let pan = UIPanGestureRecognizer()
+        pan.delegate = context.coordinator
+        return pan
+    }
+
+    func handleUIGestureRecognizerAction(_ recognizer: UIPanGestureRecognizer, context: Context) {
+        switch recognizer.state {
+        case .changed: onChanged(recognizer.translation(in: recognizer.view).x)
+        case .ended, .cancelled, .failed: onEnded()
+        default: break
+        }
+    }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        let edge: CGFloat
+        init(edge: CGFloat) { self.edge = edge }
+
+        func gestureRecognizerShouldBegin(_ recognizer: UIGestureRecognizer) -> Bool {
+            guard let pan = recognizer as? UIPanGestureRecognizer else { return false }
+            let velocity = pan.velocity(in: pan.view)
+            let start = pan.location(in: pan.view?.window)
+            return start.x > edge && velocity.x > 0 && abs(velocity.x) > abs(velocity.y) * 1.5
+        }
     }
 }
 

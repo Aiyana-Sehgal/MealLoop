@@ -259,7 +259,7 @@ struct PassBottomButton: View {
                     .font(StudentType.bodySemibold)
                     .foregroundStyle(outlined ? MLColor.ink : MLColor.onHero)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 56)
+                    .frame(minHeight: 56)
                     .background {
                         if outlined {
                             Capsule().fill(MLColor.canvas).overlay(Capsule().strokeBorder(MLColor.ink, lineWidth: 1.5))
@@ -402,7 +402,7 @@ struct PassLiveTicket: View {
                 .font(StudentType.secondaryMedium)
                 .foregroundStyle(isUsed ? MLColor.inkSecondary : MLColor.onLime)
                 .padding(.horizontal, MLSpacing.s16)
-                .frame(height: 40)
+                .frame(minHeight: 40)
                 .background(Capsule().fill(isUsed ? MLColor.fillQuiet : MLColor.lime))
                 .overlay { if !isUsed { Capsule().strokeBorder(MLColor.limeOutline, lineWidth: 1.5) } }
         }
@@ -633,7 +633,7 @@ struct PassConfirmSheet: View {
                 }
                 .foregroundStyle(MLColor.ink)
                 .frame(maxWidth: .infinity)
-                .frame(height: 56)
+                .frame(minHeight: 56)
                 .background(Capsule().fill(MLColor.lime))
                 .overlay(Capsule().strokeBorder(MLColor.limeOutline, lineWidth: 1.5))
                 .accessibilityElement(children: .combine)
@@ -674,7 +674,7 @@ struct PassHoldButton: View {
         .font(StudentType.bodySemibold)
         .foregroundStyle(MLColor.ink)
         .frame(maxWidth: .infinity)
-        .frame(height: 56)
+        .frame(minHeight: 56)
         .background {
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
