@@ -47,12 +47,14 @@ struct AdminHeadcountView: View {
                 }
             }
         }
-        .mlConfirmDialog(isPresented: $isConfirmingSend, content: sendDialog, isWorking: model.isSending) {
+        // A compact sheet naming the mess, the meal and the count. It stays open on a failure, so Send retries.
+        .mlConfirmSheet(isPresented: $isConfirmingSend, content: sendDialog, isWorking: model.isSending,
+                        errorText: model.actionError) {
             let count = model.state.value?.meal?.nextAction?.count
             Task {
-                let didSend = await model.send()
+                guard await model.send() else { return }
                 isConfirmingSend = false
-                if didSend, let count { toast = AdminCopy.sentToast(count) }
+                if let count { toast = AdminCopy.sentToast(count) }
             }
         }
     }
@@ -112,17 +114,17 @@ struct AdminHeadcountView: View {
                     .font(MLType.body)
                     .foregroundStyle(MLColor.onHeroSecondary)
             }
+            Text(AdminCopy.answersScope)
+                .font(MLType.meta)
+                .foregroundStyle(MLColor.onHeroSecondary)
+                .padding(.top, MLSpacing.s16)
             HStack(alignment: .top, spacing: MLSpacing.s12) {
                 answerStat(meal.answers.attending, AdminCopy.answersYes)
                 answerStat(meal.answers.skipping, AdminCopy.answersNo)
                 answerStat(meal.answers.notSure, AdminCopy.answersNotSure)
                 answerStat(meal.answers.noResponse, AdminCopy.answersNone)
             }
-            .padding(.top, MLSpacing.s16)
-            Text(AdminCopy.answersScope)
-                .font(MLType.secondary)
-                .foregroundStyle(MLColor.onHeroSecondary)
-                .padding(.top, MLSpacing.s12)
+            .padding(.top, MLSpacing.s8)
         }
     }
 
@@ -134,7 +136,7 @@ struct AdminHeadcountView: View {
         if case .approved(let approved) = meal.headcount.approved {
             return (AdminCopy.approvedHeadcount, approved.count, approved.approvedAt)
         }
-        return (AdminCopy.expectedDiners, meal.forecastToApprove, nil)
+        return (meal.forecastToApproveName, meal.forecastToApprove, nil)
     }
 
     private func answerStat(_ count: Int, _ label: String) -> some View {
@@ -154,7 +156,7 @@ struct AdminHeadcountView: View {
     private func primaryAction(_ meal: AdminMealContent) -> some View {
         switch meal.nextAction {
         case .approve(let count)?:
-            InkActionButton(title: AdminCopy.approve(count), isLoading: model.isApproving) {
+            InkActionButton(title: AdminCopy.approve(count, field: meal.forecastToApproveName), isLoading: model.isApproving) {
                 Task {
                     if await model.approve() { toast = AdminCopy.approvedToast(count) }
                 }

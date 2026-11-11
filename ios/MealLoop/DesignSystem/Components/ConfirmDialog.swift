@@ -117,6 +117,8 @@ extension View {
 struct ConfirmSheet: View {
     let content: ConfirmDialogContent
     var isWorking: Bool = false
+    /// A failed write: shown above the buttons; the sheet stays open so the same action can be tried again.
+    var errorText: String?
     let onCancel: () -> Void
     let onConfirm: () -> Void
 
@@ -139,6 +141,9 @@ struct ConfirmSheet: View {
                 }
             }
             .fixedSize(horizontal: false, vertical: true)
+            if let errorText {
+                FieldErrorText(text: errorText)
+            }
             HStack(spacing: MLSpacing.s12) {
                 OutlineActionButton(title: content.cancelTitle, action: onCancel)
                     .disabled(isWorking)
@@ -155,12 +160,14 @@ extension View {
         isPresented: Binding<Bool>,
         content: ConfirmDialogContent,
         isWorking: Bool = false,
+        errorText: String? = nil,
         onConfirm: @escaping () -> Void
     ) -> some View {
         mlSheet(isPresented: isPresented, isWorking: isWorking) {
             ConfirmSheet(
                 content: content,
                 isWorking: isWorking,
+                errorText: errorText,
                 onCancel: { isPresented.wrappedValue = false },
                 onConfirm: onConfirm
             )

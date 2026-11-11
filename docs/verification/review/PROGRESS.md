@@ -49,3 +49,17 @@ Resumable checkpoints for the review-prototype pass. Newest last.
   already-past warden history and guardian answers remain. Opening the Guardian, Warden or Gate page no longer jumps
   the clock. Verified: You · Outings is empty, New outing → Express Avenue Mall, Wed 14 Aug 6–9 PM → Sent, waiting for
   the guardian.
+
+### 3. Admin and Super Admin
+
+- Scope is enforced in the data layer already: `scopedAdmin` wraps every Admin repository with `AdminDataScope`
+  (Food Head: own mess only, no People and access; Super Admin: all messes, and its sends reach the base as the Food
+  Head role, so it may send any mess). Unchanged and covered by the Admin scope tests.
+- Today: Super Admin keeps the four-mess grid and Needs you (2257:158261). Food Head: their mess tile and Needs you;
+  the Answers card and the Headcount and Live meal rows are gone from Today (Answers stays on Students).
+- Counts are named by field: the story meal's hero says Live forecast (or Cutoff forecast once answers close), the
+  answers row says it is the sample roster, and Approve reads "Approve live forecast · 860".
+- Send: both entry points (the Main tile's headcount page and another mess's page) open the same compact sheet with
+  the count, meal and mess; a failure stays in the sheet for retry; both view models drop a second tap. Verified:
+  North → Cancel → Send → tile shows Waiting; Main → Approve → Send 860 → Sent to vendor 7:01 AM, vendor Pending.
+- Verification aid (Debug and Review only): launch argument `-demoRole <role>` opens that role's Home, as Switch role.

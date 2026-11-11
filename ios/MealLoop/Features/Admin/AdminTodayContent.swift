@@ -65,6 +65,11 @@ struct AdminMealContent: Equatable {
         headcount.cutoffForecast.diners ?? headcount.liveForecast.diners
     }
 
+    /// Which of the six values `forecastToApprove` is: the cutoff forecast once answers have closed, else the live one.
+    var forecastToApproveName: String {
+        headcount.cutoffForecast.diners != nil ? AdminCopy.cutoffForecast : AdminCopy.liveForecast
+    }
+
     /// Owner ruling on P-ADMIN-1: once the meal has closed, nothing is offered and the final state is shown.
     var isClosed: Bool { status.state == .closed }
 

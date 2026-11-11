@@ -78,6 +78,7 @@ struct AdminMessHeadcountView: View {
 
     @State private var isAdjusting = false
     @State private var isTellingVendor = false
+    @State private var isConfirmingSend = false
 
     init(model: AdminMessHeadcountViewModel, slot: MealSlot, nav: AdminNav) {
         _model = State(initialValue: model)
@@ -110,12 +111,29 @@ struct AdminMessHeadcountView: View {
                 }
             }
         }
+        // A compact sheet naming the mess, the meal and the count. It stays open on a failure, so Send retries.
+        .mlConfirmSheet(isPresented: $isConfirmingSend, content: sendDialog, isWorking: model.isSaving,
+                        errorText: model.errorText) {
+            let count = mess?.expected
+            Task {
+                guard await model.send() else { return }
+                isConfirmingSend = false
+                if let count { nav.toast(AdminCopy.sentToast(count)) }
+            }
+        }
         .mlSheet(isPresented: $isTellingVendor) {
             AdminTellVendorSheet(subtitle: AdminScreenCopy.preparedMessage,
                                  message: AdminCopy.vendorChaseMessage(mess: AdminCopy.messName(mess?.name ?? ""), meal: mealName,
                                                                        count: mess?.expected, name: nav.context.account.firstName),
                                  note: nil) { isTellingVendor = false }
         }
+    }
+
+    private var sendDialog: ConfirmDialogContent {
+        let mess = model.state.value
+        return ConfirmDialogContent(title: AdminCopy.sendTitle(mess?.expected ?? 0),
+                             subject: AdminCopy.sendSubject(meal: mealName, mess: mess?.name ?? ""),
+                             detail: AdminCopy.sendDetail, cancelTitle: AdminCopy.cancel, actionTitle: AdminCopy.sendAction)
     }
 
     private func subtitle(_ mess: AdminMessHeadcount) -> String {
@@ -133,9 +151,7 @@ struct AdminMessHeadcountView: View {
             hero(mess)
             if mess.canSend, let count = mess.expected {
                 InkActionButton(title: AdminCopy.send(count), isLoading: model.isSaving) {
-                    Task {
-                        if await model.send() { nav.toast(AdminCopy.sentToast(count)) }
-                    }
+                    isConfirmingSend = true
                 }
             } else {
                 replyRow(mess)

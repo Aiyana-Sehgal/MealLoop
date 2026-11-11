@@ -82,6 +82,8 @@ enum AdminCopy {
     static func answersCloseAt(_ time: String) -> String { "Today · answers close \(time)" }
     static func answersClosedAt(_ time: String) -> String { "Today · answers closed \(time)" }
     static func approve(_ count: Int) -> String { "Approve \(count)" }
+    /// Names the forecast being approved, so the count is never read as live entries or the sent number.
+    static func approve(_ count: Int, field: String) -> String { "Approve \(field.lowercased()) · \(count)" }
     static func send(_ count: Int) -> String { "Send \(count) to vendor" }
     static let adjustHeadcount = "Adjust headcount"
     static let history = "History"
@@ -90,7 +92,7 @@ enum AdminCopy {
     static let answersNotSure = "not sure"
     static let answersNone = "no answer"
     /// The answers cover the sample roster, not the forecast (docs/OPEN_DECISIONS.md, P-STORY-2).
-    static let answersScope = "Answers so far, from the sample roster. The forecast is a separate number."
+    static let answersScope = "Student answers so far · sample roster, not the forecast"
     static func historyApproved(_ count: Int) -> String { "Approved \(count)" }
     static func historySent(_ count: Int) -> String { "Sent \(count) to vendor" }
     static let historyAcknowledged = "Vendor acknowledged"

@@ -105,17 +105,11 @@ struct AdminTodayBody: View {
                 safetyCard(safetyCase)
             }
             if allMesses {
+                // Super Admin (2257:158261): the four-mess grid.
                 AdminMessGrid(content: content, open: open)
             } else {
-                // The Food Head's own mess: the tile, this meal's answers and the two pages behind it.
+                // The Food Head's own mess only. Its headcount page and Live meal open from the tile.
                 AdminMessTile(content: content, openHeadcount: { open(.headcount) }, openLive: { open(.live) })
-                if let meal = content.meal {
-                    AdminAnswersCard(mealName: mealName, answers: meal.answers)
-                }
-                AdminGroupCard {
-                    AdminHubRow(title: AdminSingleMessCopy.headcountPage) { open(.headcount) }
-                    AdminHubRow(title: AdminSingleMessCopy.liveMeal, isLast: true) { open(.live) }
-                }
             }
             // Today draws the tiles and Needs you only. The six headcount values and the approval and vendor status
             // live on the mess's headcount page and Live meal, where Figma draws them.

@@ -15,6 +15,12 @@ struct DemoSheet: View {
     static let roles: [Role] = [.student, .admin, .superAdmin, .supervisor, .kitchenStaff, .doorScanner, .passDesk,
                                 .vendor, .guardian, .warden, .gate]
 
+    /// The role named by the `-demoRole` launch argument, for verification runs.
+    static func launchRole(_ arguments: [String] = ProcessInfo.processInfo.arguments) -> Role? {
+        guard let index = arguments.firstIndex(of: "-demoRole"), arguments.indices.contains(index + 1) else { return nil }
+        return Role(rawValue: arguments[index + 1])
+    }
+
     var body: some View {
         NavigationStack {
             List {

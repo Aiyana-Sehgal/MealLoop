@@ -5,6 +5,7 @@ import SwiftUI
 struct AppRootView: View {
     @Environment(SessionStore.self) private var sessionStore
     @Environment(DemoMenu.self) private var demoMenu
+    @Environment(AppEnvironment.self) private var environment
 
     var body: some View {
         @Bindable var demoMenu = demoMenu
@@ -20,6 +21,12 @@ struct AppRootView: View {
         #if DEMO_DATA || REVIEW_DATA
         .sheet(isPresented: $demoMenu.isPresented) {
             DemoSheet()
+        }
+        // Verification runs only: `-demoRole kitchenStaff` opens that role's Home on launch, as Switch role would.
+        .task {
+            guard sessionStore.current == nil, let role = DemoSheet.launchRole(),
+                  let session = await environment.demoControls?.demoSession(for: role) else { return }
+            sessionStore.signIn(session)
         }
         #endif
     }
