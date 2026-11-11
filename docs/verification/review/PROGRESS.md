@@ -88,3 +88,15 @@ Resumable checkpoints for the review-prototype pass. Newest last.
   draft), Home shows "Draft · 1 of 9 done", Continue resumes with the value kept; None left on the rest; units per dish
   (kg, pieces with no decimal key, L); empty plate waste refused "Enter a number up to 99.9."; Check and save → Report
   saved, editable 6 h. Small mismatch noted: the form counts "Done n of 8" (dishes), Home "n of 9" (dishes + plate).
+
+### 5. Fonts and appearance
+
+- Inter (Light, Regular, Medium, SemiBold, Bold; rsms/inter v4.1) and JetBrains Mono (Regular, Medium, SemiBold,
+  Bold; JetBrains/JetBrainsMono v2.304) are bundled from the official releases with their OFL notices in
+  `Resources/Fonts`, registered at launch with CoreText (`MLFonts`). The 35 named text tokens (MLType, MLDynamicType,
+  StudentType, AdminType, Vendor) use them at a fixed size, so Dynamic Type still scales through `mlFont`. Inline
+  `.system(size:)` calls, mostly SF Symbol sizes, stay on the system font. `MLFontsTests` checks every weight resolves
+  and the licences ship. Verified on Student Home (capture student_home_221-62529_inter.png).
+- Dark appearance: placeholders and the native glass back button turned light-on-light on the designed light surfaces
+  (dark_new_outing_before.png). The app has no dark theme, so it runs in Light (`preferredColorScheme(.light)`);
+  readable after (dark_new_outing_after.png). Gate and the Guardian video page keep their own dark sections.

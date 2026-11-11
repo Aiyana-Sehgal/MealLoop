@@ -9,7 +9,7 @@ enum VendorLayout {
     static let meAvatar: CGFloat = 92
     static let chipHeight: CGFloat = 36
     /// The headcount number in 2259:160041 is about 80 pt; `MLType.heroNumber` is 56.
-    static let headcountNumber = Font.system(size: 80, weight: .bold, design: .monospaced)
+    static let headcountNumber = Font.ml(size: 80, weight: .bold, design: .monospaced)
 }
 
 /// The status chip under the title: lime when the vendor has something, outlined while waiting.

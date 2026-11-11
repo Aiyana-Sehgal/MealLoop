@@ -4,15 +4,15 @@ import SwiftUI
 
 /// Sizes the type tokens don't hold. From the Figma text styles (ML/Hero Metric and friends).
 enum AdminType {
-    static let chip = Font.system(size: 15, weight: .medium)
-    static let smallChip = Font.system(size: 13, weight: .medium)
-    static let heroMetric = Font.system(size: 80, weight: .bold, design: .monospaced)
-    static let heroLarge = Font.system(size: 72, weight: .bold, design: .monospaced)
-    static let tileMetric = Font.system(size: 46, weight: .bold, design: .monospaced)
-    static let stat = Font.system(size: 52, weight: .bold, design: .monospaced)
-    static let count = Font.system(size: 28, weight: .bold, design: .monospaced)
-    static let mono17 = Font.system(size: 17, weight: .medium, design: .monospaced)
-    static let mono20 = Font.system(size: 20, weight: .medium, design: .monospaced)
+    static let chip = Font.ml(size: 15, weight: .medium)
+    static let smallChip = Font.ml(size: 13, weight: .medium)
+    static let heroMetric = Font.ml(size: 80, weight: .bold, design: .monospaced)
+    static let heroLarge = Font.ml(size: 72, weight: .bold, design: .monospaced)
+    static let tileMetric = Font.ml(size: 46, weight: .bold, design: .monospaced)
+    static let stat = Font.ml(size: 52, weight: .bold, design: .monospaced)
+    static let count = Font.ml(size: 28, weight: .bold, design: .monospaced)
+    static let mono17 = Font.ml(size: 17, weight: .medium, design: .monospaced)
+    static let mono20 = Font.ml(size: 20, weight: .medium, design: .monospaced)
 }
 
 /// AdminChip (2240:213). Display only: a chip names a status, it never changes one.

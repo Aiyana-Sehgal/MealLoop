@@ -60,7 +60,7 @@ enum MLDynamicType: CaseIterable {
 
     /// The font at a given size, in this style's weight. At `baseSize` it equals `token`.
     func font(size: CGFloat) -> Font {
-        .system(size: size, weight: weight)
+        .ml(size: size, weight: weight)
     }
 }
 

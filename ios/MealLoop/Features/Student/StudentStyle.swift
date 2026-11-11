@@ -3,18 +3,18 @@ import SwiftUI
 /// Figma text styles the shared `MLType` has no match for. Values from the ML text styles in file
 /// nzzTAm9YnJRSdKEeYUWUEb. Inter stands in for the system font there, so these use the system font.
 enum StudentType {
-    static let brand = Font.system(size: 18, weight: .semibold)
-    static let heroTitle = Font.system(size: 28, weight: .semibold)
-    static let section = Font.system(size: 22, weight: .semibold)
-    static let bodySemibold = Font.system(size: 17, weight: .semibold)
-    static let body = Font.system(size: 17, weight: .regular)
-    static let secondary = Font.system(size: 15, weight: .regular)
-    static let secondaryMedium = Font.system(size: 15, weight: .medium)
-    static let dishName = Font.system(size: 15, weight: .semibold)
-    static let tag = Font.system(size: 13, weight: .semibold)
-    static let footnote = Font.system(size: 13, weight: .medium)
-    static let eyebrow = Font.system(size: 12, weight: .semibold)
-    static let mono = Font.system(size: 15, weight: .medium, design: .monospaced)
+    static let brand = Font.ml(size: 18, weight: .semibold)
+    static let heroTitle = Font.ml(size: 28, weight: .semibold)
+    static let section = Font.ml(size: 22, weight: .semibold)
+    static let bodySemibold = Font.ml(size: 17, weight: .semibold)
+    static let body = Font.ml(size: 17, weight: .regular)
+    static let secondary = Font.ml(size: 15, weight: .regular)
+    static let secondaryMedium = Font.ml(size: 15, weight: .medium)
+    static let dishName = Font.ml(size: 15, weight: .semibold)
+    static let tag = Font.ml(size: 13, weight: .semibold)
+    static let footnote = Font.ml(size: 13, weight: .medium)
+    static let eyebrow = Font.ml(size: 12, weight: .semibold)
+    static let mono = Font.ml(size: 15, weight: .medium, design: .monospaced)
 }
 
 /// Sizes from the frames, where the shared tokens differ.
