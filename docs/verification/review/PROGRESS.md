@@ -83,3 +83,8 @@ Resumable checkpoints for the review-prototype pass. Newest last.
   Door Scanner: SOS and Earlier events; Pass Desk: active SOS above Earlier events; Supervisor: shortages and waste not
   recorded. `StaffMealSummary`, `StaffEarlierMeals`, Door's `summaryFacts`, Kitchen's `wasteText` and two copy strings
   had no other callers and are deleted. Verified: Supervisor Alerts lists only "Waste not recorded · Dinner · Tue 13".
+- Kitchen walk on the shared data source: Supervisor Start meal (7:00, no clock jump) → Close meal → Kitchen Home
+  "Lunch has ended · Final entries 0" → Record waste: Veg Pulao 7.9 kg, Save draft (Back asks Keep editing / Save
+  draft), Home shows "Draft · 1 of 9 done", Continue resumes with the value kept; None left on the rest; units per dish
+  (kg, pieces with no decimal key, L); empty plate waste refused "Enter a number up to 99.9."; Check and save → Report
+  saved, editable 6 h. Small mismatch noted: the form counts "Done n of 8" (dishes), Home "n of 9" (dishes + plate).
