@@ -5,7 +5,6 @@ import Foundation
 /// docs/verification/supervisor/REPORT.md.
 enum SupervisorCopy {
     /// "This meal" block on Alerts (Prompt 5, R2).
-    static let activeShortagesCaption = "active shortages this meal"
     // MARK: Tabs and titles
     static let alertsTitle = "Alerts"
     static let meTitle = "Me"

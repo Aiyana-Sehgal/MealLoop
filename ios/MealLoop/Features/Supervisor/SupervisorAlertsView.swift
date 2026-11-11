@@ -37,13 +37,7 @@ struct SupervisorAlertsView: View {
                         note: stage.isChecked ? SupervisorCopy.closeWhenSatisfied : nil)
             }
             AsyncContentView(state: model.state, timeZone: timeZone, retry: { await model.load() }) { content in
-                StaffMealSummary(status: content.current, mess: content.mess,
-                                 count: content.current == nil ? nil : content.followUps.activeShortages.count,
-                                 countCaption: SupervisorCopy.activeShortagesCaption,
-                                 facts: [StaffFact(label: SupervisorCopy.wasteNotRecorded,
-                                                   value: String(content.followUps.wasteNotRecorded.count))])
                 groups(content.followUps)
-                StaffEarlierMeals(records: content.history, timeZone: timeZone)
             }
         }
         .refreshable { await model.load() }

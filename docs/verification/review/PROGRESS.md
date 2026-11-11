@@ -75,3 +75,11 @@ Resumable checkpoints for the review-prototype pass. Newest last.
   Approved headcount" → Acknowledge receipt → "Acknowledged 7:00 AM". Recipient-side receipt is verified in the app
   (shared seeded source), not against a real vendor. Only Main Mess lunch has a vendor account; sends for North,
   South and Annexe update their tiles but reach no vendor screen.
+
+### 4. Kitchen and Mess Staff
+
+- Alerts by role: the invented `StaffMealSummary` count card is removed from Kitchen, Door Scanner, Pass Desk and
+  Supervisor Alerts, and the "Earlier meals" history block from Kitchen and Supervisor Alerts. Kitchen: SOS and events;
+  Door Scanner: SOS and Earlier events; Pass Desk: active SOS above Earlier events; Supervisor: shortages and waste not
+  recorded. `StaffMealSummary`, `StaffEarlierMeals`, Door's `summaryFacts`, Kitchen's `wasteText` and two copy strings
+  had no other callers and are deleted. Verified: Supervisor Alerts lists only "Waste not recorded · Dinner · Tue 13".

@@ -37,62 +37,6 @@ struct StaffFact: Identifiable, Hashable {
     var id: String { label }
 }
 
-/// The black card (meal, state as a dot and text, one count) and the facts under it.
-struct StaffMealSummary: View {
-    let status: MealStatus?
-    let mess: Mess
-    /// The count this page already reads ("Recorded at the door"); nil shows a dash.
-    let count: Int?
-    let countCaption: String
-    var facts: [StaffFact] = []
-
-    private var timeZone: TimeZone { mess.timeZone }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: MLSpacing.s16) {
-            HeroCard {
-                HeroEyebrow(label: stateLabel, showsDot: status?.state == .inService,
-                            time: status.map { MLFormat.timeRange($0.meal.startsAt, $0.meal.endsAt, in: timeZone) })
-                Text(status.map { StaffSummaryCopy.title($0.meal.slot, mess.name) } ?? mess.name)
-                    .font(MLType.title2)
-                    .foregroundStyle(MLColor.onHero)
-                    .padding(.top, MLSpacing.s8)
-                HeroCount(value: count, caption: countCaption)
-                    .padding(.top, MLSpacing.s12)
-            }
-            .accessibilityElement(children: .combine)
-            if !allFacts.isEmpty {
-                StaffFactRows(facts: allFacts)
-            }
-        }
-    }
-
-    private var stateLabel: String {
-        switch status?.state {
-        case .notStarted?: return StaffSummaryCopy.notStarted
-        case .inService?: return StaffSummaryCopy.live
-        case .closed?: return StaffSummaryCopy.closed
-        case nil: return StaffSummaryCopy.noMeal
-        }
-    }
-
-    /// The meal's own times first, then the page's facts.
-    private var allFacts: [StaffFact] {
-        guard let status else { return facts }
-        var rows: [StaffFact] = []
-        switch status.state {
-        case .notStarted:
-            rows.append(StaffFact(label: StaffSummaryCopy.opens, value: MLFormat.time(status.meal.startsAt, in: timeZone)))
-        case .inService:
-            rows.append(StaffFact(label: StaffSummaryCopy.started, value: status.startedAt.map { MLFormat.time($0, in: timeZone) }))
-            rows.append(StaffFact(label: StaffSummaryCopy.closes, value: MLFormat.time(status.meal.endsAt, in: timeZone)))
-        case .closed:
-            rows.append(StaffFact(label: StaffSummaryCopy.started, value: status.startedAt.map { MLFormat.time($0, in: timeZone) }))
-            rows.append(StaffFact(label: StaffSummaryCopy.closedAt, value: status.closedAt.map { MLFormat.time($0, in: timeZone) }))
-        }
-        return rows + facts
-    }
-}
 
 /// Hairline label and value rows.
 struct StaffFactRows: View {
@@ -116,48 +60,6 @@ struct StaffFactRows: View {
     }
 }
 
-/// The mess's earlier meals from its meal history: entries and whether waste was recorded, as plain text.
-struct StaffEarlierMeals: View {
-    let records: [MealRecord]
-    let timeZone: TimeZone
-    var limit = 3
-
-    var body: some View {
-        if !records.isEmpty {
-            VStack(alignment: .leading, spacing: 0) {
-                SectionHeader(title: StaffSummaryCopy.earlierMeals)
-                ForEach(Array(records.sorted { $0.day > $1.day }.prefix(limit))) { record in
-                    HStack(alignment: .firstTextBaseline, spacing: MLSpacing.s12) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("\(MLFormat.mealSlot(record.slot)) · \(day(record.day))")
-                                .font(MLType.staffBody).foregroundStyle(MLColor.ink)
-                            Text(waste(record.waste)).font(MLType.secondary).foregroundStyle(MLColor.inkSecondary)
-                        }
-                        Spacer(minLength: MLSpacing.s8)
-                        Text(record.finalEntries.value.map(StaffSummaryCopy.entered) ?? "—")
-                            .font(MLType.monoBody).foregroundStyle(MLColor.inkSecondary)
-                    }
-                    .padding(.vertical, MLSpacing.s12)
-                    .overlay(alignment: .bottom) { Rectangle().fill(MLColor.border).frame(height: 1) }
-                    .accessibilityElement(children: .combine)
-                }
-            }
-        }
-    }
-
-    private func waste(_ status: MealRecord.WasteStatus) -> String {
-        if case .recorded = status { return StaffSummaryCopy.wasteRecorded }
-        return StaffSummaryCopy.wasteNotRecorded
-    }
-
-    private func day(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_IN")
-        formatter.timeZone = timeZone
-        formatter.dateFormat = "EEE d"
-        return formatter.string(from: date)
-    }
-}
 
 /// A black card with one count the page already holds ("2 problems reported from this phone").
 struct StaffCountCard: View {

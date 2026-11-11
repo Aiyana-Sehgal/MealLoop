@@ -124,11 +124,6 @@ struct KitchenAlertsView: View {
                                 actionTitle: KitchenSOSText.alertAction(stage),
                                 onAction: KitchenSOSText.alertAction(stage) == nil ? nil : onOpenSOS)
                     }
-                    if model.state.value != nil || model.state == .empty {
-                        StaffMealSummary(status: model.status, mess: mess, count: model.shortageCount,
-                                         countCaption: KitchenCopy.shortagesThisMeal,
-                                         facts: [StaffFact(label: KitchenCopy.wasteReport, value: wasteText)])
-                    }
                     switch model.state {
                     case .empty where sos.current == nil:
                         StateBlock(symbol: "bell", title: KitchenCopy.nothingNew, message: KitchenCopy.alertsShowHere)
@@ -142,7 +137,6 @@ struct KitchenAlertsView: View {
                             }
                         }
                     }
-                    StaffEarlierMeals(records: model.history, timeZone: mess.timeZone)
                 }
                 .padding(.horizontal, MLSpacing.margin)
                 .padding(.bottom, KitchenLayout.scrollBottomInset)
@@ -151,15 +145,6 @@ struct KitchenAlertsView: View {
         }
     }
 
-    /// Plain text, as Kitchen status always is: Recorded, Draft, or not yet (only after the meal).
-    private var wasteText: String? {
-        guard model.status != nil else { return nil }
-        switch model.waste?.status {
-        case .recorded?: return KitchenCopy.recordedWord
-        case .draft?: return KitchenCopy.draftWord
-        case .notStarted?, nil: return model.status?.state == .closed ? KitchenCopy.notRecordedWord : KitchenCopy.afterTheMeal
-        }
-    }
 
     @ViewBuilder
     private func row(_ alert: KitchenAlert) -> some View {

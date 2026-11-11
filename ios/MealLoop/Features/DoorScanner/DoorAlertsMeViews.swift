@@ -67,12 +67,6 @@ struct DoorAlertsView: View {
                                 actionTitle: DoorSOSText.alertAction(stage),
                                 onAction: DoorSOSText.alertAction(stage) == nil ? nil : onOpenSOS)
                     }
-                    if let content = model.state.value {
-                        StaffMealSummary(status: content.status, mess: mess, count: content.recordedCount?.value,
-                                         countCaption: content.status.state == .closed ? DoorScannerCopy.finalEntries
-                                                                                        : DoorScannerCopy.recordedSoFar,
-                                         facts: summaryFacts(content))
-                    }
                     if !alerts.isEmpty {
                         VStack(spacing: 0) {
                             SectionHeader(title: DoorScannerCopy.earlier)
@@ -92,14 +86,6 @@ struct DoorAlertsView: View {
         }
     }
 
-    /// The shift start the Me page shows, and after the meal the entries without a vote, both already loaded.
-    private func summaryFacts(_ content: DoorHomeContent) -> [StaffFact] {
-        var facts = [StaffFact(label: DoorScannerCopy.onShift, value: model.shiftStartedAt.map { MLFormat.time($0, in: mess.timeZone) })]
-        if case .afterMeal(_, _, let withoutVoting) = content.phase {
-            facts.append(StaffFact(label: DoorScannerCopy.enteredWithoutVoting, value: String(withoutVoting)))
-        }
-        return facts
-    }
 }
 
 /// Me (D18). Language and Help have no screens yet, so they say so; Sign out works.
