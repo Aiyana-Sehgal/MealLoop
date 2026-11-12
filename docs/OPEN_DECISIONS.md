@@ -211,3 +211,19 @@ Collected on 2026-11-09 from every `docs/verification/*/REPORT.md` on `main`. Ea
 | SV-Q7 | Offline: banner (current, shared pattern) or header dot only (spec)? | supervisor (`docs/verification/supervisor/REPORT.md`) | OPEN |
 | SV-Q8 | Carried from the pack: Start meal always available (gap 537), reminder for missing waste (538), who else may close a case (539), Mon 12 Unavailable vs Kitchen 577 (549). | supervisor (`docs/verification/supervisor/REPORT.md`) | OPEN |
 | SV-Q9 | Wording for a recorded report without quantities (D12). | supervisor (`docs/verification/supervisor/REPORT.md`) | OPEN |
+
+## Admin pack and Today headcount (12 Nov 2026)
+
+From the Admin and Super Admin pack (`design/reference/admin_full_2026-11/`) and the owner's Today mocks of 12 Nov 2026. Figma frames: page 12, sections "Admin · Food Head" (3277:5637) and "Admin · Super Admin" (3277:5638).
+
+| ID | Question | Status |
+|---|---|---|
+| AP-1 | Change the number reasons ("Fewer students expected", "More students expected", "Menu change", "Special event") are the pack's placeholder list. Approve or replace. | OPEN |
+| AP-2 | The Food Head's More leaves out Outings, Votes, Rewards and History because the source has no per-mess figures for them; AD09 draws them. Add per-mess data, or keep them Super Admin only? | OPEN |
+| AP-3 | The Food Head's Results reason rows do not open: the reason pages hold every mess's meals. Build per-mess reason pages? | OPEN |
+| AP-4 | "Answers per hour" (Live forecast) and "Entries per 15 minutes" (Actual entries) are hidden until a real series is held. Which source provides them? | OPEN |
+| AP-5 | The Actual entries sheet does not show "entered without voting" yet: the Admin screens do not load that list. Show it for the Food Head (see P12)? | OPEN |
+| AP-6 | Today is now one meal's headcount; the Breakfast, Lunch, Snacks, Dinner day line is gone, so another meal cannot be picked from Today. Keep it that way? | OPEN |
+| AP-7 | North's approval (10:12 AM by the Food Head), cutoff 700 and 588 answered are sample values from the owner mock; other messes hold no entries. Real per-mess records are needed from the backend. | OPEN |
+| AP-8 | The story's lunch has 3 answered and 1 not yet, so Today's Live forecast tile reads "3 answered"; the mock shows 650 and 210, which are tomorrow's Main figures on Students. Align the seed? | OPEN |
+| AP-9 | The pack's lime "Not yet" tile conflicts with `.claude/rules/ios-design.md` ("never lime card fills"). The pack is newer and owner-approved, so it was followed; update the rule? | OPEN |

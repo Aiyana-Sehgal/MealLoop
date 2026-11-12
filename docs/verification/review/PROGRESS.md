@@ -141,3 +141,21 @@ Resumable checkpoints for the review-prototype pass. Newest last.
   (the Super Admin account) open the email sign-in titled with the role; seeded builds fill in the sample email.
   Verified: Food Head → password → Today.
 - Debug tests 823 passed, Review tests 823 passed, Release build succeeds with no demo strings.
+
+### 9. Admin pack and Today headcount (12 Nov 2026)
+
+- Source: `design/reference/admin_full_2026-11/` (SA02, AD03, AD05 to AD09) and the owner's mocks of 12 Nov 2026,
+  which replace SA01 and AD04: Today is the meal's headcount page for both roles, the Super Admin's with a Main, North,
+  South, Annexe switcher. The six tiles (Cutoff, Live forecast, Approved, Sent to vendor, Actual entries, Final
+  entries) each open their own sheet; before approval the forecasts lead, after it Approved and Sent to vendor lead.
+- Students, Results and More are one set of views for both scopes. The Food Head's data is scoped in the data layer:
+  Main's roll (about 860, 210 not answered, the split not available), Main's Results sample (3 and 1 of 14 meals),
+  Main-only reminders, and More rows with per-mess figures only. People and access is unchanged.
+- New shared components: BentoTile, StackedBar, NeedsYouRow with NeedsYouPill, RoundGoButton.
+- Removed: the SA01 grid and tiles, the AD04 card, the old single-mess Students, Results and More screens.
+- Debug tests 830 passed, 0 failed, 46 skipped. Review tests 831 passed, 0 failed, 45 skipped. Release builds.
+  Simulator (iPhone 17e, iOS 26.5): Food Head Today, Live forecast sheet, Students, Results and More, and Super Admin
+  Today (Main and North) and Students were checked against the mocks. Not walked: the Change the number sheet after the
+  redesign, the Cutoff, Approved, Sent, Actual and Final sheets in the app (covered by unit tests and Figma only).
+- Figma: page 12, sections "Admin · Food Head" (3277:5637, 13 frames) and "Admin · Super Admin" (3277:5638, 2 frames).
+  No existing frame was edited. Open items AP-1 to AP-9 are in `docs/OPEN_DECISIONS.md`.
