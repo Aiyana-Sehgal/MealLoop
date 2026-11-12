@@ -102,6 +102,7 @@ enum AdminCopy {
     static func notHeldFor(_ mess: String) -> String { "Not held for \(mess)" }
     static let approvedShort = "Approved"
     static let sendToVendorStep = "Send to vendor"
+    static let headcountDetails = "Headcount details"
     static func forecastLocked(_ count: Int) -> String { "Forecast locked · \(count)" }
     static func approvedCount(_ count: Int) -> String { "Approved · \(count)" }
     static func changedTo(_ count: Int) -> String { "Changed to \(count)" }

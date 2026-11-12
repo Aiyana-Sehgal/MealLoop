@@ -218,6 +218,12 @@ struct AdminHeadcountView: View {
                 sendLockedTile(snapshot)
             }
             pair { actualTile(snapshot) } trailing: { finalTile(snapshot) }
+            // The full page: adjust, approve or send, status, the six values and the history (other messes: theirs).
+            AdminGroupCard {
+                AdminHubRow(title: AdminCopy.headcountDetails, isLast: true) {
+                    if let selectedMess { open(.page(.messHeadcount(selectedMess, content.selectedSlot))) } else { open(.headcount) }
+                }
+            }
             if isTodayRoot {
                 needsYou(content)
             }
@@ -270,7 +276,8 @@ struct AdminHeadcountView: View {
             case .approve(let count):
                 LimeActionButton(title: AdminCopy.approve(count)) {
                     Task {
-                        if await model.approve() { toast = AdminCopy.approvedToast(count) }
+                        // The pack's flow: Approve opens the headcount page in its approved state.
+                        if await model.approve() { open(.headcount) }
                     }
                 }
                 .disabled(isWorking)

@@ -40,7 +40,7 @@ struct AdminTodayView: View {
             switch route {
             case .headcount:
                 // A second tap during the pop finds the path already empty, and removeLast would crash.
-                AdminHeadcountView(model: model, open: { path.append($0) }) { _ = path.popLast() }
+                AdminHeadcountDetailView(model: model) { _ = path.popLast() }
             case .live:
                 AdminLiveMealView(model: model, nav: nav)
             case .page(let page):
