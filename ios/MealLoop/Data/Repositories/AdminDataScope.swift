@@ -40,7 +40,14 @@ struct ScopedAdminResultsRepository: AdminResultsRepository {
     let scope: AdminDataScope
     func overview() async throws -> AdminResultsOverview {
         try scope.require()
-        guard scope.allMesses else { throw RepositoryError.notImplemented(feature: "Single-mess summary; use the scoped meal records") }
+        guard scope.allMesses else {
+            // The Food Head's Results read their own mess's summary, from a source that holds one.
+            guard let source = base as? any MessResultsSource else {
+                throw RepositoryError.notImplemented(feature: "Single-mess summary")
+            }
+            try scope.requireSource()
+            return try await source.messOverview(scope.name)
+        }
         return try await base.overview()
     }
     /// The Food Head sees their own mess's meals only; nothing else of the all-mess overview is returned.
@@ -110,7 +117,7 @@ struct ScopedAdminStudentsRepository: AdminStudentsRepository {
         try scope.requireSource()
         guard scope.allMesses else { throw RepositoryError.notImplemented(feature: "This source has no per-mess breakdown") }
         let value = try await base.studentsOverview()
-        return AdminStudentsOverview(mealTitle: value.mealTitle, mealLongTitle: value.mealLongTitle, totalStudents: value.totalStudents, yes: value.yes, no: value.no, notSure: value.notSure, reminderMessage: value.reminderMessage, reminderSentAt: value.reminderSentAt, feedback: value.feedback.filter { scope.allMesses || $0.mess == scope.name }, community: value.community.filter { scope.allMesses || $0.context.hasPrefix(scope.mess.name + " · ") })
+        return AdminStudentsOverview(mealTitle: value.mealTitle, mealLongTitle: value.mealLongTitle, totalStudents: value.totalStudents, yes: value.yes, no: value.no, notSure: value.notSure, reminderMessage: value.reminderMessage, reminderSentAt: value.reminderSentAt, feedback: value.feedback.filter { scope.allMesses || $0.mess == scope.name }, community: value.community.filter { scope.allMesses || $0.context.hasPrefix(scope.mess.name + " · ") }, byMess: value.byMess)
     }
     func feedback(_ id: FeedbackItemID) async throws -> FeedbackItem {
         try scope.require()
@@ -137,7 +144,7 @@ struct ScopedAdminStudentsRepository: AdminStudentsRepository {
         try scope.requireSource()
         guard scope.allMesses else { throw RepositoryError.notImplemented(feature: "This source has no per-mess breakdown") }
         let value = try await base.remind(key: key, by: try scope.legacyRole(role))
-        return AdminStudentsOverview(mealTitle: value.mealTitle, mealLongTitle: value.mealLongTitle, totalStudents: value.totalStudents, yes: value.yes, no: value.no, notSure: value.notSure, reminderMessage: value.reminderMessage, reminderSentAt: value.reminderSentAt, feedback: value.feedback.filter { scope.allMesses || $0.mess == scope.name }, community: value.community.filter { scope.allMesses || $0.context.hasPrefix(scope.mess.name + " · ") })
+        return AdminStudentsOverview(mealTitle: value.mealTitle, mealLongTitle: value.mealLongTitle, totalStudents: value.totalStudents, yes: value.yes, no: value.no, notSure: value.notSure, reminderMessage: value.reminderMessage, reminderSentAt: value.reminderSentAt, feedback: value.feedback.filter { scope.allMesses || $0.mess == scope.name }, community: value.community.filter { scope.allMesses || $0.context.hasPrefix(scope.mess.name + " · ") }, byMess: value.byMess)
     }
     func assignOwner(_ owner: String, to issue: CommunityIssueID, by role: Role) async throws -> AdminCommunityIssue {
         try scope.require()
@@ -352,19 +359,77 @@ extension ScopedAdminResultsRepository: SingleMessReportRepository {
     }
 }
 
-struct SingleMessStudents: Sendable {
+/// Students for one mess. `students` and `notAnswered` are nil when the source does not hold them, never zero; the
+/// yes, no and not sure split is not held per mess at all, so it has no field here.
+struct SingleMessStudents: Sendable, Hashable {
+    let mess: String
+    let mealTitle: String
+    let mealLongTitle: String
+    let students: Int?
+    let notAnswered: Int?
+    let reminderMessage: String
+    let reminderSentAt: Date?
     let feedback: [FeedbackItem]
     let community: [AdminCommunityIssue]
+
+    var answered: Int? {
+        guard let students, let notAnswered else { return nil }
+        return students - notAnswered
+    }
 }
 protocol SingleMessStudentsRepository: Sendable {
     func singleMessStudents() async throws -> SingleMessStudents
+    /// Reminds the students of this mess only who have not answered.
+    func remindMess(key: IdempotencyKey, by role: Role) async throws -> SingleMessStudents
+}
+/// A source that can remind one mess's students. The prototype source does; others refuse.
+protocol MessReminderSource: Sendable {
+    func remindMess(_ mess: String, key: IdempotencyKey, by role: Role) async throws
+    func messReminderSentAt(_ mess: String) async -> Date?
+}
+/// A source that holds the Results summary of one mess.
+protocol MessResultsSource: Sendable {
+    func messOverview(_ mess: String) async throws -> AdminResultsOverview
 }
 extension ScopedAdminStudentsRepository: SingleMessStudentsRepository {
     func singleMessStudents() async throws -> SingleMessStudents {
         try scope.requireSource()
         let value = try await base.studentsOverview()
-        return SingleMessStudents(feedback: value.feedback.filter { scope.allMesses || $0.mess == scope.name },
+        let roll = value.byMess?.first { $0.mess == scope.name }
+        let messReminder = await (base as? any MessReminderSource)?.messReminderSentAt(scope.name)
+        return SingleMessStudents(mess: scope.name, mealTitle: value.mealTitle, mealLongTitle: value.mealLongTitle,
+                                  students: roll?.students, notAnswered: roll?.notAnswered, reminderMessage: value.reminderMessage,
+                                  reminderSentAt: messReminder ?? value.reminderSentAt,
+                                  feedback: value.feedback.filter { scope.allMesses || $0.mess == scope.name },
                                   community: value.community.filter { scope.allMesses || $0.context.hasPrefix(scope.mess.name + " · ") })
+    }
+    func remindMess(key: IdempotencyKey, by role: Role) async throws -> SingleMessStudents {
+        try scope.requireSource()
+        guard let source = base as? any MessReminderSource else {
+            throw RepositoryError.notImplemented(feature: "Reminders for one mess")
+        }
+        try await source.remindMess(scope.name, key: key, by: try scope.legacyRole(role))
+        return try await singleMessStudents()
+    }
+}
+
+/// The More hub values the Food Head may see: the ones the source holds for their own mess.
+struct SingleMessHub: Sendable, Hashable {
+    let menuStatus: String
+    let passUsed: Int
+    let passTotal: Int
+    let pickups: Int
+}
+protocol SingleMessHubRepository: Sendable {
+    func singleMessHub() async throws -> SingleMessHub
+}
+extension ScopedAdminMoreRepository: SingleMessHubRepository {
+    /// Menu, passes and spare food are the mess's own records (their pages are open to the Food Head); outings, votes,
+    /// rewards and history have no per-mess breakdown, so they are left out rather than shown as this mess's.
+    func singleMessHub() async throws -> SingleMessHub {
+        try scope.requireSource()
+        let value = try await base.hub()
+        return SingleMessHub(menuStatus: value.menuStatus, passUsed: value.passUsed, passTotal: value.passTotal, pickups: value.pickups)
     }
 }
 

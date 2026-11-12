@@ -7,10 +7,12 @@ enum AdminMessSeed {
     private static func mess(_ id: String, slot: MealSlot, expected: Int? = nil, low: Int? = nil, high: Int? = nil, saidYes: Int? = nil,
                              usual: Int? = nil, usualLabel: String? = nil, events: String? = nil, sendBy: Date? = nil, forecastAt: Date? = nil,
                              sentAt: Date? = nil, reply: AdminVendorReply = .notSent, noReplyMinutes: Int? = nil,
-                             sentBefore: [AdminSentBefore] = []) -> AdminMessHeadcount {
+                             sentBefore: [AdminSentBefore] = [], approvedAt: Date? = nil, cutoff: Int? = nil,
+                             answered: Int? = nil) -> AdminMessHeadcount {
         AdminMessHeadcount(id: id, name: id, slot: slot, expected: expected, rangeLow: low, rangeHigh: high, saidYes: saidYes, usual: usual,
                            usualLabel: usualLabel, events: events, sendBy: sendBy, forecastAt: forecastAt, sentAt: sentAt, reply: reply,
-                           noReplyMinutes: noReplyMinutes, sentBefore: sentBefore, adjustmentReason: nil)
+                           noReplyMinutes: noReplyMinutes, sentBefore: sentBefore, adjustmentReason: nil,
+                           approvedBy: approvedAt == nil ? nil : .admin, approvedAt: approvedAt, cutoffForecast: cutoff, answered: answered)
     }
 
     /// 2259:6 and 2259:160423 both list this row under "Sent before".
@@ -19,8 +21,10 @@ enum AdminMessSeed {
     static let days: [MealSlot: AdminMessDay] = [
         .lunch: AdminMessDay(slot: .lunch, headcountDue: nil, messes: [
             // 2257:158261 tile and 2259:6 Headcount · North: 700, range 660–740, 2,310 said yes, usual Wed 692, no events, send by 11:30.
+            // SAMPLE, owner mock of 12 Nov 2026 (Super Admin Today, North): approved 700 at 10:12 AM by the Food Head,
+            // cutoff 700 locked at 10:00 AM, 588 answered.
             mess("North", slot: .lunch, expected: 700, low: 660, high: 740, saidYes: 2310, usual: 692, usualLabel: "usual Wed", events: "None",
-                 sendBy: DemoSeed.time(11, 30), sentBefore: [mainBreakfast]),
+                 sendBy: DemoSeed.time(11, 30), sentBefore: [mainBreakfast], approvedAt: DemoSeed.time(10, 12), cutoff: 700, answered: 588),
             // 2257:158261 tile and 2259:160423 Headcount · South · No reply: 612, sent 10:15, no reply for 55 min.
             mess("South", slot: .lunch, expected: 612, sentAt: DemoSeed.time(10, 15), reply: .noReply, noReplyMinutes: 55, sentBefore: [mainBreakfast]),
             // 2257:158261 tile: dashed, "No data".

@@ -45,6 +45,12 @@ struct AdminMessHeadcount: Codable, Sendable, Hashable, Identifiable {
     let sentBefore: [AdminSentBefore]
     /// The reason the Food Head gave, once the number was changed.
     var adjustmentReason: String?
+    /// Who approved the number and when. Nil when the record holds no approval, never assumed.
+    var approvedBy: Role? = nil
+    var approvedAt: Date? = nil
+    /// The forecast frozen at the cutoff, and how many students had answered. Nil when not held, never zero.
+    var cutoffForecast: Int? = nil
+    var answered: Int? = nil
 
     var canSend: Bool { expected != nil && sentAt == nil }
 }

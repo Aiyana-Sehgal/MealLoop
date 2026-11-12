@@ -76,7 +76,26 @@ struct AdminStudentsOverview: Codable, Sendable, Hashable {
     var reminderSentAt: Date?
     let feedback: [FeedbackItem]
     let community: [AdminCommunityIssue]
+    /// The same meal mess by mess. Nil when the source has no per-mess breakdown, which is not the same as none.
+    var byMess: [AdminMessRoll]? = nil
 
     var answered: Int { yes + no + notSure }
     var notAnswered: Int { totalStudents - answered }
+}
+
+/// One mess's roll for the meal on Students. Each nil is a value the source does not hold, never a zero: the source
+/// holds who has not answered per mess, but not the yes, no and not sure split.
+struct AdminMessRoll: Codable, Sendable, Hashable, Identifiable {
+    /// "Main", without " Mess".
+    let mess: String
+    /// About how many students eat at this mess.
+    let students: Int?
+    let notAnswered: Int?
+
+    var id: String { mess }
+    /// Derived only when both figures are held.
+    var answered: Int? {
+        guard let students, let notAnswered else { return nil }
+        return students - notAnswered
+    }
 }

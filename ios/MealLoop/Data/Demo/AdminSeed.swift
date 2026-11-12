@@ -72,6 +72,24 @@ enum AdminSeed {
         ResultReason(kind: .cantTellLeftOver, title: "Can't tell why", detail: "Amount not shared", meals: 4, tag: .cantTell),
     ])
 
+    /// SAMPLE. Results for one mess, from design/reference/admin_full_2026-11 (AD06 and AD07, "Last 4 weeks · Main"): 14
+    /// meals, food left over at 3 and ran out at 1. Reasons carry Sure, Probably or Can't tell, never a percentage.
+    static let messResults: [String: (leftOver: ResultGroup, ranOut: ResultGroup)] = [
+        "Main": (
+            leftOver: ResultGroup(meals: 3, totalMeals: 14, reasons: [
+                ResultReason(kind: .fewerCame, title: "Fewer students came than we planned for", detail: nil, meals: 2, tag: .sure),
+                ResultReason(kind: .didntLikeDish, title: "Students didn't like a dish", detail: nil, meals: 1, tag: .probably),
+                ResultReason(kind: .cantTellLeftOver, title: "Can't tell why", detail: "Amount not shared", meals: 1, tag: .cantTell),
+            ]),
+            ranOut: ResultGroup(meals: 1, totalMeals: 14, reasons: [
+                ResultReason(kind: .moreCame, title: "More students came than we planned for", detail: nil, meals: 1, tag: .sure),
+                ResultReason(kind: .lastThirtyMinutes, title: "Most came in the last 30 minutes", detail: nil, meals: 1, tag: .probably),
+                ResultReason(kind: .reportedLate, title: "It was reported late", detail: nil, meals: 1, tag: .sure),
+            ])
+        ),
+    ]
+    static func messPeriodTitle(_ mess: String) -> String { "Last 4 weeks · \(mess)" }
+
     static let ranOut = ResultGroup(meals: 2, totalMeals: totalMeals, reasons: [
         ResultReason(kind: .moreCame, title: "More students came than we planned for", detail: nil, meals: 1, tag: .sure),
         ResultReason(kind: .lastThirtyMinutes, title: "Most came in the last 30 minutes", detail: nil, meals: 1, tag: .probably),
@@ -211,7 +229,15 @@ enum AdminSeed {
     static let students = AdminStudentsOverview(
         mealTitle: "Tomorrow lunch", mealLongTitle: "tomorrow lunch (Thu 15 Aug)", totalStudents: 3_500, yes: 2_310, no: 420, notSure: 140,
         reminderMessage: "Lunch tomorrow: are you in? Answer by 9 AM so the kitchen can plan.", reminderSentAt: nil,
-        feedback: feedback, community: community)
+        feedback: feedback, community: community, byMess: byMess)
+
+    /// SAMPLE. Who has not answered, mess by mess, from A06_students_not_answered_by_mess (the four add up to 630). Only
+    /// Main's size is held ("About 860 students at Main Mess", A11_more_announce_write); the others' sizes and every
+    /// mess's yes, no and not sure split are not held, so they stay nil (admin_full_2026-11 DESIGN_SPEC, Data rules).
+    static let byMess: [AdminMessRoll] = AdminMessSeed.notAnswered.map { row in
+        let name = row.name.replacingOccurrences(of: " Mess", with: "")
+        return AdminMessRoll(mess: name, students: name == "Main" ? 860 : nil, notAnswered: row.students)
+    }
 
     // A06_students_why_students_skip. 385 given, 35 with no reason: 420 said no.
     static let skipReasons = StudentSkipReasons(
@@ -324,11 +350,24 @@ actor DemoAdminStore {
         reminderSentAt = now
     }
 
+    private var messReminderKeys: Set<IdempotencyKey> = []
+    private var messReminders: [String: Date] = [:]
+
+    /// One mess's reminder. A repeated key (a double tap) reminds once.
+    func remindMess(_ mess: String, key: IdempotencyKey, at now: Date) {
+        guard !messReminderKeys.contains(key) else { return }
+        messReminderKeys.insert(key)
+        messReminders[mess] = now
+    }
+
+    func messReminderSentAt(_ mess: String) -> Date? { messReminders[mess] }
+
     func studentsOverview() -> AdminStudentsOverview {
         let overview = AdminSeed.students
         return AdminStudentsOverview(mealTitle: overview.mealTitle, mealLongTitle: overview.mealLongTitle, totalStudents: overview.totalStudents,
                                      yes: overview.yes, no: overview.no, notSure: overview.notSure, reminderMessage: overview.reminderMessage,
-                                     reminderSentAt: reminderSentAt, feedback: overview.feedback, community: community)
+                                     reminderSentAt: reminderSentAt, feedback: overview.feedback, community: community,
+                                     byMess: overview.byMess)
     }
 
     func issue(_ id: CommunityIssueID) throws -> AdminCommunityIssue {
@@ -594,7 +633,8 @@ struct DemoAdminRepositories: AdminResultsRepository, AdminStudentsRepository, A
         return AdminStudentsOverview(mealTitle: overview.mealTitle, mealLongTitle: overview.mealLongTitle,
                                      totalStudents: overview.totalStudents, yes: overview.yes, no: overview.no,
                                      notSure: overview.notSure, reminderMessage: overview.reminderMessage,
-                                     reminderSentAt: overview.reminderSentAt, feedback: feedback, community: overview.community)
+                                     reminderSentAt: overview.reminderSentAt, feedback: feedback, community: overview.community,
+                                     byMess: overview.byMess)
     }
 
     func feedback(_ id: FeedbackItemID) async throws -> FeedbackItem {
@@ -718,5 +758,28 @@ struct DemoAdminRepositories: AdminResultsRepository, AdminStudentsRepository, A
     func spareFood() async throws -> SpareFoodPage { try await core.requireConnection(); return AdminSeed.spareFood }
     func history() async throws -> HistoryPage { try await core.requireConnection(); return AdminSeed.history }
     func outings() async throws -> OutingsPage { try await core.requireConnection(); return AdminSeed.outings }
+}
+#endif
+
+
+#if DEMO_DATA || REVIEW_DATA
+extension DemoAdminRepositories: MessResultsSource, MessReminderSource {
+    /// One mess's Results: its own sample summary, and only its own meals to review and changes being tested.
+    func messOverview(_ mess: String) async throws -> AdminResultsOverview {
+        guard let groups = AdminSeed.messResults[mess] else { throw RepositoryError.notImplemented(feature: "Results for \(mess)") }
+        let all = try await overview()
+        let isThisMess: (String) -> Bool = { $0.replacingOccurrences(of: " Mess", with: "") == mess }
+        return AdminResultsOverview(periodTitle: AdminSeed.messPeriodTitle(mess), leftOver: groups.leftOver, ranOut: groups.ranOut,
+                                    toReview: all.toReview.filter { isThisMess($0.meal.mess) },
+                                    changes: all.changes.filter { isThisMess($0.mess) })
+    }
+
+    func remindMess(_ mess: String, key: IdempotencyKey, by role: Role) async throws {
+        try await core.requireConnection()
+        guard role == .admin else { throw RepositoryError.notAllowed(reason: "Only the Food Head can do this.") }
+        await store.remindMess(mess, key: key, at: core.clock.now())
+    }
+
+    func messReminderSentAt(_ mess: String) async -> Date? { await store.messReminderSentAt(mess) }
 }
 #endif
