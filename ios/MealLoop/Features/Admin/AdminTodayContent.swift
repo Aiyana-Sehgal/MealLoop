@@ -127,6 +127,21 @@ struct AdminMealContent: Equatable {
     }
 }
 
+/// One row under Needs you on Today.
+enum AdminNeedsYouItem: Equatable, Identifiable {
+    case shortage(Shortage)
+    case review(ReviewMeal)
+    case noReply(AdminMessHeadcount)
+
+    var id: String {
+        switch self {
+        case .shortage(let shortage): return "shortage-\(shortage.id)"
+        case .review(let review): return "review-\(review.id)"
+        case .noReply(let mess): return "noreply-\(mess.id)"
+        }
+    }
+}
+
 /// One stop on the day line. A slot with no meal behind it stays upcoming and shows no data.
 struct AdminDayNode: Equatable, Identifiable {
     enum Progress: Equatable {
@@ -166,7 +181,7 @@ struct AdminTodayContent: Equatable {
     var visibleShortages: [Shortage] { Array((meal?.shortages ?? []).prefix(Self.needsYouLimit)) }
     var hasMoreShortages: Bool { (meal?.shortages.count ?? 0) > Self.needsYouLimit }
     /// More rows wait than Today shows: See all opens the full list.
-    var hasMoreNeedsYou: Bool { (meal?.shortages.count ?? 0) + reviewMeals.count > Self.needsYouLimit }
+    var hasMoreNeedsYou: Bool { needsYouItems.count > Self.needsYouLimit }
     /// Review rows fill what the shortages leave, so Today never holds more than the limit.
     var visibleReviews: [ReviewMeal] { Array(reviewMeals.prefix(max(Self.needsYouLimit - visibleShortages.count, 0))) }
 
@@ -178,6 +193,19 @@ struct AdminTodayContent: Equatable {
         guard !tileIsUrgent, safetyCases.isEmpty else { return nil }
         return otherMesses?.messes.first(where: \.canSend)?.id
     }
+
+    /// Messes whose vendor hasn't replied to a sent headcount (SA01 "South hasn't replied"). Only the Super Admin
+    /// loads other messes, so the Food Head never gets these rows.
+    var noReplyMesses: [AdminMessHeadcount] {
+        (otherMesses?.messes ?? []).filter { $0.reply == .noReply && $0.sentAt != nil }
+    }
+
+    /// Every row that needs the admin, in order: shortages, meals to review, vendors that haven't replied.
+    var needsYouItems: [AdminNeedsYouItem] {
+        (meal?.shortages ?? []).map(AdminNeedsYouItem.shortage) + reviewMeals.map(AdminNeedsYouItem.review)
+            + noReplyMesses.map(AdminNeedsYouItem.noReply)
+    }
+    var visibleNeedsYouItems: [AdminNeedsYouItem] { Array(needsYouItems.prefix(Self.needsYouLimit)) }
 
     /// True until the cutoff of the selected meal has passed.
     var answersAreOpen: Bool {

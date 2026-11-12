@@ -177,9 +177,9 @@ final class AdminPolishScreenshotTests: XCTestCase {
         let head = World(core: core, session: session, context: context, env: env,
                          nav: AdminNav(context: context, push: { _ in }, pop: {}, toast: { _ in }))
         try await shot("fh_today", head, pushed: false, bar: false) { AdminRootView(session: session) }
-        try await shot("fh_students", head, pushed: false, tab: "Students") { AdminSingleMessStudentsScreen(nav: head.nav) }
-        try await shot("fh_results", head, pushed: false, tab: "Results") { AdminScopedResultsScreen(nav: head.nav) }
-        try await shot("fh_more", head, pushed: false) { AdminSingleMessMoreScreen(nav: head.nav) }
+        try await shot("fh_students", head, pushed: false, tab: "Students") { AdminStudentsScreen(nav: head.nav) }
+        try await shot("fh_results", head, pushed: false, tab: "Results") { AdminResultsScreen(nav: head.nav) }
+        try await shot("fh_more", head, pushed: false) { AdminMoreScreen(nav: head.nav) }
         try await shot("fh_weekly_report", head) { AdminSingleMessReportScreen(nav: head.nav) }
         try await shot("fh_passes", head) { AdminPassesScreen(nav: head.nav) }
         try await shot("fh_weekly_menu", head) { AdminMenuScreen(nav: head.nav) }

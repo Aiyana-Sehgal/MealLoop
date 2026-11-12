@@ -495,3 +495,32 @@ enum AdminScreenCopy {
     }
     static let outNow = "Out now"
 }
+
+/// Students in the bento layout (design/reference/admin_full_2026-11: SA02 and AD03).
+enum AdminStudentsCopy {
+    static let allMesses = "All messes"
+    /// "All messes · Tomorrow lunch"; the meal title comes from the record.
+    static func subtitle(_ scope: String, meal: String) -> String { "\(scope) · \(meal)" }
+    static let answered = "ANSWERED"
+    static func ofTotal(_ total: String) -> String { "of \(total)" }
+    static func ofAbout(_ total: String) -> String { "of about \(total)" }
+    /// A derived answer share, allowed by the pack's data rules. Reasons never get percentages.
+    static func answeredShare(_ percent: Int, mess: String) -> String { "\(percent)% of \(mess) has answered" }
+    static let notYet = "Not yet"
+    static let haventAnswered = "haven't answered"
+    static let remind = "Remind"
+    static let skipped = "Skipped"
+    static let whySkip = "Why students skip"
+    static let splitLabel = "I'm in · Skip · Not sure"
+    static func notAvailableFor(_ mess: String) -> String { "Not available for \(mess) yet" }
+    static let byMess = "By mess"
+    static let byMessCaption = "Haven't answered yet"
+    static let feedback = "Feedback"
+    static let noFeedback = "No feedback yet"
+    static let community = "Community"
+    static let noReports = "No reports yet"
+    static func spokenNotAnswered(_ mess: String, _ count: String) -> String { "\(mess), \(count) haven't answered" }
+    static func remindWhoMess(_ count: String, meal: String, mess: String) -> String {
+        "\(count) students at \(mess) who haven't answered for \(meal)."
+    }
+}

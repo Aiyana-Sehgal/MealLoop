@@ -41,6 +41,87 @@ enum AdminCopy {
         "\(meal.mess) · \(AdminFormat.weekday(meal.day, in: timeZone).prefix(3)) \(MLFormat.mealSlot(meal.slot).lowercased())"
     }
 
+    // Admin pack (design/reference/admin_full_2026-11: AD05) and Today
+    static func needsYouCount(_ count: Int) -> String { "Needs you · \(count)" }
+    static let expectedDinersCaption = "expected diners"
+    static let changeTheNumber = "Change the number"
+    static let notSentToVendorYet = "Not sent to the vendor yet"
+    static func notReplied(_ mess: String) -> String { "\(mess) hasn't replied" }
+    static func vendorSince(_ time: String) -> String { "Vendor · since \(time)" }
+    static let remind = "Remind"
+    static func changeSubtitle(meal: String, mess: String) -> String { "\(meal) · \(mess)" }
+    static func forecastWas(_ count: Int) -> String { "Forecast was \(count)" }
+    static let whyChanging = "Why are you changing it?"
+    /// Placeholder wording from the pack; the owner has not approved this list (docs/OPEN_DECISIONS.md).
+    static let changeReasons = ["Fewer students expected", "More students expected", "Menu change", "Special event"]
+    static let saveChange = "Save change"
+    static let changeNote = "Your name and reason are saved with the change."
+    static let chooseReason = "Choose a reason to save"
+
+    // Headcount page and its sheets (owner mocks, 12 Nov 2026: H01 "Lunch", H02 Live forecast and Sent to vendor)
+    /// "MAIN MESS · WED 14 AUG"
+    static func headcountEyebrow(mess: String, day: String) -> String { "\(mess) · \(day)".uppercased() }
+    static func answersCloseShort(_ time: String) -> String { "Answers close \(time)" }
+    static func answersClosedShort(_ time: String) -> String { "Answers closed \(time)" }
+    static func nextStep(_ step: String) -> String { "Next · \(step)".uppercased() }
+    static let cutoffShort = "Cutoff"
+    static func lockedAt(_ time: String) -> String { "Locked at \(time)" }
+    static func locksAt(_ time: String) -> String { "Locks at \(time)" }
+    static let youApproveThis = "You approve this"
+    static func answeredCount(_ count: String) -> String { "\(count) answered" }
+    static let answeredWord = "answered"
+    static let notYetWord = "not yet"
+    static let sendToVendorTitle = "Send to vendor"
+    static let unlocksAfterApprove = "Unlocks after you approve"
+    static func sentWaiting(_ time: String) -> String { "Sent \(time) · waiting for the vendor" }
+    static func startsAt(_ time: String) -> String { "Starts \(time)" }
+    static let afterTheMeal = "After the meal"
+    static let servingNow = "Serving now"
+    /// "Main · Lunch · Wed 14 Aug"
+    static func sheetSubtitle(mess: String, meal: String, day: String) -> String { "\(mess) · \(meal) · \(day)" }
+    static func closedBecameCutoff(_ time: String) -> String { "Closed \(time) · became the cutoff forecast" }
+    static func openClosesAt(_ time: String) -> String { "Open · closes \(time)" }
+    static let approvedHeadcountCaption = "approved headcount"
+    static let trackApproved = "Approved"
+    static let trackSent = "Sent"
+    static let trackAcknowledged = "Acknowledged"
+    static let waitingWord = "Waiting"
+    static let notYetCapital = "Not yet"
+    static let vendorSeesOnly = "The vendor sees the headcount only."
+    static let contactTheVendor = "Contact the vendor"
+    static let cutoffLockedNote = "Answers closed at the cutoff, so this number no longer moves."
+    static let cutoffPendingNote = "The live forecast locks here when answers close."
+    static func openDetail(_ name: String) -> String { "Open \(name)" }
+    /// "By Devi · 10:12 AM"
+    static func byWhom(_ who: String, time: String) -> String { "By \(who) · \(time)" }
+    /// "Approved by Devi · 10:12 AM"
+    static func approvedByLine(_ who: String, time: String) -> String { "Approved by \(who) · \(time)" }
+    static let notSentYet = "Not sent yet"
+    static let notRecorded = "Not recorded"
+    static func noReplySince(_ time: String) -> String { "Sent \(time) · no reply yet" }
+    static func notHeldFor(_ mess: String) -> String { "Not held for \(mess)" }
+    static let approvedShort = "Approved"
+    static let sendToVendorStep = "Send to vendor"
+    static func forecastLocked(_ count: Int) -> String { "Forecast locked · \(count)" }
+    static func approvedCount(_ count: Int) -> String { "Approved · \(count)" }
+    static func changedTo(_ count: Int) -> String { "Changed to \(count)" }
+    static func approvedByCaption(_ who: String, time: String) -> String { "approved by \(who) · \(time)" }
+    static func liveUpdated(_ time: String) -> String { "Live · updated \(time)" }
+    static func mealClosedAt(_ time: String) -> String { "meal closed \(time)" }
+    static func lockedAtCaption(_ time: String) -> String { "locked at \(time)" }
+    static let approvedHeadcountTitle = "Approved headcount"
+    static let whatThisMeans = "What this means"
+    static let cutoffMeaning = "It was fixed when answers closed. Later answers do not change it. This is the number you approve."
+    static let historyLabel = "History"
+    static let noChangesMade = "No changes made."
+    static let studentsEntered = "students entered"
+    static let countedAtDoor = "Counted at the door. An offline scan is never counted."
+    static let comparedWith = "Compared with"
+    static let finalFixed = "Final entries are fixed after the meal closes."
+    static let openMealReport = "Open the meal report"
+    static let entriesNotStarted = "Entries start when the meal opens."
+    static let finalNotYet = "Final entries are set when the meal closes."
+
     // Mess tile
     static let noData = "No data"
     static let reviewAndApprove = "Review and approve"
@@ -182,13 +263,6 @@ enum AdminCopy {
     static let sendAction = "Send"
 
     // Adjust sheet
-    static let reason = "Reason"
-    static let reasonEvent = "Event"
-    static let reasonExam = "Exam"
-    static let reasonHoliday = "Holiday"
-    static let reasonOther = "Other"
-    static let reasonOtherPrompt = "Say why"
-    static let adjustNote = "The vendor only gets the number. Say why so Results can explain it later."
     static let decrease = "One fewer"
     static let increase = "One more"
     static func forecastLine(_ count: Int) -> String { "Forecast \(count)" }

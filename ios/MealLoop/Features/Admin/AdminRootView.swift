@@ -57,15 +57,15 @@ private struct AdminTabsView: View {
                 }
             } else if selectedTab == studentsTab {
                 tab($studentsPath) { nav in
-                    if context.allMesses { AdminStudentsScreen(nav: nav) } else { AdminSingleMessStudentsScreen(nav: nav) }
+                    AdminStudentsScreen(nav: nav)
                 }
             } else if selectedTab == resultsTab {
                 tab($resultsPath) { nav in
-                    if context.allMesses { AdminResultsScreen(nav: nav) } else { AdminScopedResultsScreen(nav: nav) }
+                    AdminResultsScreen(nav: nav)
                 }
             } else {
                 tab($morePath) { nav in
-                    if context.allMesses { AdminMoreScreen(nav: nav) } else { AdminSingleMessMoreScreen(nav: nav) }
+                    AdminMoreScreen(nav: nav)
                 }
             }
             if !isEditingDay {
@@ -77,7 +77,8 @@ private struct AdminTabsView: View {
                     .accessibilityHidden(true)
                 GlassTabBar(items: root.placeholderTabs.map { title in
                     GlassTabItem(tab: title, title: title, symbol: symbol(for: title))
-                }, selection: $selectedTab, searchTab: RoleRoot.searchTab)
+                // AD04 to AD09: the Food Head's bar has no Search; the Super Admin's keeps it (SA01).
+                }, selection: $selectedTab, searchTab: context.allMesses ? RoleRoot.searchTab : nil)
                 .padding(.horizontal, MLSpacing.s16)
                 .padding(.bottom, MLSpacing.s8)
                 .onChange(of: selectedTab) { old, _ in

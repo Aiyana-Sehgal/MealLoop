@@ -15,7 +15,8 @@ struct AdminTodayScreen: View {
     }
 }
 
-/// Today (A01): the day line, the mess tile, the six headcount values and what needs the Food Head.
+/// Today (owner mocks, 12 Nov 2026): the meal's headcount for the signed-in mess as a tab root, with Needs you below.
+/// The Super Admin's adds a switcher for the other messes.
 struct AdminTodayView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var model: AdminTodayViewModel
@@ -31,35 +32,15 @@ struct AdminTodayView: View {
     }
 
     var body: some View {
-        ZStack {
-            OrbitBackground()
-            ScrollView {
-                VStack(alignment: .leading, spacing: MLSpacing.s16) {
-                    StaffHeader(initials: AdminCopy.initials(model.context.account.displayName), onAvatarTap: openMore)
-                    AsyncContentView(state: model.state,
-                                     emptyTitle: AdminCopy.noMealTitle,
-                                     emptyMessage: AdminCopy.noMealDetail,
-                                     timeZone: model.context.mess.timeZone,
-                                     retry: { await model.load() }) { content in
-                        AdminTodayBody(content: content, displayName: model.context.account.displayName, allMesses: model.context.allMesses,
-                                       onSelect: { slot in Task { await model.select(slot) } },
-                                       open: { path.append($0) },
-                                       openCase: { safetyCase in
-                                           Task { path.append(.page(await model.safetyPage(for: safetyCase))) }
-                                       })
-                    }
-                }
-                .padding(.horizontal, MLSpacing.margin)
-                .padding(.bottom, 120)
-            }
-            .refreshable { await model.load() }
-        }
+        // Both roles (owner mocks, 12 Nov 2026): the Super Admin's adds the mess switcher.
+        AdminHeadcountView(model: model, open: { path.append($0) }, onBack: nil, isTodayRoot: true,
+                           openCase: { safetyCase in Task { path.append(.page(await model.safetyPage(for: safetyCase))) } })
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: AdminRoute.self) { route in
             switch route {
             case .headcount:
                 // A second tap during the pop finds the path already empty, and removeLast would crash.
-                AdminHeadcountView(model: model) { _ = path.popLast() }
+                AdminHeadcountView(model: model, open: { path.append($0) }) { _ = path.popLast() }
             case .live:
                 AdminLiveMealView(model: model, nav: nav)
             case .page(let page):
@@ -76,52 +57,16 @@ struct AdminTodayView: View {
     }
 }
 
-/// The loaded screen. Pure layout: every value comes from `AdminTodayContent`.
-struct AdminTodayBody: View {
-    let content: AdminTodayContent
-    let displayName: String
-    var allMesses = true
-    let onSelect: (MealSlot) -> Void
-    let open: (AdminRoute) -> Void
-    let openCase: (SOSCase) -> Void
-
-    private var timeZone: TimeZone { content.mess.timeZone }
-    private var mealName: String { MLFormat.mealSlot(content.selectedSlot) }
+/// An open safety case, at the top of Today until it is handled.
+struct AdminSafetyCaseCard: View {
+    let safetyCase: SOSCase
+    let now: Date
+    let timeZone: TimeZone
+    let open: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: MLSpacing.s16) {
-            HStack(alignment: .lastTextBaseline, spacing: MLSpacing.s12) {
-                Text(AdminCopy.greeting(displayName))
-                    .font(MLType.largeTitle)
-                    .foregroundStyle(MLColor.ink)
-                Spacer(minLength: 0)
-                Text(AdminCopy.dayLine(content.now, in: timeZone))
-                    .font(MLType.body)
-                    .foregroundStyle(MLColor.inkSecondary)
-                    .fixedSize()
-            }
-            AdminDayLine(nodes: content.nodes, selected: content.selectedSlot, onSelect: onSelect)
-            ForEach(content.safetyCases) { safetyCase in
-                safetyCard(safetyCase)
-            }
-            if allMesses {
-                // Super Admin (2257:158261): the four-mess grid.
-                AdminMessGrid(content: content, open: open)
-            } else {
-                // The Food Head's own mess only. Its headcount page and Live meal open from the tile.
-                AdminMessTile(content: content, openHeadcount: { open(.headcount) }, openLive: { open(.live) })
-            }
-            // Today draws the tiles and Needs you only. The six headcount values and the approval and vendor status
-            // live on the mess's headcount page and Live meal, where Figma draws them.
-            needsYou
-        }
-    }
-
-    @ViewBuilder
-    private func safetyCard(_ safetyCase: SOSCase) -> some View {
         HeroCard {
-            HeroEyebrow(label: AdminCopy.safetyOpen(MLFormat.elapsed(minutes: MLFormat.minutes(from: safetyCase.raisedAt,
-                                                                                                to: content.now))),
+            HeroEyebrow(label: AdminCopy.safetyOpen(MLFormat.elapsed(minutes: MLFormat.minutes(from: safetyCase.raisedAt, to: now))),
                         showsDot: true)
             Text(safetyCase.title)
                 .font(MLType.title2)
@@ -131,9 +76,7 @@ struct AdminTodayBody: View {
                 .font(MLType.body)
                 .foregroundStyle(MLColor.onHeroSecondary)
                 .padding(.top, MLSpacing.s4)
-            Button {
-                openCase(safetyCase)
-            } label: {
+            Button(action: open) {
                 Text(AdminCopy.openCase)
                     .font(MLType.staffPrimary)
                     .foregroundStyle(MLColor.onHero)
@@ -145,55 +88,36 @@ struct AdminTodayBody: View {
             .padding(.top, MLSpacing.s16)
         }
     }
+}
 
-    @ViewBuilder
-    private var needsYou: some View {
-        // No filler when nothing needs the admin: the section is simply not drawn.
-        if !(content.visibleShortages.isEmpty && content.visibleReviews.isEmpty) {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack {
-                    AdminLabel(text: AdminCopy.needsYou)
-                    Spacer()
-                    if content.hasMoreNeedsYou {
-                        TextLinkButton(title: AdminCopy.seeAll) { open(.needsYou) }
-                    }
-                }
-                .padding(.bottom, 6)
-                ForEach(content.visibleShortages) { shortage in
-                    needsYouRow(title: AdminCopy.needsYouTitle(dish: shortage.dishName, level: MLFormat.shortageLevel(shortage.level)),
-                                detail: AdminCopy.needsYouDetail(mess: content.mess.name, meal: mealName),
-                                chip: AdminCopy.liveAction, style: .lime) { open(.live) }
-                }
-                ForEach(content.visibleReviews) { review in
-                    needsYouRow(title: AdminCopy.reviewTitle(review.meal), detail: AdminCopy.reviewDetail(review.meal, in: timeZone),
-                                chip: AdminScreenCopy.review, style: .outline) { open(.page(.meal(review.id))) }
-                }
-            }
-        }
-    }
+/// One Needs you row, the same on Today and on See all.
+struct AdminNeedsYouRow: View {
+    let item: AdminNeedsYouItem
+    let content: AdminTodayContent
+    let open: (AdminRoute) -> Void
 
-    private func needsYouRow(title: String, detail: String, chip: String, style: AdminChipStyle, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: MLSpacing.s12) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(MLType.staffBody)
-                        .foregroundStyle(MLColor.ink)
-                    Text(detail)
-                        .font(MLType.body)
-                        .foregroundStyle(MLColor.inkSecondary)
-                }
-                Spacer(minLength: MLSpacing.s8)
-                AdminChip(text: chip, style: style)
+    private var timeZone: TimeZone { content.mess.timeZone }
+
+    var body: some View {
+        switch item {
+        case .shortage(let shortage):
+            NeedsYouRow(title: AdminCopy.needsYouTitle(dish: shortage.dishName, level: MLFormat.shortageLevel(shortage.level)),
+                        detail: AdminCopy.needsYouDetail(mess: content.mess.name, meal: MLFormat.mealSlot(content.selectedSlot)),
+                        actionName: AdminCopy.liveAction, action: { open(.live) }) {
+                NeedsYouPill(title: AdminCopy.liveAction, isLime: true)
             }
-            .padding(.vertical, MLSpacing.s12)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(title)
-        .accessibilityValue(chip)
-        .overlay(alignment: .top) {
-            Rectangle().fill(MLColor.border).frame(height: 1)
+        case .review(let review):
+            NeedsYouRow(title: AdminCopy.reviewTitle(review.meal), detail: AdminCopy.reviewDetail(review.meal, in: timeZone),
+                        actionName: AdminScreenCopy.review, action: { open(.page(.meal(review.id))) }) {
+                NeedsYouPill(title: AdminScreenCopy.review)
+            }
+        case .noReply(let mess):
+            // The South headcount page holds the reminder and the vendor's contact.
+            NeedsYouRow(title: AdminCopy.notReplied(mess.name),
+                        detail: AdminCopy.vendorSince(mess.sentAt.map { MLFormat.time($0, in: timeZone) } ?? AdminFormat.missing),
+                        actionName: AdminCopy.remind, action: { open(.page(.messHeadcount(mess.id, mess.slot))) }) {
+                NeedsYouPill(title: AdminCopy.remind)
+            }
         }
     }
 }
@@ -208,25 +132,12 @@ struct AdminNeedsYouView: View {
     var body: some View {
         AdminPageScaffold(title: AdminVotesRewardsCopy.needsYouTitle, onBack: nav.pop) {
             if let content = model.state.value {
-                let mealName = MLFormat.mealSlot(content.selectedSlot)
-                let shortages = content.meal?.shortages ?? []
-                if shortages.isEmpty && content.reviewMeals.isEmpty {
+                if content.needsYouItems.isEmpty {
                     Text(AdminVotesRewardsCopy.nothingNeedsYou).mlFont(.body).foregroundStyle(MLColor.inkSecondary)
                 }
                 VStack(spacing: 0) {
-                    ForEach(shortages) { shortage in
-                        AdminRow(title: AdminCopy.needsYouTitle(dish: shortage.dishName, level: MLFormat.shortageLevel(shortage.level)),
-                                 detail: AdminCopy.needsYouDetail(mess: content.mess.name, meal: mealName),
-                                 showsChevron: false, action: { open(.live) }) {
-                            AdminChip(text: AdminCopy.liveAction, style: .lime)
-                        }
-                    }
-                    ForEach(content.reviewMeals) { review in
-                        AdminRow(title: AdminCopy.reviewTitle(review.meal),
-                                 detail: AdminCopy.reviewDetail(review.meal, in: content.mess.timeZone),
-                                 showsChevron: false, action: { open(.page(.meal(review.id))) }) {
-                            AdminChip(text: AdminScreenCopy.review, style: .outline)
-                        }
+                    ForEach(content.needsYouItems) { item in
+                        AdminNeedsYouRow(item: item, content: content, open: open)
                     }
                 }
                 // Blank-band audit: the pages that hold the rest of the day, so the list never ends in empty space.

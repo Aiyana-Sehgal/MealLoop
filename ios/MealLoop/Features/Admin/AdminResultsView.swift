@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// Results (A07, A08, F01): reasons in plain words, and what is left to check.
+/// Results (A07, A08, F01; AD06 to AD08 for the Food Head): reasons in plain words, and what is left to check. One view
+/// for both scopes: the data layer gives the Food Head their own mess's summary.
 struct AdminResultsScreen: View {
     @Environment(AppEnvironment.self) private var environment
     let nav: AdminNav
@@ -62,7 +63,7 @@ struct AdminResultsBody: View {
 
     private func leadCard(_ reason: ResultReason) -> some View {
         Button {
-            nav.push(.reason(reason.kind))
+            openReason(reason)
         } label: {
             HeroCard {
                 HStack(alignment: .center, spacing: MLSpacing.s16) {
@@ -89,6 +90,12 @@ struct AdminResultsBody: View {
         .accessibilityLabel(spoken(reason))
     }
 
+    /// The reason pages hold every mess's meals, so they open for the Super Admin only. The Food Head reads the rows.
+    private func openReason(_ reason: ResultReason) {
+        guard nav.context.allMesses else { return }
+        nav.push(.reason(reason.kind))
+    }
+
     private func spoken(_ reason: ResultReason) -> String {
         [reason.title, reason.detail, AdminScreenCopy.countMeals(reason.meals), AdminScreenCopy.tag(reason.tag)]
             .compactMap { $0 }.joined(separator: ", ")
@@ -96,7 +103,7 @@ struct AdminResultsBody: View {
 
     private func reasonRow(_ reason: ResultReason) -> some View {
         Button {
-            nav.push(.reason(reason.kind))
+            openReason(reason)
         } label: {
             HStack(spacing: MLSpacing.s12) {
                 VStack(alignment: .leading, spacing: 0) {

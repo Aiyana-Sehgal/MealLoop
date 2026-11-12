@@ -101,8 +101,9 @@ struct AdminMessHeadcountView: View {
         .task { await model.load() }
         .mlSheet(isPresented: $isAdjusting) {
             if let mess, let count = mess.expected {
-                AdminAdjustHeadcountSheet(startCount: count, forecastLine: AdminCopy.forecastRangeLine(mess),
-                                          saveTitle: AdminCopy.save, isSaving: model.isSaving, errorText: model.errorText,
+                AdminAdjustHeadcountSheet(startCount: count,
+                                          subtitle: AdminCopy.changeSubtitle(meal: MLFormat.mealSlot(mess.slot), mess: mess.name),
+                                          forecast: mess.expected, isSaving: model.isSaving, errorText: model.errorText,
                                           save: { await model.adjust(to: $0, reason: $1) }) { saved in
                     isAdjusting = false
                     nav.toast(AdminCopy.savedToast(saved))

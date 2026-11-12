@@ -259,8 +259,9 @@ final class AdminResultsMoreTests: XCTestCase {
         let model = AdminStudentsViewModel(students: repositories(.duringMeal).adminStudents, role: .admin)
         XCTAssertEqual(model.state, .idle)
         await model.load()
-        XCTAssertEqual(model.state.value?.answered, 2_870)
-        XCTAssertEqual(model.state.value?.notAnswered, 630)
+        guard case .allMesses(let overview)? = model.state.value else { return XCTFail("\(model.state)") }
+        XCTAssertEqual(overview.answered, 2_870)
+        XCTAssertEqual(overview.notAnswered, 630)
 
         let offline = AdminStudentsViewModel(students: repositories(.offline).adminStudents, role: .admin)
         await offline.load()

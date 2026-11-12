@@ -1,11 +1,13 @@
 import SwiftUI
 
-/// Adjust headcount (A02 sheet): a number, a reason and one action. The backend refuses a change without a
-/// reason, so its answer is shown here instead of being guessed. On the Food Head's own mess, saving approves.
+/// Change the number (AD05, design/reference/admin_full_2026-11): a stepper, what the forecast was, one required reason
+/// and one action. Save stays disabled until a reason is chosen, and the backend also refuses a change without one.
+/// On the Food Head's own mess, saving approves the changed number; the toast says so.
 struct AdminAdjustHeadcountSheet: View {
-    let forecastLine: String?
-    /// Nil writes "Approve 860", for the headcount where saving is the approval.
-    let saveTitle: String?
+    /// "Lunch · Main"
+    let subtitle: String?
+    /// The forecast the number started from. Nil when there was none.
+    let forecast: Int?
     let isSaving: Bool
     let errorText: String?
     let save: (Int, String?) async -> Bool
@@ -14,14 +16,11 @@ struct AdminAdjustHeadcountSheet: View {
 
     @State private var count: Int
     @State private var chosenReason: String?
-    @State private var otherReason = ""
 
-    private let reasons = [AdminCopy.reasonEvent, AdminCopy.reasonExam, AdminCopy.reasonHoliday, AdminCopy.reasonOther]
-
-    init(startCount: Int, forecastLine: String?, saveTitle: String?, isSaving: Bool, errorText: String?,
+    init(startCount: Int, subtitle: String?, forecast: Int?, isSaving: Bool, errorText: String?,
          save: @escaping (Int, String?) async -> Bool, onSaved: @escaping (Int) -> Void, onClose: @escaping () -> Void) {
-        self.forecastLine = forecastLine
-        self.saveTitle = saveTitle
+        self.subtitle = subtitle
+        self.forecast = forecast
         self.isSaving = isSaving
         self.errorText = errorText
         self.save = save
@@ -30,52 +29,59 @@ struct AdminAdjustHeadcountSheet: View {
         _count = State(initialValue: startCount)
     }
 
-    private var reasonToSend: String? {
-        chosenReason == AdminCopy.reasonOther ? otherReason : chosenReason
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: MLSpacing.s16) {
-            SheetHeader(title: AdminCopy.adjustHeadcount, onClose: onClose)
-            HStack(spacing: MLSpacing.s24) {
+            VStack(alignment: .leading, spacing: MLSpacing.s4) {
+                SheetHeader(title: AdminCopy.changeTheNumber, onClose: onClose)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(MLType.body)
+                        .foregroundStyle(MLColor.inkSecondary)
+                }
+            }
+            HStack {
                 stepButton(symbol: "minus", label: AdminCopy.decrease) { count = max(0, count - 1) }
+                Spacer(minLength: MLSpacing.s8)
                 Text(String(count))
-                    .font(MLType.heroNumber)
+                    .font(AdminType.stat)
                     .foregroundStyle(MLColor.ink)
                     .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                Spacer(minLength: MLSpacing.s8)
                 stepButton(symbol: "plus", label: AdminCopy.increase) { count += 1 }
             }
-            .frame(maxWidth: .infinity)
-            if let forecastLine {
-                Text(forecastLine)
+            .padding(MLSpacing.s16)
+            .background(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).fill(MLColor.canvas))
+            if let forecast {
+                Text(AdminCopy.forecastWas(forecast))
                     .font(MLType.body)
                     .foregroundStyle(MLColor.inkSecondary)
-                    .frame(maxWidth: .infinity)
             }
-            AdminLabel(text: AdminCopy.reason)
+            Text(AdminCopy.whyChanging)
+                .font(MLType.staffPrimary)
+                .foregroundStyle(MLColor.ink)
+                .accessibilityAddTraits(.isHeader)
             AdminFlow {
-                ForEach(reasons, id: \.self) { reason in
+                ForEach(AdminCopy.changeReasons, id: \.self) { reason in
                     ChoiceChip(title: reason, isSelected: chosenReason == reason) { chosenReason = reason }
                 }
             }
-            if chosenReason == AdminCopy.reasonOther {
-                TextField(AdminCopy.reasonOtherPrompt, text: $otherReason)
-                    .font(MLType.body)
-                    .padding(.horizontal, MLSpacing.s16)
-                    .frame(minHeight: MLSize.hit)
-                    .background(RoundedRectangle(cornerRadius: MLRadius.input, style: .continuous).fill(MLColor.fillQuiet))
-            }
-            Text(AdminCopy.adjustNote)
-                .font(MLType.body)
-                .foregroundStyle(MLColor.inkSecondary)
             if let errorText {
                 FieldErrorText(text: errorText)
             }
-            InkActionButton(title: saveTitle.map { "\($0) \(count)" } ?? AdminCopy.approve(count), isLoading: isSaving) {
+            InkActionButton(title: AdminCopy.saveChange, isLoading: isSaving) {
                 Task {
-                    if await save(count, reasonToSend) { onSaved(count) }
+                    if await save(count, chosenReason) { onSaved(count) }
                 }
             }
+            .disabled(chosenReason == nil)
+            .accessibilityHint(chosenReason == nil ? AdminCopy.chooseReason : "")
+            Text(AdminCopy.changeNote)
+                .font(MLType.body)
+                .foregroundStyle(MLColor.inkSecondary)
+                .frame(maxWidth: .infinity)
+                .multilineTextAlignment(.center)
         }
     }
 

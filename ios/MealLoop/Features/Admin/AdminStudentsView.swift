@@ -1,21 +1,74 @@
 import SwiftUI
 
-/// Students (A06): who has answered tomorrow's meal, and what students have raised. Counts only, never a name.
+/// What Students shows for the signed-in scope. The Super Admin reads every mess; the Food Head reads their own mess,
+/// where the source holds who has not answered but not the yes, no and not sure split.
+enum AdminStudentsSummary: Equatable {
+    case allMesses(AdminStudentsOverview)
+    case oneMess(SingleMessStudents)
+
+    var mealTitle: String {
+        switch self {
+        case .allMesses(let value): return value.mealTitle
+        case .oneMess(let value): return value.mealTitle
+        }
+    }
+    var mealLongTitle: String {
+        switch self {
+        case .allMesses(let value): return value.mealLongTitle
+        case .oneMess(let value): return value.mealLongTitle
+        }
+    }
+    /// Nil when the source does not hold it, never zero.
+    var notAnswered: Int? {
+        switch self {
+        case .allMesses(let value): return value.notAnswered
+        case .oneMess(let value): return value.notAnswered
+        }
+    }
+    var reminderMessage: String {
+        switch self {
+        case .allMesses(let value): return value.reminderMessage
+        case .oneMess(let value): return value.reminderMessage
+        }
+    }
+    var reminderSentAt: Date? {
+        switch self {
+        case .allMesses(let value): return value.reminderSentAt
+        case .oneMess(let value): return value.reminderSentAt
+        }
+    }
+    var feedback: [FeedbackItem] {
+        switch self {
+        case .allMesses(let value): return value.feedback
+        case .oneMess(let value): return value.feedback
+        }
+    }
+    var community: [AdminCommunityIssue] {
+        switch self {
+        case .allMesses(let value): return value.community
+        case .oneMess(let value): return value.community
+        }
+    }
+}
+
+/// Students (SA02, AD03): who has answered the next meal, and what students have raised. Counts only, never a name.
 @MainActor
 @Observable
 final class AdminStudentsViewModel {
-    private(set) var state: LoadState<AdminStudentsOverview> = .idle
+    private(set) var state: LoadState<AdminStudentsSummary> = .idle
     private(set) var isSending = false
     private(set) var errorText: String?
 
     private let students: any AdminStudentsRepository
     private let role: Role
+    private let allMesses: Bool
     /// One key per screen, so a double tap reminds once.
     private let key = IdempotencyKey.make()
 
-    init(students: any AdminStudentsRepository, role: Role) {
+    init(students: any AdminStudentsRepository, role: Role, allMesses: Bool = true) {
         self.students = students
         self.role = role
+        self.allMesses = allMesses
     }
 
     func load() async {
@@ -23,8 +76,12 @@ final class AdminStudentsViewModel {
             state = .loading
         }
         do {
-            let overview = try await students.studentsOverview()
-            state = overview.totalStudents == 0 ? .empty : .loaded(overview)
+            if allMesses {
+                let overview = try await students.studentsOverview()
+                state = overview.totalStudents == 0 ? .empty : .loaded(.allMesses(overview))
+            } else {
+                state = .loaded(.oneMess(try await singleMess().singleMessStudents()))
+            }
         } catch RepositoryError.offline(let savedAt) {
             state = .offline(state.value, savedAt: savedAt)
         } catch {
@@ -38,12 +95,23 @@ final class AdminStudentsViewModel {
         errorText = nil
         defer { isSending = false }
         do {
-            state = .loaded(try await students.remind(key: key, by: role))
+            if allMesses {
+                state = .loaded(.allMesses(try await students.remind(key: key, by: role)))
+            } else {
+                state = .loaded(.oneMess(try await singleMess().remindMess(key: key, by: role)))
+            }
             return true
         } catch {
             errorText = AdminWriteError.text(error)
             return false
         }
+    }
+
+    private func singleMess() throws -> any SingleMessStudentsRepository {
+        guard let source = students as? any SingleMessStudentsRepository else {
+            throw RepositoryError.notImplemented(feature: "Students for this mess")
+        }
+        return source
     }
 }
 
@@ -52,7 +120,8 @@ struct AdminStudentsScreen: View {
     let nav: AdminNav
 
     var body: some View {
-        AdminStudentsView(model: AdminStudentsViewModel(students: environment.repositories.adminStudents, role: nav.context.account.role), nav: nav)
+        AdminStudentsView(model: AdminStudentsViewModel(students: environment.repositories.adminStudents, role: nav.context.account.role,
+                                                        allMesses: nav.context.allMesses), nav: nav)
     }
 }
 
@@ -71,125 +140,286 @@ struct AdminStudentsView: View {
     }
 
     private var timeZone: TimeZone { nav.timeZone }
+    private var messName: String { AdminCopy.tileName(nav.context.mess.name) }
 
     var body: some View {
-        AdminPageScaffold(title: AdminScreenCopy.studentsTitle, subtitle: AdminScreenCopy.whatNeedsYou) {
-            AsyncContentView(state: model.state, timeZone: timeZone, retry: { await model.load() }) { overview in
-                content(overview)
+        AdminPageScaffold(title: AdminScreenCopy.studentsTitle, subtitle: subtitle) {
+            AsyncContentView(state: model.state, timeZone: timeZone, retry: { await model.load() }) { summary in
+                content(summary)
             }
         }
         .task(id: environment.dataRevision) {
             await model.load()
         }
         .mlSheet(isPresented: $isReminding, isWorking: model.isSending) {
-            if let overview = model.state.value {
-                remindSheet(overview)
+            if let summary = model.state.value {
+                remindSheet(summary)
             }
         }
     }
 
-    private func content(_ overview: AdminStudentsOverview) -> some View {
-        VStack(alignment: .leading, spacing: MLSpacing.s16) {
-            hero(overview)
-            VStack(alignment: .leading, spacing: 6) {
-                AdminLabel(text: AdminScreenCopy.feedbackToActOn)
-                VStack(spacing: 0) {
-                    ForEach(overview.feedback) { item in
-                        AdminRow(title: AdminScreenCopy.feedbackRowTitle(item),
-                                 detail: AdminScreenCopy.feedbackRowDetail(item, day: AdminFormat.weekday(item.day, in: timeZone).prefix(3).description),
-                                 showsChevron: !item.isNew, leadingDish: item.dish, action: { nav.push(.feedback(item.id)) }) {
-                            if item.isNew {
-                                AdminChip(text: AdminScreenCopy.new, style: .lime)
-                            }
-                        }
-                    }
-                }
+    private var subtitle: String? {
+        guard let meal = model.state.value?.mealTitle else { return nil }
+        return AdminStudentsCopy.subtitle(nav.context.allMesses ? AdminStudentsCopy.allMesses : nav.context.mess.name, meal: meal)
+    }
+
+    private func content(_ summary: AdminStudentsSummary) -> some View {
+        VStack(alignment: .leading, spacing: MLSpacing.s12) {
+            switch summary {
+            case .allMesses(let overview):
+                allMessesHero(overview)
+                pair { notYetTile(summary) } trailing: { skippedTile(overview) }
+                byMessTile(overview.byMess)
+            case .oneMess(let mess):
+                oneMessHero(mess)
+                pair { notYetTile(summary) } trailing: { splitNotAvailableTile }
             }
-            VStack(alignment: .leading, spacing: 6) {
-                AdminLabel(text: AdminScreenCopy.community)
-                VStack(spacing: 0) {
-                    ForEach(overview.community) { issue in
-                        AdminRow(title: issue.title, detail: AdminScreenCopy.studentCount(issue.students), showsChevron: false,
-                                 action: { nav.push(.community(issue.id)) }) {
-                            AdminChip(text: issue.owner.map(AdminScreenCopy.ownedBy) ?? AdminScreenCopy.needsAnOwner,
-                                      style: AdminChipRules.community(hasOwner: issue.owner != nil))
-                        }
-                    }
-                    AdminRow(title: AdminScreenCopy.whyStudentsSkip, action: { nav.push(.skipReasons) }) { EmptyView() }
-                    AdminRow(title: AdminScreenCopy.notAnsweredByMess,
-                             detail: AdminScreenCopy.notAnsweredRow(AdminFormat.count(overview.notAnswered), overview.mealTitle),
-                             action: { nav.push(.notAnswered) }) { EmptyView() }
-                }
-                .overlay(alignment: .bottom) { Rectangle().fill(MLColor.border).frame(height: 1) }
+            pair { feedbackTile(summary.feedback) } trailing: { communityTile(summary.community) }
+        }
+    }
+
+    /// Two tiles side by side, one height.
+    private func pair<A: View, B: View>(@ViewBuilder leading: () -> A, @ViewBuilder trailing: () -> B) -> some View {
+        HStack(alignment: .top, spacing: MLSpacing.s12) {
+            leading().frame(maxHeight: .infinity)
+            trailing().frame(maxHeight: .infinity)
+        }
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    // MARK: Heroes
+
+    /// SA02: answered of all students, the split in one bar and four labelled numbers.
+    private func allMessesHero(_ overview: AdminStudentsOverview) -> some View {
+        BentoTile(kind: .hero) {
+            HeroEyebrow(label: AdminStudentsCopy.answered)
+            heroNumber(AdminFormat.count(overview.answered), of: AdminStudentsCopy.ofTotal(AdminFormat.count(overview.totalStudents)))
+            StackedBar(parts: [
+                .init(id: "yes", value: overview.yes, color: MLColor.lime),
+                .init(id: "no", value: overview.no, color: MLColor.onHero),
+                .init(id: "notSure", value: overview.notSure, color: MLColor.onHeroSecondary),
+                .init(id: "notYet", value: overview.notAnswered, color: MLColor.onHero.opacity(0.2)),
+            ])
+            .padding(.vertical, MLSpacing.s8)
+            HStack(alignment: .top, spacing: MLSpacing.s8) {
+                figure(AdminScreenCopy.yes, overview.yes)
+                figure(AdminScreenCopy.no, overview.no)
+                figure(AdminScreenCopy.notSure, overview.notSure)
+                figure(AdminStudentsCopy.notYet, overview.notAnswered)
             }
         }
     }
 
-    private func hero(_ overview: AdminStudentsOverview) -> some View {
-        HeroCard {
-            VStack(alignment: .leading, spacing: MLSpacing.s12) {
-                HeroEyebrow(label: AdminScreenCopy.answered(overview.mealTitle))
-                HStack(alignment: .firstTextBaseline, spacing: MLSpacing.s8) {
-                    Text(AdminFormat.count(overview.answered))
-                        .font(MLType.heroNumber)
-                        .foregroundStyle(MLColor.onHero)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                    Text(AdminScreenCopy.ofWord)
-                        .font(MLType.staffBody)
-                        .foregroundStyle(MLColor.onHeroSecondary)
-                    Text(AdminFormat.count(overview.totalStudents))
-                        .font(AdminType.mono20)
-                        .foregroundStyle(MLColor.onHeroSecondary)
+    /// AD03: answered of about the mess's size, one bar, the derived share. Each missing figure is a dash.
+    private func oneMessHero(_ mess: SingleMessStudents) -> some View {
+        BentoTile(kind: .hero) {
+            HeroEyebrow(label: AdminStudentsCopy.answered)
+            heroNumber(mess.answered.map(AdminFormat.count), of: mess.students.map { AdminStudentsCopy.ofAbout(AdminFormat.count($0)) })
+            if let answered = mess.answered, let students = mess.students, students > 0 {
+                GeometryReader { proxy in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(MLColor.onHero.opacity(0.2))
+                        Capsule().fill(MLColor.lime).frame(width: proxy.size.width * CGFloat(answered) / CGFloat(students))
+                    }
                 }
-                bar(AdminScreenCopy.yes, overview.yes, of: overview.totalStudents, color: MLColor.lime)
-                bar(AdminScreenCopy.no, overview.no, of: overview.totalStudents, color: MLColor.onHero)
-                bar(AdminScreenCopy.notSure, overview.notSure, of: overview.totalStudents, color: MLColor.onHero)
-                if let sentAt = overview.reminderSentAt {
-                    Text(AdminScreenCopy.reminderSent(MLFormat.time(sentAt, in: timeZone)))
-                        .font(MLType.body)
-                        .foregroundStyle(MLColor.onHero)
+                .frame(height: 14)
+                .padding(.vertical, MLSpacing.s8)
+                .accessibilityHidden(true)
+                BentoCaption(text: AdminStudentsCopy.answeredShare(Int((Double(answered) / Double(students) * 100).rounded()),
+                                                                   mess: messName), kind: .hero)
+            } else {
+                BentoCaption(text: AdminStudentsCopy.notAvailableFor(messName), kind: .hero)
+            }
+        }
+    }
+
+    private func heroNumber(_ value: String?, of total: String?) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: MLSpacing.s12) {
+            Text(value ?? "—")
+                .font(AdminType.heroMetric)
+                .foregroundStyle(value == nil ? MLColor.onHeroSecondary : MLColor.onHero)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+            if let total {
+                Text(total)
+                    .font(AdminType.mono20)
+                    .foregroundStyle(MLColor.onHeroSecondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func figure(_ label: String, _ value: Int) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label).mlFont(.secondary).foregroundStyle(MLColor.onHeroSecondary).lineLimit(1).minimumScaleFactor(0.8)
+            Text(AdminFormat.count(value)).font(AdminType.mono17).foregroundStyle(MLColor.onHero).lineLimit(1).minimumScaleFactor(0.7)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+
+    // MARK: Tiles
+
+    /// Lime action tile: who hasn't answered, and Remind. Once a reminder is recorded the tile says when instead.
+    @ViewBuilder
+    private func notYetTile(_ summary: AdminStudentsSummary) -> some View {
+        let kind: BentoKind = summary.notAnswered == nil ? .dashed : .action
+        BentoTile(kind: kind, fillsHeight: true) {
+            BentoLabel(text: AdminStudentsCopy.notYet, kind: kind)
+            BentoNumber(text: summary.notAnswered.map(AdminFormat.count), kind: kind, font: AdminType.tileMetric,
+                        spoken: "\(AdminStudentsCopy.notYet), \(summary.notAnswered.map(String.init) ?? AdminCopy.noData)")
+            BentoCaption(text: summary.notAnswered == nil ? AdminStudentsCopy.notAvailableFor(messName) : AdminStudentsCopy.haventAnswered,
+                         kind: kind)
+            Spacer(minLength: 0)
+            if summary.notAnswered != nil {
+                if let sentAt = summary.reminderSentAt {
+                    BentoCaption(text: AdminScreenCopy.reminderSent(MLFormat.time(sentAt, in: timeZone)), kind: kind)
                 } else {
-                    LimeActionButton(title: AdminScreenCopy.remind(AdminFormat.count(overview.notAnswered))) { isReminding = true }
+                    InkActionButton(title: AdminStudentsCopy.remind) { isReminding = true }
                 }
             }
         }
     }
 
-    private func bar(_ title: String, _ value: Int, of total: Int, color: Color) -> some View {
-        HStack(spacing: MLSpacing.s12) {
-            Text(title)
-                .font(MLType.body)
-                .foregroundStyle(MLColor.onHero)
-                .frame(width: 80, alignment: .leading)
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(MLColor.inkSecondary)
-                    Capsule().fill(color).frame(width: proxy.size.width * CGFloat(value) / CGFloat(max(total, 1)))
+    /// SA02: who said no, and the way to why.
+    private func skippedTile(_ overview: AdminStudentsOverview) -> some View {
+        BentoTile(kind: .standard, fillsHeight: true) {
+            HStack(alignment: .top) {
+                BentoLabel(text: AdminStudentsCopy.skipped, kind: .standard)
+                Spacer(minLength: 0)
+                RoundGoButton(label: AdminStudentsCopy.whySkip) { nav.push(.skipReasons) }
+            }
+            BentoNumber(text: AdminFormat.count(overview.no), kind: .standard, font: AdminType.tileMetric,
+                        spoken: "\(AdminStudentsCopy.skipped), \(overview.no)")
+            BentoCaption(text: AdminStudentsCopy.whySkip, kind: .standard)
+        }
+        .onTapGesture { nav.push(.skipReasons) }
+    }
+
+    /// AD03: the split is not held for one mess, so the tile says so instead of dividing the answered count.
+    private var splitNotAvailableTile: some View {
+        BentoTile(kind: .dashed, fillsHeight: true) {
+            BentoLabel(text: AdminStudentsCopy.splitLabel, kind: .dashed)
+            BentoNumber(text: nil, kind: .dashed, font: AdminType.tileMetric, spoken: AdminStudentsCopy.notAvailableFor(messName))
+            BentoCaption(text: AdminStudentsCopy.notAvailableFor(messName), kind: .dashed)
+        }
+    }
+
+    /// SA02: who hasn't answered, mess by mess. The highest bar is the one outlined lime; a mess with no figure is a
+    /// dashed bar. Opens the not-answered page.
+    @ViewBuilder
+    private func byMessTile(_ rolls: [AdminMessRoll]?) -> some View {
+        if let rolls, !rolls.isEmpty {
+            let highest = rolls.compactMap(\.notAnswered).max() ?? 0
+            Button { nav.push(.notAnswered) } label: {
+                BentoTile(kind: .standard) {
+                    BentoLabel(text: AdminStudentsCopy.byMess, kind: .standard)
+                    BentoCaption(text: AdminStudentsCopy.byMessCaption, kind: .standard)
+                    HStack(alignment: .bottom, spacing: MLSpacing.s12) {
+                        ForEach(rolls) { roll in
+                            messBar(roll, highest: highest)
+                        }
+                    }
+                    .padding(.top, MLSpacing.s8)
                 }
             }
-            .frame(height: 10)
-            Text(AdminFormat.count(value))
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(AdminStudentsCopy.byMess)
+            .accessibilityValue(rolls.map { AdminStudentsCopy.spokenNotAnswered($0.mess, $0.notAnswered.map(String.init) ?? AdminCopy.noData) }
+                .joined(separator: "; "))
+            .accessibilityAddTraits(.isButton)
+        }
+    }
+
+    private func messBar(_ roll: AdminMessRoll, highest: Int) -> some View {
+        let maxHeight: CGFloat = 72
+        let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
+        return VStack(spacing: MLSpacing.s4) {
+            Text(roll.notAnswered.map(AdminFormat.count) ?? "—")
                 .font(MLType.monoBody)
-                .foregroundStyle(MLColor.onHero)
-                .frame(width: 56, alignment: .trailing)
+                .foregroundStyle(roll.notAnswered == nil ? MLColor.inkSecondary : MLColor.ink)
+            Group {
+                if let value = roll.notAnswered {
+                    shape.fill(value == highest ? MLColor.lime : MLColor.ink)
+                        .overlay(shape.stroke(MLColor.ink, lineWidth: 1.5))
+                        .frame(height: max(16, maxHeight * CGFloat(value) / CGFloat(max(highest, 1))))
+                } else {
+                    shape.stroke(MLColor.inkSecondary, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+                        .frame(height: maxHeight * 0.6)
+                }
+            }
+            .frame(maxWidth: 48)
+            Text(roll.mess)
+                .mlFont(.secondary)
+                .foregroundStyle(MLColor.inkSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(title), \(AdminFormat.count(value))")
+        .frame(maxWidth: .infinity)
     }
 
-    private func remindSheet(_ overview: AdminStudentsOverview) -> some View {
-        let count = AdminFormat.count(overview.notAnswered)
+    @ViewBuilder
+    private func feedbackTile(_ feedback: [FeedbackItem]) -> some View {
+        let first = feedback.first
+        Button { if let first { nav.push(.feedback(first.id)) } } label: {
+            BentoTile(kind: .standard, fillsHeight: true) {
+                BentoLabel(text: AdminStudentsCopy.feedback, kind: .standard)
+                Text(AdminFormat.count(feedback.count))
+                    .font(AdminType.tileMetric)
+                    .foregroundStyle(feedback.isEmpty ? MLColor.inkSecondary : MLColor.ink)
+                BentoCaption(text: first.map(AdminScreenCopy.feedbackRowTitle) ?? AdminStudentsCopy.noFeedback, kind: .standard)
+                if first?.isNew == true {
+                    AdminChip(text: AdminScreenCopy.new, style: .lime, isSmall: true)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .disabled(first == nil)
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private func communityTile(_ community: [AdminCommunityIssue]) -> some View {
+        let first = community.first
+        Button { if let first { nav.push(.community(first.id)) } } label: {
+            BentoTile(kind: .standard, fillsHeight: true) {
+                BentoLabel(text: AdminStudentsCopy.community, kind: .standard)
+                Text(AdminFormat.count(community.count))
+                    .font(AdminType.tileMetric)
+                    .foregroundStyle(community.isEmpty ? MLColor.inkSecondary : MLColor.ink)
+                BentoCaption(text: first?.title ?? AdminStudentsCopy.noReports, kind: .standard)
+                if let first {
+                    AdminChip(text: first.owner.map(AdminScreenCopy.ownedBy) ?? AdminScreenCopy.needsAnOwner,
+                              style: AdminChipRules.community(hasOwner: first.owner != nil), isSmall: true)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .disabled(first == nil)
+        .accessibilityElement(children: .combine)
+    }
+
+    // MARK: Remind
+
+    private func remindSheet(_ summary: AdminStudentsSummary) -> some View {
+        let count = summary.notAnswered.map(AdminFormat.count) ?? AdminFormat.missing
+        let who: String = switch summary {
+        case .allMesses: AdminScreenCopy.remindWho(count, meal: summary.mealLongTitle)
+        case .oneMess(let mess): AdminStudentsCopy.remindWhoMess(count, meal: summary.mealLongTitle, mess: AdminCopy.messName(mess.mess))
+        }
         return VStack(alignment: .leading, spacing: MLSpacing.s12) {
             SheetHeader(title: AdminScreenCopy.remindStudents) { isReminding = false }
             AdminLabel(text: AdminScreenCopy.who)
             // Remind sheet 2262:237: body-size text, the message in a white bubble, one helper line, the button below.
-            Text(AdminScreenCopy.remindWho(count, meal: overview.mealLongTitle))
+            Text(who)
                 .mlFont(.body)
                 .foregroundStyle(MLColor.ink)
                 .fixedSize(horizontal: false, vertical: true)
             AdminLabel(text: AdminScreenCopy.messageLabel)
-            Text(overview.reminderMessage)
+            Text(summary.reminderMessage)
                 .mlFont(.body)
                 .foregroundStyle(MLColor.ink)
                 .padding(MLSpacing.s16)

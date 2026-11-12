@@ -10,23 +10,35 @@ struct AdminMoreScreen: View {
 
     var body: some View {
         let more = environment.repositories.adminMore
+        let allMesses = nav.context.allMesses
         AdminPageScaffold(title: AdminScreenCopy.moreTitle) {
-            AdminLoadedPage(model: AdminPageModel { try await more.hub() }, timeZone: nav.timeZone) { hub, _ in
+            AdminLoadedPage(model: AdminPageModel { try await AdminHubValues.load(more, allMesses: allMesses) }, timeZone: nav.timeZone) { hub, _ in
                 VStack(spacing: MLSpacing.s16) {
                     group {
                         AdminHubRow(title: AdminScreenCopy.weeklyMenu, value: hub.menuStatus) { nav.push(.weeklyMenu) }
                         AdminHubRow(title: AdminScreenCopy.wednesdayPass, value: "\(hub.passUsed)/\(hub.passTotal)") { nav.push(.passes) }
-                        AdminHubRow(title: AdminScreenCopy.outings, value: AdminScreenCopy.outCount(hub.outNow)) { nav.push(.outings) }
-                        AdminHubRow(title: AdminScreenCopy.votes, value: AdminScreenCopy.openCount(hub.openVotes)) { nav.push(.votes) }
-                        AdminHubRow(title: AdminScreenCopy.rewards, value: AdminScreenCopy.liveCount(hub.liveRewards)) { nav.push(.rewards) }
+                        // Outings, votes, rewards and history have no per-mess breakdown, so the Food Head's More
+                        // leaves them out rather than showing every mess's figures as theirs (AD09 difference, REPORT).
+                        if let outNow = hub.outNow {
+                            AdminHubRow(title: AdminScreenCopy.outings, value: AdminScreenCopy.outCount(outNow)) { nav.push(.outings) }
+                        }
+                        if let openVotes = hub.openVotes {
+                            AdminHubRow(title: AdminScreenCopy.votes, value: AdminScreenCopy.openCount(openVotes)) { nav.push(.votes) }
+                        }
+                        if let liveRewards = hub.liveRewards {
+                            AdminHubRow(title: AdminScreenCopy.rewards, value: AdminScreenCopy.liveCount(liveRewards)) { nav.push(.rewards) }
+                        }
                         AdminHubRow(title: AdminScreenCopy.spareFood, value: AdminScreenCopy.pickups(hub.pickups), isLast: true) { nav.push(.spareFood) }
                     }
                     group {
-                        if nav.context.canManagePeople {
-                            AdminHubRow(title: AdminScreenCopy.peopleAndAccess, value: AdminScreenCopy.invited(hub.invited)) { nav.push(.people) }
+                        // People and access stays exactly as it was, for the Super Admin only.
+                        if nav.context.canManagePeople, let invited = hub.invited {
+                            AdminHubRow(title: AdminScreenCopy.peopleAndAccess, value: AdminScreenCopy.invited(invited)) { nav.push(.people) }
                         }
                         AdminHubRow(title: AdminScreenCopy.announceToStudents) { nav.push(.announce) }
-                        AdminHubRow(title: AdminScreenCopy.history) { nav.push(.history) }
+                        if allMesses {
+                            AdminHubRow(title: AdminScreenCopy.history) { nav.push(.history) }
+                        }
                         #if DEMO_DATA || REVIEW_DATA
                         AdminHubRow(title: DemoCopy.rowTitle) { demoMenu?.isPresented = true }
                         #endif
@@ -46,6 +58,30 @@ struct AdminMoreScreen: View {
         }
         .padding(.horizontal, MLSpacing.s16)
         .background(RoundedRectangle(cornerRadius: MLRadius.card, style: .continuous).fill(MLColor.surface))
+    }
+}
+
+/// What the More hub shows for the signed-in scope. A nil row is one the scope has no figures for, so it is not drawn.
+struct AdminHubValues: Hashable {
+    let menuStatus: String
+    let passUsed: Int
+    let passTotal: Int
+    let outNow: Int?
+    let openVotes: Int?
+    let liveRewards: Int?
+    let pickups: Int
+    let invited: Int?
+
+    static func load(_ more: any AdminMoreRepository, allMesses: Bool) async throws -> AdminHubValues {
+        if allMesses {
+            let hub = try await more.hub()
+            return AdminHubValues(menuStatus: hub.menuStatus, passUsed: hub.passUsed, passTotal: hub.passTotal, outNow: hub.outNow,
+                                  openVotes: hub.openVotes, liveRewards: hub.liveRewards, pickups: hub.pickups, invited: hub.invited)
+        }
+        guard let source = more as? any SingleMessHubRepository else { throw RepositoryError.notImplemented(feature: "More for this mess") }
+        let hub = try await source.singleMessHub()
+        return AdminHubValues(menuStatus: hub.menuStatus, passUsed: hub.passUsed, passTotal: hub.passTotal, outNow: nil, openVotes: nil,
+                              liveRewards: nil, pickups: hub.pickups, invited: nil)
     }
 }
 

@@ -35,10 +35,10 @@ import XCTest
         let ownEnv = AppEnvironment(kind: .review, repositories: core.makeRepositories().scopedAdmin(head, mess: own.mess), clock: core.clock, demoControls: nil)
         let ownNav = AdminNav(context: own, push: { _ in }, pop: {}, toast: { _ in })
         try await shot("foodhead_today", output, ownEnv, AdminRootView(session: head), bar: false)
-        try await shot("foodhead_students", output, ownEnv, AdminSingleMessStudentsScreen(nav: ownNav))
-        try await shot("foodhead_results", output, ownEnv, AdminScopedResultsScreen(nav: ownNav))
+        try await shot("foodhead_students", output, ownEnv, AdminStudentsScreen(nav: ownNav))
+        try await shot("foodhead_results", output, ownEnv, AdminResultsScreen(nav: ownNav))
         try await shot("foodhead_report", output, ownEnv, AdminSingleMessReportScreen(nav: ownNav))
-        try await shot("foodhead_more", output, ownEnv, AdminSingleMessMoreScreen(nav: ownNav))
+        try await shot("foodhead_more", output, ownEnv, AdminMoreScreen(nav: ownNav))
         try await shot("superadmin_more", output, env, AdminMoreScreen(nav: nav))
     }
     private func shot<V: View>(_ name: String, _ output: URL, _ env: AppEnvironment, _ view: V, bar: Bool = true) async throws {
